@@ -3,15 +3,10 @@ import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
 import { formatSize, formatTime } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
+import type { Sort, SortKey } from "../entries.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { IconButton, spring } from "./ui.tsx";
-
-export type SortKey = "name" | "size" | "mtime";
-export interface Sort {
-  key: SortKey;
-  asc: boolean;
-}
 
 const cols = "grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_6.5rem_10.5rem_auto] items-center gap-3";
 const rowBase = "group cursor-default rounded-full py-1.5 pr-2 pl-1.5 transition-colors select-none";
@@ -23,6 +18,8 @@ interface Props {
   loading: boolean;
   error: string | null;
   selected: Set<string>;
+  /** 剪切板里待移动的条目，半透明显示 */
+  cut: Set<string>;
   sort: Sort;
   onSort: (key: SortKey) => void;
   onUp?: () => void;
@@ -32,6 +29,7 @@ interface Props {
   onDownload: (entry: FileEntry) => void;
   onRename: (entry: FileEntry) => void;
   onDelete: (entry: FileEntry) => void;
+  onContextMenu: (e: MouseEvent, entry: FileEntry) => void;
 }
 
 function SortHeader({ label, k, sort, onSort, className = "" }: { label: string; k: SortKey; sort: Sort; onSort: (k: SortKey) => void; className?: string }) {
@@ -59,7 +57,7 @@ function SortHeader({ label, k, sort, onSort, className = "" }: { label: string;
   );
 }
 
-function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { icon: ReactNode; text: string; tone?: string }) {
+export function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { icon: ReactNode; text: string; tone?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -74,7 +72,7 @@ function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { icon: Re
 }
 
 export function FileList(props: Props) {
-  const { dir, entries, loading, error, selected, sort, onSort, onUp } = props;
+  const { dir, entries, loading, error, selected, cut, sort, onSort, onUp } = props;
   const { t, lang } = useI18n();
   const animateLayout = entries.length <= 200;
 
@@ -125,6 +123,7 @@ export function FileList(props: Props) {
               return (
                 <motion.div
                   key={entry.path}
+                  data-entry={entry.path}
                   layout={animateLayout ? "position" : false}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1, transition: { duration: 0.12 } }}
@@ -132,7 +131,10 @@ export function FileList(props: Props) {
                   transition={spring}
                   onClick={(e) => props.onSelect(entry, e)}
                   onDoubleClick={() => props.onOpen(entry)}
-                  className={`${rowBase} ${cols} ${isSel ? "bg-accent/15 ring-1 ring-accent/40" : "hover:bg-surface0/70"}`}
+                  onContextMenu={(e) => props.onContextMenu(e, entry)}
+                  className={`${rowBase} ${cols} ${isSel ? "bg-accent/15 ring-1 ring-accent/40" : "hover:bg-surface0/70"} ${
+                    cut.has(entry.path) ? "opacity-50" : ""
+                  }`}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <button

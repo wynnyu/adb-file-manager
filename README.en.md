@@ -31,7 +31,9 @@ pnpm build && pnpm start # production:  http://127.0.0.1:3001
 ## Features
 - Browse directories, with breadcrumbs (double-click to type a path), quick links, filtering, sorting and a show-hidden-files toggle
 - Upload files and folders (with the button or by dragging them into the window) and download files; folders and multi-selections download as a zip
-- Create folders, rename and delete (top-level directories such as `/` and `/sdcard` are protected)
+- Three views: icons, list and columns (Finder-style columns from the root down, with a preview of the selected item on the right; images show a thumbnail)
+- Right-click menu: open, download, cut / copy / paste (copies never overwrite; name clashes get a number), copy path, rename, delete; right-click empty space to create a folder, upload here or switch views
+- Create folders, rename, move and delete (top-level directories such as `/` and `/sdcard` are protected)
 - Switch between multiple devices, with automatic detection when devices are plugged in or removed
 
 ## Root mode
@@ -42,9 +44,9 @@ Turn it on with the shield button in the toolbar. It is off by default and asks 
 - The first time you turn it on, Magisk / KernelSU on the phone shows a prompt; grant root to **Shell**
 - If your su takes different arguments, set `ADBFM_SU`, e.g. `ADBFM_SU="su 0 sh -c"`
 
-Shortcuts: `Enter` open · `F2` rename · `Delete` delete · `Backspace` up one level · `⌘/Ctrl+A` select all · `Esc` clear selection
+Shortcuts: `Enter` open · `F2` rename · `Delete` delete · `Backspace` up one level · `⌘/Ctrl+A` select all · `⌘/Ctrl+C` / `X` / `V` copy / cut / paste · `↑` `↓` select · `←` `→` go in and out of folders in column view · `Esc` clear selection
 
-The UI is currently in Chinese.
+The UI is available in English and Chinese. It follows your browser language by default; switch it with the language button in the top bar.
 
 ## Security
 This tool can read and write any file on the phone (including system directories in root mode), so the backend only serves the local machine:
@@ -56,7 +58,7 @@ Do not expose it to the internet through a reverse proxy.
 
 ## Project layout
 - `server/adb.ts`: adb wrapper (calls adb via `execFile`, single-quote-escapes device-side paths)
-- `server/index.ts`: Express API (`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete`); after a build it also serves the frontend
+- `server/index.ts`: Express API (`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete` `copy` `move` `preview`); after a build it also serves the frontend
 - `src/`: React + TypeScript + Tailwind CSS v4 + motion; all four Catppuccin flavors (Latte / Frappé / Macchiato / Mocha) and 5 accent colors are defined in `src/index.css`, with switching logic in `src/theme.ts`; fonts (MiSans / Maple Mono) are bundled locally
 - Build output: `dist/web/` (frontend bundled by vite) and `dist/server/` (backend compiled by tsc, also the npm package's `bin` entry)
 

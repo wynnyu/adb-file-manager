@@ -1,14 +1,25 @@
-import { ArrowDownToLine, ArrowUpFromLine, Check, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, FolderInput, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Transfer } from "../types.ts";
 import { useT } from "../i18n/index.tsx";
 import type { MessageKey } from "../i18n/zh.ts";
 import { spring } from "./ui.tsx";
 
+const kindIcon = { upload: ArrowUpFromLine, download: ArrowDownToLine, copy: Copy, move: FolderInput };
+/** 写全类名，Tailwind 才扫得到 */
+const kindTint = {
+  upload: { badge: "bg-accent/20 text-accent", bar: "bg-accent" },
+  download: { badge: "bg-blue/20 text-blue", bar: "bg-blue" },
+  copy: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
+  move: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
+};
+
 const statusText: Record<Transfer["status"], MessageKey> = {
   uploading: "transfer.uploading",
   pushing: "transfer.pushing",
   pulling: "transfer.pulling",
+  copying: "transfer.copying",
+  moving: "transfer.moving",
   done: "transfer.done",
   error: "transfer.error",
 };
@@ -19,7 +30,8 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
     <div className="fixed right-4 bottom-4 z-40 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
       <AnimatePresence initial={false}>
       {items.map((item) => {
-        const Icon = item.kind === "upload" ? ArrowUpFromLine : ArrowDownToLine;
+        const Icon = kindIcon[item.kind];
+        const color = kindTint[item.kind];
         const busy = item.status !== "done" && item.status !== "error";
         const pct = item.status === "uploading" && item.progress != null ? Math.round(item.progress * 100) : null;
         const tint =
@@ -27,9 +39,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
             ? "bg-red/20 text-red"
             : item.status === "done"
               ? "bg-green/20 text-green"
-              : item.kind === "upload"
-                ? "bg-accent/20 text-accent"
-                : "bg-blue/20 text-blue";
+              : color.badge;
         return (
           <motion.div
             key={item.id}
@@ -75,7 +85,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
                       transition={{ ease: "easeOut", duration: 0.25 }}
                     />
                   ) : (
-                    <div className={`animate-indeterminate h-full w-2/5 rounded-full ${item.kind === "upload" ? "bg-accent" : "bg-blue"}`} />
+                    <div className={`animate-indeterminate h-full w-2/5 rounded-full ${color.bar}`} />
                   )}
                 </div>
               ) : null}

@@ -56,6 +56,12 @@ export const api = {
 
   remove: (t: Target, paths: string[]) => post("/api/delete", { ...t, paths }),
 
+  copy: (t: Target, paths: string[], dest: string) => post("/api/copy", { ...t, paths, dest }),
+
+  move: (t: Target, paths: string[], dest: string) => post("/api/move", { ...t, paths, dest }),
+
+  previewUrl: (t: Target, path: string) => `/api/preview?${qs(t, { path })}`,
+
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {
     const { token } = await post<{ token: string; name: string }>("/api/pull", { ...t, paths });

@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
 import { msg as t } from "./i18n.ts";
 
@@ -224,6 +224,28 @@ export const mkdir = (ctx: Ctx, p: string) => checked(ctx, `mkdir -p ${q(p)}`);
 export const rename = (ctx: Ctx, from: string, to: string) =>
   checked(ctx, `[ ! -e ${q(to)} ] || { echo __ADBFM_EXISTS__; exit 1; }; mv ${q(from)} ${q(to)}`);
 export const remove = (ctx: Ctx, paths: string[]) => checked(ctx, `rm -rf ${paths.map(q).join(" ")}`);
+
+/** 复制到目标目录下；重名时依次改成「名字 2.扩展名」「名字 3.扩展名」…，从不覆盖 */
+export function copyInto(ctx: Ctx, src: string, destDir: string) {
+  const name = path.basename(src);
+  const dot = name.lastIndexOf(".");
+  const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+  // 目录名里的点不算扩展名（com.example.app 不该变成 com.example 2.app）
+  return checked(
+    ctx,
+    `b=${q(base)}; e=${q(ext)}; [ -d ${q(src)} ] && { b=${q(name)}; e=; }; ` +
+      `t=${q(destDir)}/"$b$e"; i=2; while [ -e "$t" ]; do t=${q(destDir)}/"$b $i$e"; i=$((i+1)); done; ` +
+      `cp -R ${q(src)} "$t"`,
+  );
+}
+
+/** 以字节流读取设备上的文件（adb exec-out，不经过电脑临时目录） */
+export function cat(ctx: Ctx, p: string) {
+  const cmd = `cat ${q(p)}`;
+  return spawn(ADB, ["-s", ctx.serial, "exec-out", ctx.root === "su" ? `${SU} ${q(cmd)}` : cmd], {
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+}
 
 export async function storage(ctx: Ctx) {
   const out = await shell(ctx, "df -k /sdcard/ | tail -n 1");

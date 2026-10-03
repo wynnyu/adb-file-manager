@@ -306,6 +306,76 @@ app.post(
   }),
 );
 
+/** 目标目录不能是源本身或它的子目录（按真实路径判断） */
+async function assertNotInside(ctx: adb.Ctx, sources: string[], dest: string) {
+  const [realDest, ...realSrc] = await adb.realpaths(ctx, [dest, ...sources]);
+  realSrc.forEach((s, i) => {
+    if (realDest === s || realDest.startsWith(s + "/")) {
+      throw new adb.AdbError(msg("intoItself", { name: posix.basename(sources[i]) }), 400);
+    }
+  });
+}
+
+// 复制 / 移动到目录：paths 是源，dest 是目标目录
+app.post(
+  "/api/copy",
+  wrap(async (req, res) => {
+    const paths = asList(req.body.paths).map(adb.assertAbs);
+    const dest = adb.assertAbs(req.body.dest);
+    if (!paths.length) throw new adb.AdbError(msg("missingPaths"), 400);
+    const ctx = await ctxOf(req);
+    await assertNotInside(ctx, paths, dest);
+    for (const p of paths) await adb.copyInto(ctx, p, dest);
+    res.json({ ok: true });
+  }),
+);
+
+app.post(
+  "/api/move",
+  wrap(async (req, res) => {
+    const paths = asList(req.body.paths).map(adb.assertAbs);
+    const dest = adb.assertAbs(req.body.dest);
+    if (!paths.length) throw new adb.AdbError(msg("missingPaths"), 400);
+    const ctx = await ctxOf(req);
+    await assertSafeTargets(ctx, paths);
+    await assertNotInside(ctx, paths, dest);
+    for (const p of paths) {
+      // 已经在目标目录里的跳过
+      if (posix.dirname(p) !== dest) await adb.rename(ctx, p, posix.join(dest, posix.basename(p)));
+    }
+    res.json({ ok: true });
+  }),
+);
+
+/** 分栏视图预览：只放行浏览器能直接显示的图片 */
+const PREVIEW_TYPES: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".bmp": "image/bmp",
+  ".svg": "image/svg+xml",
+};
+
+app.get(
+  "/api/preview",
+  wrap(async (req, res) => {
+    const p = adb.assertAbs(req.query.path);
+    const type = PREVIEW_TYPES[posix.extname(p).toLowerCase()];
+    if (!type) throw new adb.AdbError(msg("notPreviewable"), 415);
+    const child = adb.cat(await ctxOf(req), p);
+    res.on("close", () => child.kill());
+    res.setHeader("Content-Type", type);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // SVG 里的脚本不许跑
+    res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'");
+    res.setHeader("Cache-Control", "no-store");
+    child.stdout.pipe(res);
+  }),
+);
+
 // 编译后位于 dist/server/，前端产物在 dist/web/；开发时（tsx）该目录不存在，由 vite 提供页面
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");
 if (existsSync(path.join(web, "index.html"))) {

@@ -1,12 +1,18 @@
 import {
   ArrowUp,
+  CheckCheck,
+  ClipboardPaste,
+  Copy,
   Download,
   Eye,
   EyeOff,
+  FolderOpen,
   FolderPlus,
   FolderUp,
+  Link,
   Pencil,
   RotateCw,
+  Scissors,
   Search,
   Shield,
   ShieldAlert,
@@ -16,12 +22,25 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 import { api, onRootLost, type Target } from "./api.ts";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
+import { ColumnView } from "./components/ColumnView.tsx";
+import { ContextMenu, type MenuItem, type MenuState } from "./components/ContextMenu.tsx";
 import { DeviceSelect } from "./components/DeviceSelect.tsx";
 import { Dialog, type DialogState } from "./components/Dialog.tsx";
-import { FileList, type Sort, type SortKey } from "./components/FileList.tsx";
+import { FileList } from "./components/FileList.tsx";
+import { IconGrid } from "./components/IconGrid.tsx";
+import { VIEWS, ViewSwitch } from "./components/ViewSwitch.tsx";
 import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
 import { ThemePicker } from "./components/ThemePicker.tsx";
@@ -29,10 +48,11 @@ import { TransferQueue } from "./components/TransferQueue.tsx";
 import { LanguagePicker } from "./components/LanguagePicker.tsx";
 import { IconButton, PillButton, spring } from "./components/ui.tsx";
 import { collectDropped, fromInput, type UploadItem } from "./drop.ts";
+import { arrange, MOD, type Sort, type SortKey } from "./entries.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
 import { useI18n, useT } from "./i18n/index.tsx";
 import { loadPref, savePref } from "./prefs.ts";
-import type { Device, FileEntry, Transfer } from "./types.ts";
+import type { Clip, Device, FileEntry, Transfer, ViewMode } from "./types.ts";
 
 const HOME = "/sdcard";
 
@@ -42,17 +62,29 @@ export default function App() {
   const [adbError, setAdbError] = useState<string | null>(null);
   const [serial, setSerial] = useState<string | null>(null);
   const [path, setPath] = useState(() => loadPref("afm.path", HOME));
+  /** 异步操作完成时用它取最新的目录，闭包里的 path 可能已经过时 */
+  const pathRef = useRef(path);
+  pathRef.current = path;
   const [entries, setEntries] = useState<FileEntry[]>([]);
+  /** entries 属于哪个目录；切换目录、还没加载完时为 null */
+  const [entriesDir, setEntriesDir] = useState<string | null>(null);
+  /** 刷新序号：每次刷新或增删改后 +1，分栏视图的上层各栏据此重新加载 */
+  const [rev, setRev] = useState(0);
+  const [view, setView] = useState<ViewMode>(() => loadPref("afm.view", "list"));
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const anchor = useRef<string | null>(null);
+  /** 进入目录后要选中的条目（分栏视图里点上层栏的文件） */
+  const pendingFocus = useRef<string | null>(null);
   const [sort, setSort] = useState<Sort>(() => loadPref("afm.sort", { key: "name", asc: true }));
   const [showHidden, setShowHidden] = useState(() => loadPref("afm.hidden", false));
   const [filter, setFilter] = useState("");
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [dialog, setDialog] = useState<DialogState | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const [clip, setClip] = useState<Clip | null>(null);
   const [rootMode, setRootMode] = useState(() => loadPref("afm.rootRemember", false));
   const rootVerified = useRef<string | null>(null);
   const [storage, setStorage] = useState<{ total: number; free: number } | null>(null);
@@ -60,6 +92,8 @@ export default function App() {
   const dragDepth = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
+  /** 右键「上传到这里」的目标目录；为 null 时上传到当前目录 */
+  const uploadDest = useRef<string | null>(null);
   const loadSeq = useRef(0);
 
   const device = devices.find((d) => d.serial === serial);
@@ -101,11 +135,18 @@ export default function App() {
         const list = await api.ls(target, p);
         if (seq !== loadSeq.current) return;
         setEntries(list);
+        setEntriesDir(p);
         setListError(null);
-        if (!keepSelection) setSelected(new Set());
+        const focus = pendingFocus.current;
+        pendingFocus.current = null;
+        if (focus && list.some((e) => e.path === focus)) {
+          anchor.current = focus;
+          setSelected(new Set([focus]));
+        } else if (!keepSelection) setSelected(new Set());
       } catch (e) {
         if (seq !== loadSeq.current) return;
         setEntries([]);
+        setEntriesDir(null);
         setListError((e as Error).message);
       } finally {
         if (seq === loadSeq.current) setLoading(false);
@@ -130,38 +171,63 @@ export default function App() {
   useEffect(() => savePref("afm.path", path), [path]);
   useEffect(() => savePref("afm.sort", sort), [sort]);
   useEffect(() => savePref("afm.hidden", showHidden), [showHidden]);
+  useEffect(() => savePref("afm.view", view), [view]);
 
+  /** focus：进入后选中这一项 */
   const navigate = useCallback(
-    (p: string) => {
+    (p: string, focus?: string) => {
       setFilter("");
-      // 点的是当前目录：path 不变不会触发加载 effect，直接刷新，别清空列表
-      if (p === path) return void load(p);
+      if (p === path) {
+        if (focus) {
+          anchor.current = focus;
+          setSelected(new Set([focus]));
+          return;
+        }
+        // 点的是当前目录：path 不变不会触发加载 effect，直接刷新，别清空列表
+        return void load(p);
+      }
+      pendingFocus.current = focus ?? null;
       setEntries([]);
+      setEntriesDir(null);
       setPath(p);
     },
     [path, load],
   );
 
-  const visible = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    const list = entries.filter(
-      (e) => (showHidden || !e.name.startsWith(".")) && (!q || e.name.toLowerCase().includes(q)),
-    );
-    const dir = sort.asc ? 1 : -1;
-    return list.sort((a, b) => {
-      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-      let r = 0;
-      if (sort.key === "size") r = a.size - b.size;
-      else if (sort.key === "mtime") r = a.mtime - b.mtime;
-      if (r === 0) r = a.name.localeCompare(b.name, "zh-CN", { numeric: true, sensitivity: "base" });
-      return r * dir;
-    });
-  }, [entries, filter, showHidden, sort]);
+  /** 增删改之后：刷新当前目录，并让分栏视图的上层各栏也重新加载 */
+  const reload = useCallback(
+    (keepSelection = false) => {
+      setRev((r) => r + 1);
+      return load(pathRef.current, keepSelection);
+    },
+    [load],
+  );
+
+  /**
+   * moved 是被改名 / 移走（to 为新路径）或删掉（to 为 null）的条目。
+   * 当前目录在其中某项里面时跟过去（删掉了就退到它的上一级），否则原地刷新
+   */
+  const afterChange = useCallback(
+    async (moved: [from: string, to: string | null][] = [], keepSelection = false) => {
+      const cur = pathRef.current;
+      const hit = moved.find(([from]) => cur === from || cur.startsWith(from + "/"));
+      if (!hit) return reload(keepSelection);
+      const [from, to] = hit;
+      setRev((r) => r + 1);
+      setEntries([]);
+      setEntriesDir(null);
+      setPath(to === null ? parentPath(from) : to + cur.slice(from.length));
+    },
+    [reload],
+  );
+
+  const visible = useMemo(() => arrange(entries, sort, showHidden, filter), [entries, filter, showHidden, sort]);
 
   // ---------- 提示 & 传输队列 ----------
-  const flash = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast((t) => (t === msg ? null : t)), 4000);
+  const flash = useCallback((msg: string, tone: "error" | "info" = "error") => {
+    const next = { msg, tone };
+    setToast(next);
+    setTimeout(() => setToast((t) => (t === next ? null : t)), tone === "info" ? 2500 : 4000);
   }, []);
 
   useEffect(() => {
@@ -191,9 +257,8 @@ export default function App() {
 
   // ---------- 操作 ----------
   const upload = useCallback(
-    async (items: UploadItem[]) => {
+    async (items: UploadItem[], dest = path) => {
       if (!target || !online || !items.length) return;
-      const dest = path;
       const tops = new Set(items.map((i) => i.path.split("/")[0]));
       const label =
         tops.size === 1
@@ -206,12 +271,12 @@ export default function App() {
         );
         patchTransfer(id, { status: "done" });
         refreshStorage();
-        if (dest === path) void load(dest, true);
+        void reload(true);
       } catch (e) {
         patchTransfer(id, { status: "error", error: (e as Error).message });
       }
     },
-    [target, online, path, load, startTransfer, patchTransfer, refreshStorage, t],
+    [target, online, path, reload, startTransfer, patchTransfer, refreshStorage, t],
   );
 
   const download = useCallback(
@@ -245,7 +310,7 @@ export default function App() {
           targets.map((t) => t.path),
         );
         refreshStorage();
-        await load(path);
+        await afterChange(targets.map((t) => [t.path, null]));
       };
       // root 模式：第二层确认，列出完整路径并倒计时
       const finalStep: DialogState = {
@@ -289,7 +354,7 @@ export default function App() {
         onSubmit: rootMode ? async () => setDialog(finalStep) : doDelete,
       });
     },
-    [target, rootMode, path, load, refreshStorage, t, rich],
+    [target, rootMode, afterChange, refreshStorage, t, rich],
   );
 
   // ---------- root 模式 ----------
@@ -351,15 +416,16 @@ export default function App() {
         onSubmit: async (name) => {
           if (name.includes("/")) throw new Error(t("name.noSlash"));
           if (name === entry.name) return;
-          await api.rename(target, entry.path, joinPath(parentPath(entry.path), name));
-          await load(path);
+          const to = joinPath(parentPath(entry.path), name);
+          await api.rename(target, entry.path, to);
+          await afterChange([[entry.path, to]]);
         },
       });
     },
-    [target, path, load, t],
+    [target, afterChange, t],
   );
 
-  const askMkdir = useCallback(() => {
+  const askMkdir = useCallback((dir: string = path) => {
     if (!target) return;
     setDialog({
       kind: "prompt",
@@ -369,11 +435,11 @@ export default function App() {
       confirm: t("mkdir.confirm"),
       onSubmit: async (name) => {
         if (name.includes("/")) throw new Error(t("name.noSlash"));
-        await api.mkdir(target, joinPath(path, name));
-        await load(path);
+        await api.mkdir(target, joinPath(dir, name));
+        await reload(true);
       },
     });
-  }, [target, path, load, t]);
+  }, [target, path, reload, t]);
 
   const open = useCallback(
     (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : void download([entry])),
@@ -417,14 +483,202 @@ export default function App() {
 
   const selectedEntries = useMemo(() => visible.filter((v) => selected.has(v.path)), [visible, selected]);
 
+  // ---------- 剪切 / 拷贝 / 粘贴 ----------
+  const canPaste = !!clip && clip.serial === serial;
+  const cutPaths = useMemo(
+    () => new Set(clip?.mode === "cut" && clip.serial === serial ? clip.entries.map((e) => e.path) : []),
+    [clip, serial],
+  );
+
+  const toClip = useCallback(
+    (mode: Clip["mode"], items: FileEntry[]) => {
+      if (!serial || !items.length) return;
+      setClip({ mode, entries: items, serial });
+      flash(t(mode === "cut" ? "clip.cut" : "clip.copied", { n: items.length }), "info");
+    },
+    [serial, flash, t],
+  );
+
+  const paste = useCallback(
+    async (dest: string) => {
+      if (!target || !clip || clip.serial !== target.serial) return;
+      const { mode, entries: items } = clip;
+      const label =
+        items.length === 1
+          ? items[0].name
+          : t("common.itemsEtc", { name: items[0].name, n: items.length, rest: items.length - 1 });
+      const move = mode === "cut";
+      const id = startTransfer({ kind: move ? "move" : "copy", label, status: move ? "moving" : "copying" });
+      try {
+        await (move ? api.move : api.copy)(target, items.map((i) => i.path), dest);
+        patchTransfer(id, { status: "done" });
+        // 剪切的只能粘贴一次；拷贝的可以继续粘贴到别处
+        if (move) setClip(null);
+        else refreshStorage();
+        await afterChange(move ? items.map((i) => [i.path, joinPath(dest, i.name)]) : [], true);
+      } catch (e) {
+        patchTransfer(id, { status: "error", error: (e as Error).message });
+        // 多项时可能已经完成了一部分
+        void reload(true);
+      }
+    },
+    [target, clip, t, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
+  );
+
+  const copyText = useCallback(
+    (text: string) => {
+      navigator.clipboard.writeText(text).then(
+        () => flash(t("clip.pathCopied"), "info"),
+        () => flash(t("clip.failed")),
+      );
+    },
+    [flash, t],
+  );
+
+  const pickUpload = (input: RefObject<HTMLInputElement | null>, dest: string | null) => {
+    uploadDest.current = dest;
+    input.current?.click();
+  };
+
+  // ---------- 右键菜单 ----------
+  /** 右键某一项：点在已选中的项上就作用于整个选择，否则只选中并作用于这一项（同 Finder） */
+  const openItemMenu = (e: MouseEvent, entry: FileEntry, dir: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let targets = [entry];
+    if (dir === path) {
+      if (selected.has(entry.path) && selectedEntries.length) targets = selectedEntries;
+      else {
+        anchor.current = entry.path;
+        setSelected(new Set([entry.path]));
+      }
+    }
+    const single = targets.length === 1 ? targets[0] : null;
+    const n = targets.length;
+    const items: MenuItem[] = [];
+    if (single?.isDir) {
+      items.push({ label: t("menu.open"), icon: <FolderOpen className="size-4" />, shortcut: "↵", onSelect: () => navigate(single.path) });
+      if (canPaste) {
+        items.push({
+          label: t("menu.pasteInto", { name: single.name }),
+          icon: <ClipboardPaste className="size-4" />,
+          onSelect: () => void paste(single.path),
+        });
+      }
+    }
+    items.push(
+      {
+        label: n > 1 ? t("menu.downloadMany", { n }) : t("menu.download"),
+        icon: <Download className="size-4" />,
+        shortcut: single && !single.isDir ? "↵" : undefined,
+        onSelect: () => void download(targets),
+      },
+      "sep",
+      { label: t("menu.cut"), icon: <Scissors className="size-4" />, shortcut: `${MOD}X`, onSelect: () => toClip("cut", targets) },
+      { label: t("menu.copy"), icon: <Copy className="size-4" />, shortcut: `${MOD}C`, onSelect: () => toClip("copy", targets) },
+      {
+        label: t("menu.copyPath"),
+        icon: <Link className="size-4" />,
+        onSelect: () => copyText(targets.map((x) => x.path).join("\n")),
+      },
+      "sep",
+    );
+    if (single) items.push({ label: t("menu.rename"), icon: <Pencil className="size-4" />, shortcut: "F2", onSelect: () => askRename(single) });
+    items.push({
+      label: n > 1 ? t("menu.deleteMany", { n }) : t("menu.delete"),
+      icon: <Trash2 className="size-4" />,
+      shortcut: MOD === "⌘" ? "⌘⌫" : "Del",
+      danger: true,
+      onSelect: () => askDelete(targets),
+    });
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  };
+
+  /** 右键空白处：dir 是这块空白所属的目录（分栏视图里可能是上层某一栏） */
+  const openBackgroundMenu = (e: MouseEvent, dir: string) => {
+    e.preventDefault();
+    const n = clip?.entries.length ?? 0;
+    const items: MenuItem[] = [
+      { label: t("menu.newFolder"), icon: <FolderPlus className="size-4" />, onSelect: () => askMkdir(dir) },
+      { label: t("menu.upload"), icon: <Upload className="size-4" />, onSelect: () => pickUpload(fileInput, dir) },
+      { label: t("menu.uploadFolder"), icon: <FolderUp className="size-4" />, onSelect: () => pickUpload(folderInput, dir) },
+      "sep",
+      {
+        label: canPaste && n > 1 ? t("menu.pasteN", { n }) : t("menu.paste"),
+        icon: <ClipboardPaste className="size-4" />,
+        shortcut: `${MOD}V`,
+        disabled: !canPaste,
+        onSelect: () => void paste(dir),
+      },
+      { label: t("menu.copyPath"), icon: <Link className="size-4" />, onSelect: () => copyText(dir) },
+      "sep",
+    ];
+    if (dir === path) {
+      items.push({
+        label: t("menu.selectAll"),
+        icon: <CheckCheck className="size-4" />,
+        shortcut: `${MOD}A`,
+        disabled: !visible.length,
+        onSelect: () => setSelected(new Set(visible.map((v) => v.path))),
+      });
+    }
+    items.push(
+      { label: t("menu.refresh"), icon: <RotateCw className="size-4" />, onSelect: () => void reload(true) },
+      { label: t("menu.showHidden"), icon: <Eye className="size-4" />, checked: showHidden, onSelect: () => setShowHidden((v) => !v) },
+      "sep",
+      ...VIEWS.map(({ id, Icon }) => ({
+        label: t(`view.${id}`),
+        icon: <Icon className="size-4" />,
+        checked: view === id,
+        onSelect: () => setView(id),
+      })),
+    );
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  };
+
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  /** 方向键选择上一项 / 下一项，并滚动到可见 */
+  const step = useCallback(
+    (delta: 1 | -1) => {
+      if (!visible.length) return;
+      const cur = anchor.current && selected.has(anchor.current) ? visible.findIndex((v) => v.path === anchor.current) : -1;
+      const i = cur < 0 ? (delta > 0 ? 0 : visible.length - 1) : Math.min(visible.length - 1, Math.max(0, cur + delta));
+      const p = visible[i].path;
+      anchor.current = p;
+      setSelected(new Set([p]));
+      document.querySelector(`[data-entry="${CSS.escape(p)}"]`)?.scrollIntoView({ block: "nearest" });
+    },
+    [visible, selected],
+  );
+
   // ---------- 快捷键 ----------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialog || (e.target as HTMLElement).closest("input, textarea")) return;
+      if (dialog || menu || (e.target as HTMLElement).closest("input, textarea")) return;
+      const mod = e.metaKey || e.ctrlKey;
       if (e.key === "Escape") setSelected(new Set());
-      else if ((e.metaKey || e.ctrlKey) && e.key === "a") {
+      else if (mod && e.key === "a") {
         e.preventDefault();
         setSelected(new Set(visible.map((v) => v.path)));
+      } else if (mod && (e.key === "c" || e.key === "x")) {
+        // 页面上选中了文字时让浏览器正常复制
+        if (!selectedEntries.length || window.getSelection()?.toString()) return;
+        e.preventDefault();
+        toClip(e.key === "x" ? "cut" : "copy", selectedEntries);
+      } else if (mod && e.key === "v") {
+        if (!canPaste) return;
+        e.preventDefault();
+        void paste(path);
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        step(e.key === "ArrowDown" ? 1 : -1);
+      } else if (view === "columns" && e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (path !== "/") navigate(parentPath(path), path);
+      } else if (view === "columns" && e.key === "ArrowRight") {
+        e.preventDefault();
+        if (selectedEntries.length === 1 && selectedEntries[0].isDir) navigate(selectedEntries[0].path);
       } else if (e.key === "Delete" || (e.metaKey && e.key === "Backspace")) askDelete(selectedEntries);
       else if (e.key === "Enter" && selectedEntries.length === 1) open(selectedEntries[0]);
       else if (e.key === "F2" && selectedEntries.length === 1) askRename(selectedEntries[0]);
@@ -432,7 +686,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialog, visible, selectedEntries, askDelete, askRename, open, navigate, path]);
+  }, [dialog, menu, visible, selectedEntries, askDelete, askRename, open, navigate, path, view, canPaste, paste, toClip, step]);
 
   // ---------- 拖拽上传 ----------
   const dragProps = online
@@ -531,13 +785,13 @@ export default function App() {
                 <IconButton title={t("toolbar.up")} disabled={path === "/"} onClick={() => navigate(parentPath(path))}>
                   <ArrowUp className="size-5" />
                 </IconButton>
-                <IconButton title={t("toolbar.refresh")} onClick={() => load(path, true)}>
+                <IconButton title={t("toolbar.refresh")} onClick={() => reload(true)}>
                   <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
                 </IconButton>
                 <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
                   <Breadcrumbs path={path} onNavigate={navigate} />
                 </div>
-                <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
+                <label className="flex h-10 min-w-32 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
                   <Search className="size-4 shrink-0" />
                   <input
                     value={filter}
@@ -551,6 +805,7 @@ export default function App() {
                     </button>
                   )}
                 </label>
+                <ViewSwitch view={view} onChange={setView} />
                 <IconButton
                   title={
                     showHidden
@@ -572,39 +827,84 @@ export default function App() {
                 >
                   {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
                 </IconButton>
-                <IconButton title={t("toolbar.newFolder")} onClick={askMkdir}>
+                <IconButton title={t("toolbar.newFolder")} onClick={() => askMkdir()}>
                   <FolderPlus className="size-5" />
                 </IconButton>
-                <IconButton title={t("toolbar.uploadFolder")} onClick={() => folderInput.current?.click()}>
+                <IconButton title={t("toolbar.uploadFolder")} onClick={() => pickUpload(folderInput, null)}>
                   <FolderUp className="size-5" />
                 </IconButton>
-                <PillButton tone="accent" icon={<Upload className="size-4" />} onClick={() => fileInput.current?.click()}>
+                <PillButton tone="accent" icon={<Upload className="size-4" />} onClick={() => pickUpload(fileInput, null)}>
                   {t("toolbar.upload")}
                 </PillButton>
               </div>
 
               <QuickLinks path={path} onNavigate={navigate} />
 
-              <FileList
-                dir={path}
-                onUp={path === "/" ? undefined : () => navigate(parentPath(path))}
-                entries={visible}
-                loading={loading}
-                error={listError}
-                selected={selected}
-                sort={sort}
-                onSort={(key: SortKey) => setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }))}
-                onSelect={onSelect}
-                onToggle={onToggle}
-                onOpen={open}
-                onDownload={(e) => download([e])}
-                onRename={askRename}
-                onDelete={(e) => askDelete([e])}
-              />
-
-              <p className="px-3 pt-2 text-center text-xs text-muted">
-                {t("toolbar.hint", { n: visible.length })}
-              </p>
+              {/* 点空白处取消选择，右键空白处是当前目录的菜单 */}
+              <div
+                className="min-h-[40vh]"
+                onClick={(e) => !(e.target as HTMLElement).closest("[data-entry], button") && setSelected(new Set())}
+                onContextMenu={(e) => openBackgroundMenu(e, path)}
+              >
+                {view === "columns" && target ? (
+                  <ColumnView
+                    key={`${target.serial}:${target.root}`}
+                    target={target}
+                    path={path}
+                    rawDir={entriesDir}
+                    raw={entries}
+                    entries={visible}
+                    loading={loading}
+                    error={listError}
+                    selected={selected}
+                    cut={cutPaths}
+                    sort={sort}
+                    showHidden={showHidden}
+                    rev={rev}
+                    onNavigate={navigate}
+                    onSelect={onSelect}
+                    onOpen={open}
+                    onContextMenu={(e, entry, dir) => (entry ? openItemMenu(e, entry, dir) : openBackgroundMenu(e, dir))}
+                    onDownload={(e) => download([e])}
+                    onRename={askRename}
+                    onDelete={(e) => askDelete([e])}
+                  />
+                ) : view === "icons" ? (
+                  <IconGrid
+                    dir={path}
+                    entries={visible}
+                    loading={loading}
+                    error={listError}
+                    selected={selected}
+                    cut={cutPaths}
+                    onSelect={onSelect}
+                    onOpen={open}
+                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                  />
+                ) : (
+                  <FileList
+                    dir={path}
+                    onUp={path === "/" ? undefined : () => navigate(parentPath(path))}
+                    entries={visible}
+                    loading={loading}
+                    error={listError}
+                    selected={selected}
+                    cut={cutPaths}
+                    sort={sort}
+                    onSort={(key: SortKey) => setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }))}
+                    onSelect={onSelect}
+                    onToggle={onToggle}
+                    onOpen={open}
+                    onDownload={(e) => download([e])}
+                    onRename={askRename}
+                    onDelete={(e) => askDelete([e])}
+                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                  />
+                )}
+                <p className="px-3 pt-6 text-center text-xs text-muted">
+                  {t("toolbar.hint", { n: visible.length })}
+                </p>
+              </div>
             </motion.div>
           )}
           </AnimatePresence>
@@ -678,15 +978,22 @@ export default function App() {
       <AnimatePresence>
       {toast && (
         <motion.div
-          key={toast}
+          key={toast.msg}
           initial={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
           animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
           exit={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
           transition={spring}
-          className="fixed top-4 left-1/2 z-50 rounded-full bg-red px-5 py-2.5 text-sm font-semibold text-crust shadow-xl shadow-red/30">
-          {toast}
+          className={`fixed top-4 left-1/2 z-50 max-w-[calc(100vw-2rem)] rounded-full px-5 py-2.5 text-sm font-semibold shadow-xl ${
+            toast.tone === "error" ? "bg-red text-crust shadow-red/30" : "bg-surface0 text-text shadow-crust ring-1 ring-surface1"
+          }`}
+        >
+          {toast.msg}
         </motion.div>
       )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {menu && <ContextMenu key={`${menu.x},${menu.y}`} menu={menu} onClose={closeMenu} />}
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
@@ -699,7 +1006,8 @@ export default function App() {
         multiple
         hidden
         onChange={(e) => {
-          void upload(fromInput(e.target.files));
+          void upload(fromInput(e.target.files), uploadDest.current ?? path);
+          uploadDest.current = null;
           e.target.value = "";
         }}
       />
@@ -709,7 +1017,8 @@ export default function App() {
         hidden
         {...{ webkitdirectory: "" }}
         onChange={(e) => {
-          void upload(fromInput(e.target.files));
+          void upload(fromInput(e.target.files), uploadDest.current ?? path);
+          uploadDest.current = null;
           e.target.value = "";
         }}
       />

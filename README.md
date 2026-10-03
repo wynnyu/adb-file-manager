@@ -31,7 +31,9 @@ pnpm build && pnpm start # 生产：http://127.0.0.1:3001
 ## 功能
 - 浏览目录、面包屑（双击可直接输入路径）、快捷入口、筛选、排序、显示隐藏文件
 - 上传文件 / 文件夹（按钮或直接拖进窗口），下载文件；文件夹和多选会打包成 zip
-- 新建文件夹、重命名、删除（不允许操作 `/`、`/sdcard` 这类一级目录）
+- 三种显示方式：图标、列表、分栏（像 Finder 一样从根目录一栏栏展开，最右侧预览选中项，图片直接显示缩略图）
+- 右键菜单：打开、下载、剪切 / 拷贝 / 粘贴（拷贝重名时自动编号，不覆盖）、拷贝路径、重命名、删除；空白处右键可新建文件夹、上传到这里、切换显示方式
+- 新建文件夹、重命名、移动、删除（不允许操作 `/`、`/sdcard` 这类一级目录）
 - 多设备切换，设备插拔自动检测
 
 ## root 模式
@@ -42,7 +44,9 @@ pnpm build && pnpm start # 生产：http://127.0.0.1:3001
 - 首次开启时手机上的 Magisk / KernelSU 会弹窗，需允许 **Shell** 获取 root
 - su 写法不同可设置 `ADBFM_SU`，例如 `ADBFM_SU="su 0 sh -c"`
 
-快捷键：`Enter` 打开 · `F2` 重命名 · `Delete` 删除 · `Backspace` 上一级 · `⌘/Ctrl+A` 全选 · `Esc` 取消选择
+快捷键：`Enter` 打开 · `F2` 重命名 · `Delete` 删除 · `Backspace` 上一级 · `⌘/Ctrl+A` 全选 · `⌘/Ctrl+C` / `X` / `V` 拷贝 / 剪切 / 粘贴 · `↑` `↓` 选择 · `←` `→` 分栏视图里进出目录 · `Esc` 取消选择
+
+界面支持中文和英文，默认跟随浏览器语言，可以用顶栏的语言按钮切换。
 
 ## 安全
 这个工具能读写手机上的任意文件（root 模式下包括系统目录），所以后端只为本机服务：
@@ -54,7 +58,7 @@ pnpm build && pnpm start # 生产：http://127.0.0.1:3001
 
 ## 结构
 - `server/adb.ts`：adb 封装（`execFile` 调用，设备端路径单引号转义）
-- `server/index.ts`：Express API：`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete`；构建后同时托管前端页面
+- `server/index.ts`：Express API：`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete` `copy` `move` `preview`；构建后同时托管前端页面
 - `src/`：React + TypeScript + Tailwind CSS v4 + motion 动画；Catppuccin 四种口味（Latte / Frappé / Macchiato / Mocha）和 5 种主色定义在 `src/index.css`，切换逻辑在 `src/theme.ts`；字体（MiSans / Maple Mono）本地打包
 - 构建产物：`dist/web/`（vite 打包的前端），`dist/server/`（tsc 编译的后端，也是 npm 包的 `bin` 入口）
 

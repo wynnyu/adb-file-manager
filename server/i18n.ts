@@ -22,6 +22,8 @@ const zh = {
   resolvesTo: "{path}（即 {real}）",
   noFilesReceived: "没有收到文件",
   downloadExpired: "下载已过期，请重试",
+  intoItself: "不能把 {name} 放进它自己里面",
+  notPreviewable: "不支持预览这种文件",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -45,6 +47,8 @@ const en: Record<MsgKey, string> = {
   resolvesTo: "{path} (resolves to {real})",
   noFilesReceived: "No files received",
   downloadExpired: "Download expired, please try again",
+  intoItself: "Can't put {name} inside itself",
+  notPreviewable: "This file type can't be previewed",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };
