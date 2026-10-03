@@ -484,8 +484,8 @@ export default function App() {
               whileHover={{ rotate: 18, scale: 1.08 }}
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 260, damping: 14 }}
-              className={`grid size-12 shrink-0 place-items-center rounded-[50%] bg-gradient-to-br text-crust shadow-lg transition-[--tw-gradient-from,--tw-gradient-to,box-shadow] duration-500 ${
-                rootMode && online ? "from-red to-peach shadow-red/30" : "from-accent to-accent-2 shadow-accent/20"
+              className={`grid size-12 shrink-0 place-items-center rounded-[50%] text-crust shadow-lg transition-[background-color,box-shadow] duration-500 ${
+                rootMode && online ? "bg-red shadow-red/30" : "bg-accent shadow-accent/20"
               }`}
             >
               <FolderUp className="size-6" strokeWidth={2.4} />
@@ -742,6 +742,7 @@ export default function App() {
 
 function StorageMeter({ storage }: { storage: { total: number; free: number } | null }) {
   const t = useT();
+  const pct = storage ? ((storage.total - storage.free) / storage.total) * 100 : 0;
   return (
     <AnimatePresence initial={false}>
       {storage && (
@@ -754,9 +755,10 @@ function StorageMeter({ storage }: { storage: { total: number; free: number } | 
         >
           <span className="h-1.5 w-20 overflow-hidden rounded-full bg-surface0">
             <motion.span
-              className="block h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
+              className="bg-rainbow block h-full rounded-full"
+              style={{ backgroundSize: `${10000 / Math.max(pct, 1)}% 100%` }}
               initial={{ width: 0 }}
-              animate={{ width: `${((storage.total - storage.free) / storage.total) * 100}%` }}
+              animate={{ width: `${pct}%` }}
               transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.3 }}
             />
           </span>

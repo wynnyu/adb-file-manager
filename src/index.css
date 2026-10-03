@@ -202,6 +202,20 @@ body {
   background-clip: padding-box;
 }
 
+/* 彩虹条：颜色取自当前口味，随主题变化。调用处用 background-size 让渐变固定在整条轨道上，进度变化时不被压缩 */
+.bg-rainbow {
+  background-image: linear-gradient(
+    to right,
+    var(--color-red),
+    var(--color-peach),
+    var(--color-yellow),
+    var(--color-green),
+    var(--color-blue),
+    var(--color-mauve)
+  );
+  background-repeat: no-repeat;
+}
+
 @keyframes indeterminate {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }

@@ -74,7 +74,8 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-crust/70">
                   {pct != null ? (
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
+                      className="bg-rainbow h-full rounded-full"
+                      style={{ backgroundSize: `${10000 / Math.max(pct, 1)}% 100%` }}
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ ease: "easeOut", duration: 0.25 }}
