@@ -58,6 +58,28 @@ export function onSystemFlavorChange(cb: (f: Flavor) => void) {
   return () => mq.removeEventListener("change", listener);
 }
 
+/** 页面图标：和左上角 logo 一样的渐变圆 + 文件夹上传图标，颜色取当前主色和 Crust */
+export function syncFavicon() {
+  const css = getComputedStyle(document.documentElement);
+  const v = (name: string) => css.getPropertyValue(name).trim();
+  const [from, to, ink] = [v("--color-accent"), v("--color-accent-2") || v("--color-accent"), v("--color-crust")];
+  if (!from || !ink) return;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>` +
+    `<circle cx="16" cy="16" r="16" fill="url(#g)"/>` +
+    `<g transform="translate(6 6) scale(0.8333)" fill="none" stroke="${ink}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">` +
+    `<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>` +
+    `<path d="M12 10v6"/><path d="m9 13 3-3 3 3"/></g></svg>`;
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.appendChild(link);
+  }
+  link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 /**
  * 切换主题。传了 from 时用 View Transition 让新画面从该点圆形扩散到整页；
  * 浏览器不支持或用户开了减少动态效果时直接切换。
@@ -67,6 +89,7 @@ export function switchTheme(next: Theme, onCommit: (t: Theme) => void, from?: { 
   const commit = () => {
     root.dataset.flavor = next.flavor;
     root.dataset.accent = next.accent;
+    syncFavicon();
     flushSync(() => onCommit(next));
   };
 
