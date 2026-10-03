@@ -26,15 +26,18 @@ import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
 import { ThemePicker } from "./components/ThemePicker.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
+import { LanguagePicker } from "./components/LanguagePicker.tsx";
 import { IconButton, PillButton, spring } from "./components/ui.tsx";
 import { collectDropped, fromInput, type UploadItem } from "./drop.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
+import { useI18n, useT } from "./i18n/index.tsx";
 import { loadPref, savePref } from "./prefs.ts";
 import type { Device, FileEntry, Transfer } from "./types.ts";
 
 const HOME = "/sdcard";
 
 export default function App() {
+  const { t, rich } = useI18n();
   const [devices, setDevices] = useState<Device[]>([]);
   const [adbError, setAdbError] = useState<string | null>(null);
   const [serial, setSerial] = useState<string | null>(null);
@@ -168,10 +171,10 @@ export default function App() {
       (e: Error) => {
         rootVerified.current = null;
         setRootMode(false);
-        flash(`已退出 root 模式：${e.message}`);
+        flash(t("root.exited", { reason: e.message }));
       },
     );
-  }, [rootMode, online, serial, flash]);
+  }, [rootMode, online, serial, flash, t]);
 
   const patchTransfer = useCallback((id: string, patch: Partial<Transfer>) => {
     setTransfers((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -192,7 +195,10 @@ export default function App() {
       if (!target || !online || !items.length) return;
       const dest = path;
       const tops = new Set(items.map((i) => i.path.split("/")[0]));
-      const label = tops.size === 1 ? [...tops][0] : `${[...tops][0]} 等 ${tops.size} 项`;
+      const label =
+        tops.size === 1
+          ? [...tops][0]
+          : t("common.itemsEtc", { name: [...tops][0], n: tops.size, rest: tops.size - 1 });
       const id = startTransfer({ kind: "upload", label, status: "uploading", progress: 0 });
       try {
         await api.upload(target, dest, items, (p) =>
@@ -205,13 +211,16 @@ export default function App() {
         patchTransfer(id, { status: "error", error: (e as Error).message });
       }
     },
-    [target, online, path, load, startTransfer, patchTransfer, refreshStorage],
+    [target, online, path, load, startTransfer, patchTransfer, refreshStorage, t],
   );
 
   const download = useCallback(
     async (targets: FileEntry[]) => {
       if (!target || !targets.length) return;
-      const label = targets.length === 1 ? targets[0].name : `${targets[0].name} 等 ${targets.length} 项`;
+      const label =
+        targets.length === 1
+          ? targets[0].name
+          : t("common.itemsEtc", { name: targets[0].name, n: targets.length, rest: targets.length - 1 });
       const id = startTransfer({ kind: "download", label, status: "pulling" });
       try {
         await api.download(
@@ -223,12 +232,13 @@ export default function App() {
         patchTransfer(id, { status: "error", error: (e as Error).message });
       }
     },
-    [target, startTransfer, patchTransfer],
+    [target, startTransfer, patchTransfer, t],
   );
 
   const askDelete = useCallback(
     (targets: FileEntry[]) => {
       if (!target || !targets.length) return;
+      const single = targets.length === 1;
       const doDelete = async () => {
         await api.remove(
           target,
@@ -237,27 +247,24 @@ export default function App() {
         refreshStorage();
         await load(path);
       };
-      const what = targets.length === 1 ? `「${targets[0].name}」` : ` ${targets.length} 项`;
       // root 模式：第二层确认，列出完整路径并倒计时
       const finalStep: DialogState = {
         kind: "confirm",
         tone: "danger",
         icon: <Skull className="size-7" />,
-        title: "最后确认",
+        title: t("delete.final.title"),
         countdown: 3,
-        confirm: "确认删除",
+        confirm: t("delete.final.confirm"),
         message: (
           <div className="flex flex-col items-center gap-3">
-            <p>
-              正在以 <b className="text-red">root</b> 权限删除，系统文件和应用数据也会被删除，无法恢复。
-            </p>
+            <p>{rich("delete.final.message", { b: (s) => <b className="text-red">{s}</b> })}</p>
             <ul className="flex w-full flex-col gap-1">
               {targets.slice(0, 4).map((t) => (
                 <li key={t.path} className="truncate rounded-full bg-red/10 px-4 py-1.5 font-mono text-xs text-red">
                   {t.path}
                 </li>
               ))}
-              {targets.length > 4 && <li className="text-xs text-overlay1">…以及另外 {targets.length - 4} 项</li>}
+              {targets.length > 4 && <li className="text-xs text-overlay1">{t("common.moreItems", { n: targets.length - 4 })}</li>}
             </ul>
           </div>
         ),
@@ -267,13 +274,22 @@ export default function App() {
         kind: "confirm",
         tone: "danger",
         icon: <Trash2 className="size-7" />,
-        title: rootMode ? `以 root 权限删除${what}？` : `删除${what}？`,
-        message: "将永久删除，无法恢复。",
-        confirm: rootMode ? "继续" : "删除",
+        title: t(
+          single
+            ? rootMode
+              ? "delete.titleRoot"
+              : "delete.title"
+            : rootMode
+              ? "delete.titleRootMany"
+              : "delete.titleMany",
+          { name: targets[0].name, n: targets.length },
+        ),
+        message: t("delete.message"),
+        confirm: rootMode ? t("delete.continue") : t("common.delete"),
         onSubmit: rootMode ? async () => setDialog(finalStep) : doDelete,
       });
     },
-    [target, rootMode, path, load, refreshStorage],
+    [target, rootMode, path, load, refreshStorage, t, rich],
   );
 
   // ---------- root 模式 ----------
@@ -283,15 +299,16 @@ export default function App() {
       kind: "confirm",
       tone: "warn",
       icon: <ShieldAlert className="size-7" />,
-      title: "开启 root 模式？",
+      title: t("root.enable.title"),
       message: (
         <p>
-          之后所有操作都会通过 <code className="rounded-full bg-crust px-2 py-0.5 font-mono text-peach">su</code> 以 root
-          身份执行，可以读写系统分区和应用数据。误删或误改可能导致应用异常甚至无法开机。
+          {rich("root.enable.message", {
+            code: (s) => <code className="rounded-full bg-crust px-2 py-0.5 font-mono text-peach">{s}</code>,
+          })}
         </p>
       ),
-      checkbox: "记住选择，下次自动开启",
-      confirm: "开启",
+      checkbox: t("root.enable.remember"),
+      confirm: t("root.enable.confirm"),
       onSubmit: async (remember) => {
         await api.rootCheck(serial);
         rootVerified.current = serial;
@@ -299,7 +316,7 @@ export default function App() {
         setRootMode(true);
       },
     });
-  }, [serial]);
+  }, [serial, t, rich]);
 
   const disableRoot = useCallback(() => {
     rootVerified.current = null;
@@ -312,14 +329,15 @@ export default function App() {
     onRootLost((message) => {
       rootVerified.current = null;
       setRootMode(false);
-      flash(`已退出 root 模式：${message}`);
+      flash(t("root.exited", { reason: message }));
     });
     return () => onRootLost(() => {});
-  }, [flash]);
+  }, [flash, t]);
 
   useEffect(() => {
-    document.title = rootMode ? "⚠ ROOT · ADB File Manager" : "ADB File Manager";
-  }, [rootMode]);
+    const name = t("app.name");
+    document.title = rootMode ? t("app.rootTitle", { name }) : name;
+  }, [rootMode, t]);
 
   const askRename = useCallback(
     (entry: FileEntry) => {
@@ -327,18 +345,18 @@ export default function App() {
       setDialog({
         kind: "prompt",
         icon: <Pencil className="size-7" />,
-        title: "重命名",
+        title: t("rename.title"),
         initial: entry.name,
-        confirm: "确定",
+        confirm: t("common.confirm"),
         onSubmit: async (name) => {
-          if (name.includes("/")) throw new Error("名称不能包含 /");
+          if (name.includes("/")) throw new Error(t("name.noSlash"));
           if (name === entry.name) return;
           await api.rename(target, entry.path, joinPath(parentPath(entry.path), name));
           await load(path);
         },
       });
     },
-    [target, path, load],
+    [target, path, load, t],
   );
 
   const askMkdir = useCallback(() => {
@@ -346,16 +364,16 @@ export default function App() {
     setDialog({
       kind: "prompt",
       icon: <FolderPlus className="size-7" />,
-      title: "新建文件夹",
-      initial: "新建文件夹",
-      confirm: "创建",
+      title: t("mkdir.title"),
+      initial: t("mkdir.initial"),
+      confirm: t("mkdir.confirm"),
       onSubmit: async (name) => {
-        if (name.includes("/")) throw new Error("名称不能包含 /");
+        if (name.includes("/")) throw new Error(t("name.noSlash"));
         await api.mkdir(target, joinPath(path, name));
         await load(path);
       },
     });
-  }, [target, path, load]);
+  }, [target, path, load, t]);
 
   const open = useCallback(
     (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : void download([entry])),
@@ -441,7 +459,7 @@ export default function App() {
           try {
             await upload(await collectDropped(e.dataTransfer));
           } catch (err) {
-            flash(`读取拖入的文件失败：${(err as Error).message}`);
+            flash(t("drop.readFailed", { error: (err as Error).message }));
           }
         },
       }
@@ -474,7 +492,7 @@ export default function App() {
             </motion.span>
             <div className="min-w-0">
               <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-                <span className="truncate">ADB File Manager</span>
+                <span className="truncate">{t("app.name")}</span>
                 <AnimatePresence>
                   {rootMode && online && (
                     <motion.span
@@ -499,6 +517,7 @@ export default function App() {
             className="flex shrink-0 items-center gap-2"
           >
             <DeviceSelect devices={devices} serial={serial} onChange={(s) => setSerial(s)} />
+            <LanguagePicker />
             <ThemePicker />
           </motion.div>
         </header>
@@ -528,10 +547,10 @@ export default function App() {
               className="flex flex-col gap-4"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <IconButton title="上一级 (Backspace)" disabled={path === "/"} onClick={() => navigate(parentPath(path))}>
+                <IconButton title={t("toolbar.up")} disabled={path === "/"} onClick={() => navigate(parentPath(path))}>
                   <ArrowUp className="size-5" />
                 </IconButton>
-                <IconButton title="刷新" onClick={() => load(path, true)}>
+                <IconButton title={t("toolbar.refresh")} onClick={() => load(path, true)}>
                   <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
                 </IconButton>
                 <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
@@ -542,7 +561,7 @@ export default function App() {
                   <input
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
-                    placeholder="筛选"
+                    placeholder={t("toolbar.filter")}
                     className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-overlay0"
                   />
                   {filter && (
@@ -552,28 +571,34 @@ export default function App() {
                   )}
                 </label>
                 <IconButton
-                  title={showHidden ? "隐藏点开头的文件" : `显示隐藏文件${hiddenCount ? `（${hiddenCount}）` : ""}`}
+                  title={
+                    showHidden
+                      ? t("toolbar.hideHidden")
+                      : hiddenCount
+                        ? t("toolbar.showHiddenCount", { n: hiddenCount })
+                        : t("toolbar.showHidden")
+                  }
                   tone={showHidden ? "accent" : "default"}
                   onClick={() => setShowHidden((v) => !v)}
                 >
                   {showHidden ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
                 </IconButton>
                 <IconButton
-                  title={rootMode ? "退出 root 模式" : "开启 root 模式"}
+                  title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
                   tone={rootMode ? "danger" : "default"}
                   className={rootMode ? "ring-2 ring-red/60" : ""}
                   onClick={rootMode ? disableRoot : askEnableRoot}
                 >
                   {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
                 </IconButton>
-                <IconButton title="新建文件夹" onClick={askMkdir}>
+                <IconButton title={t("toolbar.newFolder")} onClick={askMkdir}>
                   <FolderPlus className="size-5" />
                 </IconButton>
-                <IconButton title="上传文件夹" onClick={() => folderInput.current?.click()}>
+                <IconButton title={t("toolbar.uploadFolder")} onClick={() => folderInput.current?.click()}>
                   <FolderUp className="size-5" />
                 </IconButton>
                 <PillButton tone="accent" icon={<Upload className="size-4" />} onClick={() => fileInput.current?.click()}>
-                  上传
+                  {t("toolbar.upload")}
                 </PillButton>
               </div>
 
@@ -597,7 +622,7 @@ export default function App() {
               />
 
               <p className="px-3 pt-2 text-center text-xs text-overlay0">
-                {visible.length} 项 · 双击打开 · 拖拽文件或文件夹到窗口即可上传到当前目录
+                {t("toolbar.hint", { n: visible.length })}
               </p>
             </motion.div>
           )}
@@ -621,7 +646,7 @@ export default function App() {
                     <Upload className="size-9" />
                   </motion.span>
                   <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">
-                    松手上传到 <span className="font-mono text-accent">{path}</span>
+                    {rich("toolbar.dropHere", { path: (s) => <span className="font-mono text-accent">{s}</span> }, { path })}
                   </p>
                 </div>
               </motion.div>
@@ -641,7 +666,7 @@ export default function App() {
           className="fixed bottom-4 left-1/2 z-30 flex items-center gap-2 rounded-full bg-surface0 p-1.5 pl-5 shadow-2xl shadow-crust ring-1 ring-surface1"
         >
           <span className="flex items-center text-sm font-bold whitespace-nowrap">
-            已选
+            {t("selection.selected")}
             <span className="relative mx-1 inline-flex h-5 min-w-5 justify-center overflow-hidden">
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
@@ -656,15 +681,15 @@ export default function App() {
                 </motion.span>
               </AnimatePresence>
             </span>
-            项
+            {t("selection.unit")}
           </span>
           <PillButton tone="accent" icon={<Download className="size-4" />} onClick={() => download(selectedEntries)}>
-            下载
+            {t("selection.download")}
           </PillButton>
           <PillButton tone="danger" icon={<Trash2 className="size-4" />} onClick={() => askDelete(selectedEntries)}>
-            删除
+            {t("selection.delete")}
           </PillButton>
-          <IconButton tone="ghost" title="取消选择 (Esc)" onClick={() => setSelected(new Set())}>
+          <IconButton tone="ghost" title={t("selection.cancel")} onClick={() => setSelected(new Set())}>
             <X className="size-5" />
           </IconButton>
         </motion.div>
@@ -716,6 +741,7 @@ export default function App() {
 }
 
 function StorageMeter({ storage }: { storage: { total: number; free: number } | null }) {
+  const t = useT();
   return (
     <AnimatePresence initial={false}>
       {storage && (
@@ -724,7 +750,7 @@ function StorageMeter({ storage }: { storage: { total: number; free: number } | 
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           className="flex items-center gap-2 text-xs text-subtext0"
-          title={`可用 ${formatSize(storage.free)}`}
+          title={t("toolbar.free", { size: formatSize(storage.free) })}
         >
           <span className="h-1.5 w-20 overflow-hidden rounded-full bg-surface0">
             <motion.span

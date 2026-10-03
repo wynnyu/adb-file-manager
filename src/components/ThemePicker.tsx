@@ -2,6 +2,7 @@ import { Check, Palette } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ACCENTS, FLAVORS, currentTheme, onSystemFlavorChange, saveTheme, storedFlavor, switchTheme, type Theme } from "../theme.ts";
+import { useT } from "../i18n/index.tsx";
 import { spring } from "./ui.tsx";
 
 /** 扩散起点：鼠标点击取指针位置，键盘触发（detail 为 0）取按钮中心 */
@@ -12,6 +13,7 @@ function origin(e: MouseEvent<HTMLElement>) {
 }
 
 export function ThemePicker() {
+  const t = useT();
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -48,8 +50,8 @@ export function ThemePicker() {
     <div ref={ref} className="relative">
       <motion.button
         type="button"
-        title="主题"
-        aria-label="主题"
+        title={t("theme.title")}
+        aria-label={t("theme.title")}
         aria-expanded={open}
         whileTap={{ scale: 0.9 }}
         transition={spring}
@@ -71,7 +73,7 @@ export function ThemePicker() {
             style={{ originX: 1, originY: 0 }}
             className="absolute right-0 z-30 mt-2 flex w-64 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
           >
-            <p className="px-3 pt-1.5 pb-0.5 text-xs font-bold text-overlay1">口味</p>
+            <p className="px-3 pt-1.5 pb-0.5 text-xs font-bold text-overlay1">{t("theme.flavor")}</p>
             {FLAVORS.map((f, i) => {
               const active = f.id === theme.flavor;
               return (
@@ -95,7 +97,7 @@ export function ThemePicker() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold">{f.name}</span>
-                    <span className="block text-[11px] text-overlay1">{f.hint}</span>
+                    <span className="block text-[11px] text-overlay1">{t(`theme.${f.id}`)}</span>
                   </span>
                   {active && <Check className="size-4 text-accent" strokeWidth={3} />}
                 </motion.button>
@@ -104,7 +106,7 @@ export function ThemePicker() {
 
             <div className="mx-3 my-1 h-px bg-surface0" />
 
-            <p className="px-3 pb-0.5 text-xs font-bold text-overlay1">主色</p>
+            <p className="px-3 pb-0.5 text-xs font-bold text-overlay1">{t("theme.accent")}</p>
             <div className="flex justify-between px-2 pt-0.5 pb-1.5">
               {ACCENTS.map((a, i) => {
                 const active = a.id === theme.accent;

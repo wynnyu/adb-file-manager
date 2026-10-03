@@ -1,9 +1,11 @@
 import { ChevronRight, HardDrive } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/index.tsx";
 import { spring } from "./ui.tsx";
 
 export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p: string) => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(path);
   const scroller = useRef<HTMLDivElement>(null);
@@ -45,14 +47,14 @@ export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p
     <div
       ref={scroller}
       onDoubleClick={() => setEditing(true)}
-      title="双击输入路径"
+      title={t("crumbs.edit")}
       className="flex h-10 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded-full bg-base px-1 [scrollbar-width:none]"
     >
       <button
         type="button"
         onClick={() => onNavigate("/")}
         className="grid size-8 shrink-0 place-items-center rounded-[50%] text-subtext0 transition-colors hover:bg-surface0 hover:text-text"
-        title="根目录"
+        title={t("crumbs.root")}
       >
         <HardDrive className="size-4" />
       </button>

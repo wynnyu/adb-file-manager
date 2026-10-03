@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useT } from "../i18n/index.tsx";
 import { PillButton, spring } from "./ui.tsx";
 
 export type DialogState =
@@ -26,6 +27,7 @@ const toneStyles = {
 };
 
 export function Dialog({ state, onClose }: { state: DialogState; onClose: () => void }) {
+  const t = useT();
   const [value, setValue] = useState(state.kind === "prompt" ? state.initial : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
         )}
         <div className="flex w-full gap-2">
           <PillButton ref={cancelBtn} className="h-12 flex-1 justify-center" onClick={onClose} disabled={busy}>
-            取消
+            {t("common.cancel")}
           </PillButton>
           <PillButton
             type="submit"
@@ -170,7 +172,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
                 transition={{ duration: countdown, ease: "linear" }}
               />
             )}
-            <span className="relative">{busy ? "处理中…" : left > 0 ? `${state.confirm}（${left}）` : state.confirm}</span>
+            <span className="relative">{busy ? t("common.processing") : left > 0 ? `${state.confirm}（${left}）` : state.confirm}</span>
           </PillButton>
         </div>
       </motion.form>

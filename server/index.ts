@@ -10,6 +10,7 @@ import path from "node:path";
 import posix from "node:path/posix";
 import { fileURLToPath } from "node:url";
 import * as adb from "./adb.ts";
+import { langMiddleware, msg } from "./i18n.ts";
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = "127.0.0.1";
@@ -18,6 +19,7 @@ await fs.mkdir(TMP, { recursive: true });
 
 const app = express();
 app.use(express.json());
+app.use(langMiddleware);
 
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 
@@ -75,7 +77,7 @@ async function rootGuard(req: Request, err: unknown) {
 
 function serialOf(req: Request): string {
   const s = req.query.serial ?? req.body?.serial;
-  if (typeof s !== "string" || !s) throw new adb.AdbError("缺少 serial 参数", 400);
+  if (typeof s !== "string" || !s) throw new adb.AdbError(msg("missingSerial"), 400);
   return s;
 }
 
@@ -124,8 +126,8 @@ async function assertSafeTargets(ctx: adb.Ctx, paths: string[]) {
   const real = await adb.realpaths(ctx, paths);
   paths.forEach((p, i) => {
     if (isProtected(p) || isProtected(real[i])) {
-      const shown = real[i] !== p ? `${p}（即 ${real[i]}）` : p;
-      throw new adb.AdbError(`为安全起见，不允许删除或移动 ${shown}`, 400);
+      const shown = real[i] !== p ? msg("resolvesTo", { path: p, real: real[i] }) : p;
+      throw new adb.AdbError(msg("protectedPath", { shown }), 400);
     }
   });
 }
@@ -176,7 +178,7 @@ app.post(
     try {
       const ctx = await ctxOf(req);
       const dest = adb.assertAbs(req.query.path);
-      if (!files.length) throw new adb.AdbError("没有收到文件", 400);
+      if (!files.length) throw new adb.AdbError(msg("noFilesReceived"), 400);
       // 文件名用单独的 JSON 字段传，避免 multipart 文件名的编码问题；保留文件夹结构
       const rel: string[] = JSON.parse(String(req.body.paths ?? "[]"));
       const tops = new Set<string>();
@@ -221,7 +223,7 @@ app.post(
   wrap(async (req, res) => {
     const ctx = await ctxOf(req);
     const paths = asList(req.body.paths).map(adb.assertAbs);
-    if (!paths.length) throw new adb.AdbError("缺少 paths 参数", 400);
+    if (!paths.length) throw new adb.AdbError(msg("missingPaths"), 400);
     const dir = await tmpDir();
     try {
       const single = paths.length === 1 && !(await adb.isDir(ctx, paths[0]));
@@ -252,7 +254,7 @@ app.get(
   wrap(async (req, res) => {
     const token = String(req.params.token);
     const job = jobs.get(token);
-    if (!job) throw new adb.AdbError("下载已过期，请重试", 404);
+    if (!job) throw new adb.AdbError(msg("downloadExpired"), 404);
     res.on("close", () => dropJob(token));
     res.attachment(job.name);
     if (job.file) {
@@ -296,7 +298,7 @@ app.post(
   "/api/delete",
   wrap(async (req, res) => {
     const paths = asList(req.body.paths).map(adb.assertAbs);
-    if (!paths.length) throw new adb.AdbError("缺少 paths 参数", 400);
+    if (!paths.length) throw new adb.AdbError(msg("missingPaths"), 400);
     const ctx = await ctxOf(req);
     await assertSafeTargets(ctx, paths);
     await adb.remove(ctx, paths);
@@ -331,5 +333,5 @@ app.listen(PORT, HOST, (err?: Error) => {
     );
     process.exit(1);
   }
-  console.log(`ADB File Manager → http://${HOST}:${PORT}`);
+  console.log(`ADB 文件管理器 → http://${HOST}:${PORT}`);
 });

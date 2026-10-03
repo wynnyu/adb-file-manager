@@ -6,10 +6,10 @@ const FLAVOR_KEY = "afm.flavor";
 const ACCENT_KEY = "afm.accent";
 
 export const FLAVORS = [
-  { id: "latte", name: "Latte", hint: "浅色" },
-  { id: "frappe", name: "Frappé", hint: "深色 · 柔和" },
-  { id: "macchiato", name: "Macchiato", hint: "深色 · 适中" },
-  { id: "mocha", name: "Mocha", hint: "深色 · 最暗" },
+  { id: "latte", name: "Latte" },
+  { id: "frappe", name: "Frappé" },
+  { id: "macchiato", name: "Macchiato" },
+  { id: "mocha", name: "Mocha" },
 ] as const;
 
 export const ACCENTS = [

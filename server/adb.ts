@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import path from "node:path/posix";
+import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
 /** 提权命令前缀，默认 `su -c`（Magisk / KernelSU / APatch 通用） */
@@ -45,7 +46,7 @@ function run(args: string[], timeout = 0): Promise<string> {
 
 function cleanError(msg: string) {
   const line = msg.split("\n").find((l) => /error|denied|no such|not found|failed/i.test(l));
-  return (line ?? msg).replace(/^adb: (error: )?/, "").trim() || "adb 执行失败";
+  return (line ?? msg).replace(/^adb: (error: )?/, "").trim() || t("adbFailed");
 }
 
 /** 单引号转义，用于拼接设备端 shell 命令 */
@@ -55,7 +56,7 @@ export function q(s: string) {
 
 export function assertAbs(p: unknown): string {
   if (typeof p !== "string" || !p.startsWith("/") || p.includes("\0")) {
-    throw new AdbError("路径必须是绝对路径", 400);
+    throw new AdbError(t("pathNotAbsolute"), 400);
   }
   return path.normalize(p);
 }
@@ -81,13 +82,13 @@ export async function rootMethod(serial: string): Promise<"adbd" | "su"> {
   if (plain.trim() === "0") return "adbd";
   const viaSu = await shell({ serial, root: "su" }, "id -u").catch((e: Error) => e.message);
   if (viaSu.trim() === "0") return "su";
-  const msg = viaSu.trim();
+  const out = viaSu.trim();
   throw new AdbError(
-    /su: (inaccessible or )?not found/i.test(msg)
-      ? "这台设备没有 root（找不到 su）"
-      : /^\d+$/.test(msg)
-        ? `su 没有切换到 root（uid=${msg}）`
-        : `无法获取 root 权限：${msg || "su 被拒绝"}。请在手机的 root 管理器里给 Shell 授权`,
+    /su: (inaccessible or )?not found/i.test(out)
+      ? t("noSu")
+      : /^\d+$/.test(out)
+        ? t("suNotRoot", { uid: out })
+        : t("rootDenied", { msg: out || t("suRefused") }),
     403,
     "no_root",
   );
@@ -133,9 +134,9 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
     `find ${q(base)} -mindepth 1 -maxdepth 1 -type l -exec sh -c 'for f; do [ -d "$f" ] && echo "$f"; done' _ {} + 2>/dev/null; ` +
     `if [ ! -d ${q(base)} ]; then echo __ADBFM_NOTDIR__; elif [ ! -r ${q(base)} ]; then echo __ADBFM_NOPERM__; fi`;
   const out = await shell(ctx, cmd);
-  if (out.includes("__ADBFM_NOTDIR__")) throw new AdbError(`目录不存在：${dir}`, 404);
+  if (out.includes("__ADBFM_NOTDIR__")) throw new AdbError(t("noDir", { path: dir }), 404);
   if (out.includes("__ADBFM_NOPERM__")) {
-    throw new AdbError(ctx.root ? `没有权限读取：${dir}` : `没有权限读取 ${dir}，可以开启 root 模式后再试`, 403);
+    throw new AdbError(t(ctx.root ? "noReadRoot" : "noRead", { path: dir }), 403);
   }
   const [statPart, linkPart = ""] = out.split(LINK_MARK);
   const linkDirs = new Set(linkPart.split("\n").map((s) => s.trim()).filter(Boolean));
@@ -163,7 +164,7 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
 export async function isDir(ctx: Ctx, p: string) {
   const out = await shell(ctx, `[ -d ${q(p)} ] && echo D || ([ -e ${q(p)} ] && echo F || echo N)`);
   const r = out.trim();
-  if (r === "N") throw new AdbError(`文件不存在：${p}`, 404);
+  if (r === "N") throw new AdbError(t("noFile", { path: p }), 404);
   return r === "D";
 }
 
@@ -213,17 +214,18 @@ export async function pull(ctx: Ctx, remote: string, local: string) {
 
 async function checked(ctx: Ctx, cmd: string) {
   const out = await shell(ctx, `${cmd} 2>&1 && echo __ADBFM_OK__`);
+  if (out.includes("__ADBFM_EXISTS__")) throw new AdbError(t("targetExists"), 400);
   if (!out.includes("__ADBFM_OK__")) throw new AdbError(cleanError(out.trim()), 400);
 }
 
 export const mkdir = (ctx: Ctx, p: string) => checked(ctx, `mkdir -p ${q(p)}`);
 export const rename = (ctx: Ctx, from: string, to: string) =>
-  checked(ctx, `[ ! -e ${q(to)} ] || { echo "目标已存在"; exit 1; }; mv ${q(from)} ${q(to)}`);
+  checked(ctx, `[ ! -e ${q(to)} ] || { echo __ADBFM_EXISTS__; exit 1; }; mv ${q(from)} ${q(to)}`);
 export const remove = (ctx: Ctx, paths: string[]) => checked(ctx, `rm -rf ${paths.map(q).join(" ")}`);
 
 export async function storage(ctx: Ctx) {
   const out = await shell(ctx, "df -k /sdcard/ | tail -n 1");
   const [, total, , avail] = out.trim().split(/\s+/).map(Number);
-  if (!total) throw new AdbError("无法读取存储空间");
+  if (!total) throw new AdbError(t("noStorage"));
   return { total: total * 1024, free: avail * 1024 };
 }

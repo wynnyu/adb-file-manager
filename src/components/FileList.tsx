@@ -2,6 +2,7 @@ import { ArrowDown, Check, CornerLeftUp, Download, FolderOpen, Loader2, Pencil, 
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
 import { formatSize, formatTime } from "../format.ts";
+import { useI18n } from "../i18n/index.tsx";
 import type { FileEntry } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { IconButton, spring } from "./ui.tsx";
@@ -81,14 +82,15 @@ function Placeholder({ icon, text, tone = "bg-surface0 text-overlay1" }: { icon:
 
 export function FileList(props: Props) {
   const { dir, entries, loading, error, selected, sort, onSort, onUp } = props;
+  const { t, lang } = useI18n();
   const animateLayout = entries.length <= 200;
 
   return (
     <div className="flex flex-col gap-1">
       <div className={`${cols} px-2 text-xs font-bold tracking-wide text-overlay1 uppercase`}>
-        <SortHeader label="名称" k="name" sort={sort} onSort={onSort} className="justify-self-start pl-14" />
-        <SortHeader label="大小" k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
-        <SortHeader label="修改时间" k="mtime" sort={sort} onSort={onSort} className="hidden sm:flex" />
+        <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-14" />
+        <SortHeader label={t("files.size")} k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
+        <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden sm:flex" />
         <span className="w-[8.5rem]" />
       </div>
 
@@ -99,7 +101,7 @@ export function FileList(props: Props) {
           animate={{ opacity: 1, x: 0 }}
           transition={spring}
           onClick={onUp}
-          title="返回上一级"
+          title={t("files.goUp")}
           className={`${rowBase} ${cols} cursor-pointer hover:bg-surface0/70`}
         >
           <div className="flex min-w-0 items-center gap-3">
@@ -109,7 +111,7 @@ export function FileList(props: Props) {
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
             <span className="font-mono font-semibold text-subtext1">..</span>
-            <span className="hidden text-xs text-overlay0 transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">返回上一级</span>
+            <span className="hidden text-xs text-overlay0 transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">{t("files.goUp")}</span>
           </div>
         </motion.div>
       )}
@@ -125,7 +127,7 @@ export function FileList(props: Props) {
           )}
 
           {!loading && entries.length === 0 && (
-            <Placeholder icon={<FolderOpen className="size-7" />} text="空文件夹 · 把文件拖到这里上传" />
+            <Placeholder icon={<FolderOpen className="size-7" />} text={t("files.empty")} />
           )}
 
           <AnimatePresence mode="popLayout">
@@ -151,7 +153,7 @@ export function FileList(props: Props) {
                         props.onToggle(entry);
                       }}
                       className="relative shrink-0 transition-transform duration-300 group-hover:scale-105"
-                      title="选择"
+                      title={t("files.select")}
                     >
                       <FileIcon entry={entry} />
                       {!isSel && (
@@ -178,26 +180,26 @@ export function FileList(props: Props) {
                         {entry.name}
                       </span>
                       <span className="block truncate text-xs text-overlay1 sm:hidden">
-                        {entry.isDir ? "文件夹" : formatSize(entry.size)} · {formatTime(entry.mtime)}
+                        {entry.isDir ? t("files.folder") : formatSize(entry.size)}, {formatTime(entry.mtime, lang)}
                       </span>
                     </span>
                   </div>
                   <span className="hidden pr-3 text-right font-mono text-sm text-subtext0 sm:block">
                     {entry.isDir ? "—" : formatSize(entry.size)}
                   </span>
-                  <span className="hidden px-3 font-mono text-sm text-subtext0 sm:block">{formatTime(entry.mtime)}</span>
+                  <span className="hidden px-3 font-mono text-sm text-subtext0 sm:block">{formatTime(entry.mtime, lang)}</span>
                   <div
                     className="flex w-[8.5rem] justify-end gap-1 transition-[opacity,transform] duration-200 sm:translate-x-2 sm:opacity-0 sm:group-hover:translate-x-0 sm:group-hover:opacity-100"
                     onClick={(e) => e.stopPropagation()}
                     onDoubleClick={(e) => e.stopPropagation()}
                   >
-                    <IconButton tone="ghost" className="size-9" title="下载到电脑" onClick={() => props.onDownload(entry)}>
+                    <IconButton tone="ghost" className="size-9" title={t("files.download")} onClick={() => props.onDownload(entry)}>
                       <Download className="size-4" />
                     </IconButton>
-                    <IconButton tone="ghost" className="size-9" title="重命名" onClick={() => props.onRename(entry)}>
+                    <IconButton tone="ghost" className="size-9" title={t("files.rename")} onClick={() => props.onRename(entry)}>
                       <Pencil className="size-4" />
                     </IconButton>
-                    <IconButton tone="ghost" className="size-9 hover:!bg-red/15 hover:!text-red" title="删除" onClick={() => props.onDelete(entry)}>
+                    <IconButton tone="ghost" className="size-9 hover:!bg-red/15 hover:!text-red" title={t("files.delete")} onClick={() => props.onDelete(entry)}>
                       <Trash2 className="size-4" />
                     </IconButton>
                   </div>

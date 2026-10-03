@@ -1,17 +1,20 @@
 import { motion } from "motion/react";
+import { useT } from "../i18n/index.tsx";
+import type { MessageKey } from "../i18n/zh.ts";
 import { Camera, Download, FileText, Home, Image, Music, Video } from "lucide-react";
 
-const links = [
-  { label: "内部存储", path: "/sdcard", Icon: Home, color: "text-accent" },
-  { label: "下载", path: "/sdcard/Download", Icon: Download, color: "text-blue" },
-  { label: "相机", path: "/sdcard/DCIM", Icon: Camera, color: "text-pink" },
-  { label: "图片", path: "/sdcard/Pictures", Icon: Image, color: "text-flamingo" },
-  { label: "视频", path: "/sdcard/Movies", Icon: Video, color: "text-peach" },
-  { label: "音乐", path: "/sdcard/Music", Icon: Music, color: "text-teal" },
-  { label: "文档", path: "/sdcard/Documents", Icon: FileText, color: "text-yellow" },
+const links: { label: MessageKey; path: string; Icon: typeof Home; color: string }[] = [
+  { label: "quick.internal", path: "/sdcard", Icon: Home, color: "text-accent" },
+  { label: "quick.downloads", path: "/sdcard/Download", Icon: Download, color: "text-blue" },
+  { label: "quick.camera", path: "/sdcard/DCIM", Icon: Camera, color: "text-pink" },
+  { label: "quick.pictures", path: "/sdcard/Pictures", Icon: Image, color: "text-flamingo" },
+  { label: "quick.movies", path: "/sdcard/Movies", Icon: Video, color: "text-peach" },
+  { label: "quick.music", path: "/sdcard/Music", Icon: Music, color: "text-teal" },
+  { label: "quick.documents", path: "/sdcard/Documents", Icon: FileText, color: "text-yellow" },
 ];
 
 export function QuickLinks({ path, onNavigate }: { path: string; onNavigate: (p: string) => void }) {
+  const t = useT();
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
       {links.map(({ label, path: p, Icon, color }) => {
@@ -38,7 +41,7 @@ export function QuickLinks({ path, onNavigate }: { path: string; onNavigate: (p:
             >
               <Icon className="size-3.5" />
             </span>
-            <span className="relative">{label}</span>
+            <span className="relative">{t(label)}</span>
           </motion.button>
         );
       })}

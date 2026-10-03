@@ -10,16 +10,23 @@ export function formatSize(n: number) {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 }
 
-const dtf = new Intl.DateTimeFormat("zh-CN", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const dtfs = new Map<string, Intl.DateTimeFormat>();
 
-export function formatTime(sec: number) {
-  return sec ? dtf.format(new Date(sec * 1000)) : "—";
+export function formatTime(sec: number, lang: string) {
+  if (!sec) return "—";
+  const locale = lang === "zh" ? "zh-CN" : "en-GB";
+  let dtf = dtfs.get(locale);
+  if (!dtf) {
+    dtf = new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    dtfs.set(locale, dtf);
+  }
+  return dtf.format(new Date(sec * 1000));
 }
 
 export function joinPath(dir: string, name: string) {

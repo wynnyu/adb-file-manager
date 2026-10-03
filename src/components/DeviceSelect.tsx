@@ -1,17 +1,19 @@
 import { ChevronDown, Smartphone } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/index.tsx";
 import { spring } from "./ui.tsx";
+import type { MessageKey } from "../i18n/zh.ts";
 import type { Device } from "../types.ts";
 
-const stateLabel: Record<string, [string, string]> = {
-  device: ["已连接", "bg-green"],
-  unauthorized: ["待授权", "bg-yellow"],
-  offline: ["离线", "bg-red"],
+const stateStyle: Record<string, [MessageKey, string]> = {
+  device: ["device.device", "bg-green"],
+  unauthorized: ["device.unauthorized", "bg-yellow"],
+  offline: ["device.offline", "bg-red"],
 };
 
 function Dot({ state }: { state: string }) {
-  const [, color] = stateLabel[state] ?? ["", "bg-overlay0"];
+  const color = stateStyle[state]?.[1] ?? "bg-overlay0";
   return (
     <span className="relative flex size-2.5">
       {state === "device" && (
@@ -31,6 +33,7 @@ export function DeviceSelect({
   serial: string | null;
   onChange: (serial: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = devices.find((d) => d.serial === serial);
@@ -63,17 +66,17 @@ export function DeviceSelect({
               exit={{ opacity: 0, y: -8 }}
               className="max-w-[7rem] truncate text-sm font-bold sm:max-w-[10rem]"
             >
-              {current ? current.name : "未连接设备"}
+              {current ? current.name : t("device.none")}
             </motion.span>
           </AnimatePresence>
           <span className="flex items-center gap-1.5 text-xs text-subtext0">
             {current ? (
               <>
                 <Dot state={current.state} />
-                {stateLabel[current.state]?.[0] ?? current.state}
+                {stateStyle[current.state] ? t(stateStyle[current.state][0]) : current.state}
               </>
             ) : (
-              "等待 USB 连接…"
+              t("device.waiting")
             )}
           </span>
         </span>
@@ -92,7 +95,7 @@ export function DeviceSelect({
           style={{ originX: 1, originY: 0 }}
           className="absolute right-0 z-30 mt-2 flex w-72 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0">
           {devices.length === 0 && (
-            <div className="rounded-full px-4 py-3 text-sm text-subtext0">没有检测到设备</div>
+            <div className="rounded-full px-4 py-3 text-sm text-subtext0">{t("device.noneDetected")}</div>
           )}
           {devices.map((d, i) => (
             <motion.button

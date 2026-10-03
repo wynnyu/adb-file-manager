@@ -1,3 +1,4 @@
+import { getLang, tr } from "./i18n/index.tsx";
 import type { Device, FileEntry } from "./types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
@@ -19,8 +20,11 @@ function fail(data: { error?: string; code?: string }, status: number) {
   return new Error(message);
 }
 
+/** 让后端按界面语言返回错误信息 */
+const langHeaders = (extra?: HeadersInit) => ({ ...(extra as Record<string, string>), "X-Lang": getLang() });
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await fetch(url, { ...init, headers: langHeaders(init?.headers) });
   const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
   if (!res.ok) throw fail(data, res.status);
   return data as T;
@@ -71,6 +75,7 @@ export const api = {
       for (const f of files) form.append("files", f.file, "blob");
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `/api/upload?${qs(t, { path: dest })}`);
+      xhr.setRequestHeader("X-Lang", getLang());
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
       xhr.onload = () => {
         if (xhr.status < 300) return resolve();
@@ -82,7 +87,7 @@ export const api = {
         }
         reject(fail(data, xhr.status));
       };
-      xhr.onerror = () => reject(new Error("网络错误"));
+      xhr.onerror = () => reject(new Error(tr("common.networkError")));
       xhr.send(form);
     });
   },
