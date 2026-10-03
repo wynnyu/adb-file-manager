@@ -67,13 +67,13 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "nodevice.step1.title": "Enable USB debugging",
   "nodevice.step1.text":
-    "Settings → About phone → tap “Build number” 7 times, then turn on “USB debugging” in Developer options.",
+    "Go to Settings → About phone, tap “Build number” 7 times, then enable “USB debugging” in “Developer options”.",
   "nodevice.step2.title": "Connect with a USB cable",
-  "nodevice.step2.text": "“Charging only” is fine — adb doesn't need MTP file transfer mode.",
-  "nodevice.step3.title": "Allow debugging on the phone",
-  "nodevice.step3.text": "When “Allow USB debugging?” pops up, tap “Allow” — ticking “Always allow from this computer” is recommended.",
+  "nodevice.step2.text": "The USB mode can be set to “Charging only”; adb does not rely on MTP file transfer.",
+  "nodevice.step3.title": "Authorize debugging on the phone",
+  "nodevice.step3.text": "When the debugging authorization prompt appears, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
   "nodevice.unauthorized": "Allow USB debugging on your phone",
-  "nodevice.connect": "Connect your Android phone",
+  "nodevice.connect": "Connect a device",
   "nodevice.waiting": "Waiting for a device…",
   "nodevice.adbError": "adb error: {error}",
 
