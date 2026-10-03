@@ -5,7 +5,7 @@ type Tone = "default" | "accent" | "danger" | "ghost";
 
 const tones: Record<Tone, string> = {
   default: "bg-surface0 text-text hover:bg-surface1",
-  accent: "bg-mauve text-crust hover:bg-lavender shadow-lg shadow-mauve/15 hover:shadow-lavender/25",
+  accent: "bg-accent text-crust hover:bg-accent-hover shadow-lg shadow-accent/15 hover:shadow-accent-hover/25",
   danger: "bg-red/15 text-red hover:bg-red/25",
   ghost: "text-subtext0 hover:bg-surface0 hover:text-text",
 };

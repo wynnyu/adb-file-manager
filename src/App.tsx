@@ -24,29 +24,15 @@ import { Dialog, type DialogState } from "./components/Dialog.tsx";
 import { FileList, type Sort, type SortKey } from "./components/FileList.tsx";
 import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
+import { ThemePicker } from "./components/ThemePicker.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
 import { IconButton, PillButton, spring } from "./components/ui.tsx";
 import { collectDropped, fromInput, type UploadItem } from "./drop.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
+import { loadPref, savePref } from "./prefs.ts";
 import type { Device, FileEntry, Transfer } from "./types.ts";
 
 const HOME = "/sdcard";
-
-function loadPref<T>(key: string, fallback: T): T {
-  try {
-    const v = localStorage.getItem(key);
-    return v == null ? fallback : (JSON.parse(v) as T);
-  } catch {
-    return fallback;
-  }
-}
-function savePref(key: string, v: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(v));
-  } catch {
-    /* 隐私模式等情况下忽略 */
-  }
-}
 
 export default function App() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -467,7 +453,7 @@ export default function App() {
     <div className="min-h-dvh" {...dragProps}>
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-8">
         {/* 顶栏 */}
-        <header className="flex items-center justify-between gap-3">
+        <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
           <motion.div
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
@@ -481,7 +467,7 @@ export default function App() {
               whileTap={{ scale: 0.9 }}
               transition={{ type: "spring", stiffness: 260, damping: 14 }}
               className={`grid size-12 shrink-0 place-items-center rounded-[50%] bg-gradient-to-br text-crust shadow-lg transition-[--tw-gradient-from,--tw-gradient-to,box-shadow] duration-500 ${
-                rootMode && online ? "from-red to-peach shadow-red/30" : "from-mauve to-pink shadow-mauve/20"
+                rootMode && online ? "from-red to-peach shadow-red/30" : "from-accent to-accent-2 shadow-accent/20"
               }`}
             >
               <FolderUp className="size-6" strokeWidth={2.4} />
@@ -506,8 +492,14 @@ export default function App() {
               <StorageMeter storage={storage} />
             </div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.05 }}>
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ ...spring, delay: 0.05 }}
+            className="flex shrink-0 items-center gap-2"
+          >
             <DeviceSelect devices={devices} serial={serial} onChange={(s) => setSerial(s)} />
+            <ThemePicker />
           </motion.div>
         </header>
 
@@ -545,7 +537,7 @@ export default function App() {
                 <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
                   <Breadcrumbs path={path} onNavigate={navigate} />
                 </div>
-                <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-mauve/60 md:w-48 md:flex-none">
+                <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
                   <Search className="size-4 shrink-0" />
                   <input
                     value={filter}
@@ -618,18 +610,18 @@ export default function App() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
                 transition={spring}
-                className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[2.25rem] border-2 border-dashed border-mauve bg-mauve/10 backdrop-blur-[2px]"
+                className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[2.25rem] border-2 border-dashed border-accent bg-accent/10 backdrop-blur-[2px]"
               >
                 <div className="flex flex-col items-center gap-3">
                   <motion.span
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                    className="grid size-20 place-items-center rounded-[50%] bg-mauve text-crust shadow-xl shadow-mauve/30"
+                    className="grid size-20 place-items-center rounded-[50%] bg-accent text-crust shadow-xl shadow-accent/30"
                   >
                     <Upload className="size-9" />
                   </motion.span>
                   <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">
-                    松手上传到 <span className="font-mono text-mauve">{path}</span>
+                    松手上传到 <span className="font-mono text-accent">{path}</span>
                   </p>
                 </div>
               </motion.div>
@@ -658,7 +650,7 @@ export default function App() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -14, opacity: 0 }}
                   transition={spring}
-                  className="font-mono text-mauve"
+                  className="font-mono text-accent"
                 >
                   {selectedEntries.length}
                 </motion.span>
@@ -736,7 +728,7 @@ function StorageMeter({ storage }: { storage: { total: number; free: number } | 
         >
           <span className="h-1.5 w-20 overflow-hidden rounded-full bg-surface0">
             <motion.span
-              className="block h-full rounded-full bg-gradient-to-r from-mauve to-pink"
+              className="block h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
               initial={{ width: 0 }}
               animate={{ width: `${((storage.total - storage.free) / storage.total) * 100}%` }}
               transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.3 }}

@@ -25,7 +25,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
             : t.status === "done"
               ? "bg-green/20 text-green"
               : t.kind === "upload"
-                ? "bg-mauve/20 text-mauve"
+                ? "bg-accent/20 text-accent"
                 : "bg-blue/20 text-blue";
         return (
           <motion.div
@@ -71,13 +71,13 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-crust/70">
                   {pct != null ? (
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-mauve to-pink"
+                      className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ ease: "easeOut", duration: 0.25 }}
                     />
                   ) : (
-                    <div className={`animate-indeterminate h-full w-2/5 rounded-full ${t.kind === "upload" ? "bg-mauve" : "bg-blue"}`} />
+                    <div className={`animate-indeterminate h-full w-2/5 rounded-full ${t.kind === "upload" ? "bg-accent" : "bg-blue"}`} />
                   )}
                 </div>
               ) : null}

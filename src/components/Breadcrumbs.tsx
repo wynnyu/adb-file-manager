@@ -35,7 +35,7 @@ export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p
           onBlur={() => setEditing(false)}
           onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
           spellCheck={false}
-          className="h-10 w-full rounded-full bg-base px-4 font-mono text-sm text-text ring-2 ring-mauve/60 outline-none"
+          className="h-10 w-full rounded-full bg-base px-4 font-mono text-sm text-text ring-2 ring-accent/60 outline-none"
         />
       </form>
     );
@@ -75,14 +75,14 @@ export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p
                 type="button"
                 onClick={() => onNavigate(target)}
                 className={`relative h-8 rounded-full px-3 font-mono text-sm whitespace-nowrap transition-colors ${
-                  last ? "font-medium text-mauve" : "text-subtext1 hover:bg-surface0"
+                  last ? "font-medium text-accent" : "text-subtext1 hover:bg-surface0"
                 }`}
               >
                 {last && (
                   <motion.span
                     layoutId="crumb-active"
                     transition={spring}
-                    className="absolute inset-0 rounded-full bg-mauve/15"
+                    className="absolute inset-0 rounded-full bg-accent/15"
                   />
                 )}
                 <span className="relative">{part}</span>

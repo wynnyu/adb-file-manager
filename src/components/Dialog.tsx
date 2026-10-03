@@ -20,7 +20,7 @@ export type DialogState =
     };
 
 const toneStyles = {
-  default: { badge: "bg-mauve/15 text-mauve", ring: "ring-surface0" },
+  default: { badge: "bg-accent/15 text-accent", ring: "ring-surface0" },
   danger: { badge: "bg-red/15 text-red", ring: "ring-red/40" },
   warn: { badge: "bg-peach/15 text-peach", ring: "ring-peach/40" },
 };
@@ -114,7 +114,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             value={value}
             onChange={(e) => setValue(e.target.value)}
             spellCheck={false}
-            className="h-12 w-full rounded-full bg-base px-5 text-center font-mono text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-mauve"
+            className="h-12 w-full rounded-full bg-base px-5 text-center font-mono text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-accent"
           />
         ) : (
           <div className="w-full text-sm text-subtext1 wrap-anywhere">{state.message}</div>

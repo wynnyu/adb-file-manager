@@ -55,7 +55,7 @@ pnpm build && pnpm start # 生产：http://127.0.0.1:3001
 ## 结构
 - `server/adb.ts`：adb 封装（`execFile` 调用，设备端路径单引号转义）
 - `server/index.ts`：Express API：`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete`；构建后同时托管前端页面
-- `src/`：React + TypeScript + Tailwind CSS v4 + motion 动画；Catppuccin Mocha 色板和字体（MiSans / Maple Mono，本地打包）定义在 `src/index.css` 的 `@theme`
+- `src/`：React + TypeScript + Tailwind CSS v4 + motion 动画；Catppuccin 四种口味（Latte / Frappé / Macchiato / Mocha）和 5 种主色定义在 `src/index.css`，切换逻辑在 `src/theme.ts`；字体（MiSans / Maple Mono）本地打包
 - 构建产物：`dist/web/`（vite 打包的前端），`dist/server/`（tsc 编译的后端，也是 npm 包的 `bin` 入口）
 
 ## 许可证

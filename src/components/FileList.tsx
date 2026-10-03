@@ -39,7 +39,7 @@ function SortHeader({ label, k, sort, onSort, className = "" }: { label: string;
     <button
       type="button"
       onClick={() => onSort(k)}
-      className={`flex h-8 items-center gap-1 rounded-full px-3 transition-colors hover:bg-surface0 ${active ? "text-mauve" : ""} ${className}`}
+      className={`flex h-8 items-center gap-1 rounded-full px-3 transition-colors hover:bg-surface0 ${active ? "text-accent" : ""} ${className}`}
     >
       {label}
       <AnimatePresence initial={false}>
@@ -104,7 +104,7 @@ export function FileList(props: Props) {
         >
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-[color,background-color,transform] duration-300 group-hover:-translate-y-0.5 group-hover:bg-mauve/15 group-hover:text-mauve"
+              className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-[color,background-color,transform] duration-300 group-hover:-translate-y-0.5 group-hover:bg-accent/15 group-hover:text-accent"
             >
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
@@ -141,7 +141,7 @@ export function FileList(props: Props) {
                   transition={spring}
                   onClick={(e) => props.onSelect(entry, e)}
                   onDoubleClick={() => props.onOpen(entry)}
-                  className={`${rowBase} ${cols} ${isSel ? "bg-mauve/15 ring-1 ring-mauve/40" : "hover:bg-surface0/70"}`}
+                  className={`${rowBase} ${cols} ${isSel ? "bg-accent/15 ring-1 ring-accent/40" : "hover:bg-surface0/70"}`}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <button
@@ -155,7 +155,7 @@ export function FileList(props: Props) {
                     >
                       <FileIcon entry={entry} />
                       {!isSel && (
-                        <span className="absolute inset-0 grid place-items-center rounded-[50%] bg-mauve/80 text-crust opacity-0 transition-opacity hover:opacity-70">
+                        <span className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent/80 text-crust opacity-0 transition-opacity hover:opacity-70">
                           <Check className="size-5" strokeWidth={3} />
                         </span>
                       )}
@@ -166,7 +166,7 @@ export function FileList(props: Props) {
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0, rotate: 90, transition: { duration: 0.15 } }}
                             transition={{ type: "spring", stiffness: 600, damping: 22 }}
-                            className="absolute inset-0 grid place-items-center rounded-[50%] bg-mauve text-crust"
+                            className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent text-crust"
                           >
                             <Check className="size-5" strokeWidth={3} />
                           </motion.span>

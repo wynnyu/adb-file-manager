@@ -28,7 +28,7 @@ export function FileIcon({ entry, size = "size-10" }: { entry: FileEntry; size?:
   let color = "bg-overlay0/20 text-overlay2";
   if (entry.isDir) {
     Icon = entry.type === "link" ? FolderSymlink : Folder;
-    color = "bg-mauve/15 text-mauve";
+    color = "bg-accent/15 text-accent";
   } else if (entry.type === "link") {
     Icon = Link2;
     color = "bg-flamingo/15 text-flamingo";

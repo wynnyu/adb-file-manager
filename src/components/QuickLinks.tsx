@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { Camera, Download, FileText, Home, Image, Music, Video } from "lucide-react";
 
 const links = [
-  { label: "内部存储", path: "/sdcard", Icon: Home, color: "text-mauve" },
+  { label: "内部存储", path: "/sdcard", Icon: Home, color: "text-accent" },
   { label: "下载", path: "/sdcard/Download", Icon: Download, color: "text-blue" },
   { label: "相机", path: "/sdcard/DCIM", Icon: Camera, color: "text-pink" },
   { label: "图片", path: "/sdcard/Pictures", Icon: Image, color: "text-flamingo" },

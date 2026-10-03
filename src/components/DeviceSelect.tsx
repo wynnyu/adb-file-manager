@@ -51,7 +51,7 @@ export function DeviceSelect({
         onClick={() => setOpen((o) => !o)}
         className="flex h-12 items-center gap-3 rounded-full bg-surface0 py-1 pr-4 pl-1 transition-colors hover:bg-surface1"
       >
-        <span className="grid size-10 place-items-center rounded-[50%] bg-mauve/20 text-mauve">
+        <span className="grid size-10 place-items-center rounded-[50%] bg-accent/20 text-accent">
           <Smartphone className="size-5" />
         </span>
         <span className="flex flex-col items-start leading-tight">

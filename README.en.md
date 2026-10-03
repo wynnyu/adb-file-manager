@@ -57,7 +57,7 @@ Do not expose it to the internet through a reverse proxy.
 ## Project layout
 - `server/adb.ts`: adb wrapper (calls adb via `execFile`, single-quote-escapes device-side paths)
 - `server/index.ts`: Express API (`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete`); after a build it also serves the frontend
-- `src/`: React + TypeScript + Tailwind CSS v4 + motion; the Catppuccin Mocha palette and fonts (MiSans / Maple Mono, bundled locally) are defined in the `@theme` block of `src/index.css`
+- `src/`: React + TypeScript + Tailwind CSS v4 + motion; all four Catppuccin flavors (Latte / Frappé / Macchiato / Mocha) and 5 accent colors are defined in `src/index.css`, with switching logic in `src/theme.ts`; fonts (MiSans / Maple Mono) are bundled locally
 - Build output: `dist/web/` (frontend bundled by vite) and `dist/server/` (backend compiled by tsc, also the npm package's `bin` entry)
 
 ## License
