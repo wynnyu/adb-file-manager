@@ -142,11 +142,16 @@ export default function App() {
   useEffect(() => savePref("afm.sort", sort), [sort]);
   useEffect(() => savePref("afm.hidden", showHidden), [showHidden]);
 
-  const navigate = useCallback((p: string) => {
-    setFilter("");
-    setEntries([]);
-    setPath(p);
-  }, []);
+  const navigate = useCallback(
+    (p: string) => {
+      setFilter("");
+      // 点的是当前目录：path 不变不会触发加载 effect，直接刷新，别清空列表
+      if (p === path) return void load(p);
+      setEntries([]);
+      setPath(p);
+    },
+    [path, load],
+  );
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -460,7 +465,6 @@ export default function App() {
 
   return (
     <div className="min-h-dvh" {...dragProps}>
-      <AnimatePresence>{online && rootMode && <RootBanner onExit={disableRoot} />}</AnimatePresence>
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-8">
         {/* 顶栏 */}
         <header className="flex items-center justify-between gap-3">
@@ -508,11 +512,11 @@ export default function App() {
         </header>
 
         {/* 主面板 */}
+        {/* 不要给主面板加 layout：高度变化时会用 scale 过渡，把工具栏和列表整个拉伸变形 */}
         <motion.main
-          layout
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ ...spring, delay: 0.08, layout: { type: "spring", stiffness: 300, damping: 32 } }}
+          transition={{ ...spring, delay: 0.08 }}
           className={`relative rounded-[2.5rem] bg-mantle p-3 transition-[box-shadow] duration-500 sm:p-5 ${
             rootMode && online
               ? "shadow-[0_0_0_2px_var(--color-red),0_0_60px_-12px_var(--color-red)]"
@@ -744,37 +748,5 @@ function StorageMeter({ storage }: { storage: { total: number; free: number } | 
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-function RootBanner({ onExit }: { onExit: () => void }) {
-  return (
-    <motion.div
-      initial={{ height: 0, opacity: 0 }}
-      animate={{ height: "auto", opacity: 1 }}
-      exit={{ height: 0, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="sticky top-0 z-40 overflow-hidden"
-    >
-      <div className="root-stripes flex items-center justify-center gap-3 px-4 py-2 text-crust">
-        <span className="relative flex size-2.5 shrink-0">
-          <span className="absolute inset-0 animate-ping rounded-[50%] bg-crust opacity-60" />
-          <span className="relative size-2.5 rounded-[50%] bg-crust" />
-        </span>
-        <ShieldAlert className="size-4 shrink-0" strokeWidth={2.6} />
-        <span className="truncate text-sm font-bold">
-          <span className="font-mono tracking-wider">ROOT</span> 模式
-          <span className="hidden sm:inline"> · 所有操作都以 root 身份执行，请谨慎操作</span>
-        </span>
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.92 }}
-          onClick={onExit}
-          className="shrink-0 rounded-full bg-crust/85 px-3 py-1 text-xs font-bold text-red transition-colors hover:bg-crust"
-        >
-          退出
-        </motion.button>
-      </div>
-    </motion.div>
   );
 }

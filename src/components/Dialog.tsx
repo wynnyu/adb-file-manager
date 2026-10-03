@@ -107,7 +107,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
         >
           {state.icon}
         </motion.span>
-        <h2 className="text-lg font-extrabold">{state.title}</h2>
+        <h2 className="w-full text-lg font-extrabold wrap-anywhere">{state.title}</h2>
         {state.kind === "prompt" ? (
           <input
             ref={input}
@@ -117,7 +117,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             className="h-12 w-full rounded-full bg-base px-5 text-center font-mono text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-mauve"
           />
         ) : (
-          <div className="w-full text-sm text-subtext1">{state.message}</div>
+          <div className="w-full text-sm text-subtext1 wrap-anywhere">{state.message}</div>
         )}
         {state.kind === "confirm" && state.checkbox && (
           <button
@@ -147,7 +147,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1, x: [0, -8, 8, -5, 5, 0] }}
             transition={{ ...spring, x: { duration: 0.4 } }}
-            className="rounded-full bg-red/15 px-4 py-2 text-sm text-red"
+            className="w-full rounded-2xl bg-red/15 px-4 py-2 text-sm text-red wrap-anywhere"
           >
             {error}
           </motion.p>

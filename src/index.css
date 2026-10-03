@@ -66,21 +66,3 @@ body {
 .animate-indeterminate {
   animation: indeterminate 1.2s ease-in-out infinite;
 }
-
-/* root 模式横幅：流动的警示斜纹 */
-@keyframes stripes {
-  to { background-position: 56px 0; }
-}
-.root-stripes {
-  background-color: var(--color-red);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent 0 14px,
-    color-mix(in oklab, var(--color-peach) 55%, transparent) 14px 28px
-  );
-  background-size: 56px 100%;
-  animation: stripes 1.6s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .root-stripes { animation: none; }
-}

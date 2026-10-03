@@ -105,14 +105,13 @@ function asList(v: unknown): string[] {
 
 /**
  * 删除 / 移动前不允许碰的路径。会按原路径和 readlink -f 后的真实路径各查一次，
- * 所以 /sdcard、/storage/emulated/0、/storage/self/primary、/data/media/0 是一回事
+ * 所以 /sdcard、/storage/emulated/0、/storage/self/primary 是一回事。
+ * /data 本身属于一级目录受保护，/data 下面的内容不做限制
  */
 const PROTECTED: RegExp[] = [
-  /^\/[^/]*$/, // 根目录和一级目录：/system、/sdcard、/storage …
+  /^\/[^/]*$/, // 根目录和一级目录：/system、/data、/sdcard、/storage …
   /^\/storage\/[^/]+$/, // /storage/emulated、/storage/self、SD 卡根目录
   /^\/storage\/(emulated|self)\/[^/]+$/, // 各用户的内部存储根目录
-  /^\/data\/[^/]+$/, // /data/data、/data/app、/data/media、/data/adb …
-  /^\/data\/(user|user_de|media|system_ce|system_de|misc_ce|misc_de|vendor_ce|vendor_de)\/\d+$/,
 ];
 
 function isProtected(p: string) {
