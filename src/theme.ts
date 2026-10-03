@@ -83,6 +83,8 @@ export function syncFavicon() {
  * 切换主题。传了 from 时用 View Transition 让新画面从该点圆形扩散到整页；
  * 浏览器不支持或用户开了减少动态效果时直接切换。
  */
+let activeTransition: ViewTransition | null = null;
+
 export function switchTheme(next: Theme, onCommit: (t: Theme) => void, from?: { x: number; y: number }) {
   const root = document.documentElement;
   const commit = () => {
@@ -97,18 +99,17 @@ export function switchTheme(next: Theme, onCommit: (t: Theme) => void, from?: { 
     return;
   }
 
+  // 起点和半径交给 CSS 关键帧：动画随伪元素在第一帧就生效。
+  // 若等 vt.ready 再用 JS 启动 clip-path，中间会有一帧没裁剪的新画面，表现为闪一下新颜色再闪回去
   const { x, y } = from;
   const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  root.style.setProperty("--reveal-x", `${x}px`);
+  root.style.setProperty("--reveal-y", `${y}px`);
+  root.style.setProperty("--reveal-r", `${r}px`);
   root.classList.add("theme-switching");
   const vt = document.startViewTransition(commit);
-  vt.ready
-    .then(() =>
-      root.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
-        { duration: 650, easing: "cubic-bezier(0.4, 0, 0.2, 1)", pseudoElement: "::view-transition-new(root)" },
-      ),
-    )
-    .catch(() => {});
-  const done = () => root.classList.remove("theme-switching");
+  activeTransition = vt;
+  // 连点时上一个过渡会被跳过并提前 finished，别让它把正在进行的这次的 class 摘掉
+  const done = () => activeTransition === vt && root.classList.remove("theme-switching");
   vt.finished.then(done, done);
 }

@@ -57,8 +57,8 @@ export function LanguagePicker() {
                   setLang(l.id);
                   setOpen(false);
                 }}
-                className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-bold transition-colors hover:bg-surface0 ${
-                  l.id === lang ? "bg-surface0" : ""
+                className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-left text-sm font-bold transition-colors ${
+                  l.id === lang ? "bg-accent/15 hover:bg-accent/20" : "hover:bg-surface0"
                 }`}
               >
                 <span className="flex-1">{l.name}</span>

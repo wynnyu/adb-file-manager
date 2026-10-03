@@ -17,6 +17,8 @@ export function ThemePicker() {
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // 最近一次请求的主题。state 要等过渡回调里才提交，快速连点时拿它判断是否重复点击
+  const target = useRef(theme);
 
   useEffect(() => {
     if (!open) return;
@@ -34,14 +36,18 @@ export function ThemePicker() {
   useEffect(
     () =>
       onSystemFlavorChange((flavor) => {
-        if (!storedFlavor()) switchTheme({ ...currentTheme(), flavor }, setTheme);
+        if (storedFlavor()) return;
+        target.current = { ...target.current, flavor };
+        switchTheme(target.current, setTheme);
       }),
     [],
   );
 
   const pick = (patch: Partial<Theme>, e: MouseEvent<HTMLElement>) => {
-    const next = { ...theme, ...patch };
-    if (next.flavor === theme.flavor && next.accent === theme.accent) return;
+    const prev = target.current;
+    const next = { ...prev, ...patch };
+    if (next.flavor === prev.flavor && next.accent === prev.accent) return;
+    target.current = next;
     saveTheme(patch);
     switchTheme(next, setTheme, origin(e));
   };
@@ -84,8 +90,8 @@ export function ThemePicker() {
                   animate={{ opacity: 1, x: 0, transition: { ...spring, delay: 0.03 * i + 0.04 } }}
                   aria-pressed={active}
                   onClick={(e) => pick({ flavor: f.id }, e)}
-                  className={`flex items-center gap-3 rounded-full p-1.5 pr-4 text-left transition-colors hover:bg-surface0 ${
-                    active ? "bg-surface0" : ""
+                  className={`flex items-center gap-3 rounded-full p-1.5 pr-4 text-left transition-colors ${
+                    active ? "bg-accent/15 hover:bg-accent/20" : "hover:bg-surface0"
                   }`}
                 >
                   {/* data-flavor 让这颗预览球内部取该口味的配色 */}

@@ -224,11 +224,23 @@ body {
   animation: indeterminate 1.2s ease-in-out infinite;
 }
 
-/* 切换口味/主色：新画面从点击处圆形扩散，clip-path 动画在 theme.ts 里驱动 */
+/* 切换口味/主色：新画面从点击处圆形扩散，起点和半径由 theme.ts 写入 --reveal-* */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+@keyframes theme-reveal {
+  from { clip-path: circle(0 at var(--reveal-x) var(--reveal-y)); }
+  to { clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y)); }
+}
+/* 过渡层默认盖在整页上吃掉指针事件：期间没有 hover，点击落到 <html> 上会被当成点了菜单外而关掉菜单。
+   放行给下面的真实 DOM，新画面快照是实时的，hover 也能看到 */
+::view-transition {
+  pointer-events: none;
+}
+.theme-switching::view-transition-new(root) {
+  animation: theme-reveal 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 /* 扩散期间关掉 CSS 过渡，否则新画面里的按钮还会再从旧颜色渐变一遍 */
 .theme-switching,
