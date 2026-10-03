@@ -213,7 +213,9 @@ export async function pull(ctx: Ctx, remote: string, local: string) {
 }
 
 async function checked(ctx: Ctx, cmd: string) {
-  const out = await shell(ctx, `${cmd} 2>&1 && echo __ADBFM_OK__`);
+  // 包进子 shell：2>&1 作用于整条命令；命令里的 exit 只退出子 shell，
+  // 整体总是返回 0（新版 adb 会透传退出码，否则会在这里之前就报错，拿不到下面的标记）
+  const out = await shell(ctx, `(${cmd}) 2>&1 && echo __ADBFM_OK__; true`);
   if (out.includes("__ADBFM_EXISTS__")) throw new AdbError(t("targetExists"), 400);
   if (!out.includes("__ADBFM_OK__")) throw new AdbError(cleanError(out.trim()), 400);
 }
