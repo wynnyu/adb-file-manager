@@ -1,0 +1,67 @@
+{
+  "name": "adb-file-manager",
+  "version": "0.1.0",
+  "description": "Web-based Android file manager over adb — works even when USB is set to \"charging only\", no MTP needed",
+  "keywords": [
+    "adb",
+    "android",
+    "file-manager",
+    "file-transfer",
+    "mtp",
+    "root"
+  ],
+  "license": "MIT",
+  "author": "wynnyu",
+  "homepage": "https://github.com/wynnyu/adb-file-manager#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wynnyu/adb-file-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wynnyu/adb-file-manager/issues"
+  },
+  "type": "module",
+  "bin": {
+    "adb-file-manager": "dist/server/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "concurrently -k -n web,api -c magenta,blue \"vite\" \"tsx watch server/index.ts\"",
+    "build": "tsc -b && vite build && tsc -p tsconfig.server.json",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc -b",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  },
+  "devDependencies": {
+    "@fontsource/maple-mono": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/archiver": "^8.0.0",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "lucide-react": "^1.49.0",
+    "misans": "^5.0.0",
+    "motion": "^13.5.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}
