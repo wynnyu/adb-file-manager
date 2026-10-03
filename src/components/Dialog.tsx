@@ -90,9 +90,9 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
       onMouseDown={() => !busy && onClose()}
     >
       <motion.form
-        initial={{ opacity: 0, scale: 0.85, y: 24 }}
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 12, transition: { duration: 0.15 } }}
+        exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12 } }}
         transition={{ type: "spring", stiffness: 420, damping: 28 }}
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={(e) => {
@@ -101,14 +101,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
         }}
         className={`flex w-full max-w-md flex-col items-center gap-5 rounded-[2.5rem] bg-mantle px-6 pt-8 pb-6 text-center shadow-2xl ring-1 ${styles.ring}`}
       >
-        <motion.span
-          initial={{ scale: 0.3, rotate: -30 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 380, damping: 12, delay: 0.06 }}
-          className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}
-        >
-          {state.icon}
-        </motion.span>
+        <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>{state.icon}</span>
         <h2 className="w-full text-lg font-extrabold wrap-anywhere">{state.title}</h2>
         {state.kind === "prompt" ? (
           <input
@@ -161,7 +154,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
           <PillButton
             type="submit"
             tone={tone === "default" ? "accent" : "danger"}
-            className={`relative h-12 flex-1 justify-center overflow-hidden ${tone === "warn" ? "!bg-peach/20 !text-peach hover:!bg-peach/30" : ""}`}
+            className={`relative h-12 flex-1 justify-center overflow-hidden ${tone === "warn" ? "!bg-peach/15 !text-peach hover:!bg-peach hover:!text-crust" : ""}`}
             disabled={busy || left > 0}
           >
             {countdown > 0 && (

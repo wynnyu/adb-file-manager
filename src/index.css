@@ -35,6 +35,10 @@
   --color-accent: var(--color-mauve);
   --color-accent-2: var(--color-pink);
   --color-accent-hover: color-mix(in oklab, var(--color-accent) 80%, var(--color-text));
+  /* 主色底上的文字/图标 */
+  --color-on-accent: var(--color-crust);
+  /* 次要小字（提示、列标题、序列号）。Overlay 0/1 在深色口味里对 Mantle 只有 3.6–4.1:1，取 Overlay 2 保证 ≥ 4.5 */
+  --color-muted: var(--color-overlay2);
 
   --font-sans: "MiSans VF", "MiSans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "Maple Mono", "MiSans VF", ui-monospace, "SF Mono", Menlo, monospace;
@@ -176,6 +180,33 @@
   --color-accent-2: var(--color-flamingo);
 }
 
+/* Latte 原版色在浅底上对比度不够（peach 当文字 2.3:1、yellow 图标 2.0:1、Subtext 0 4.1:1）。
+ * 按 OKLCH 只降亮度、保持色相，压到够用为止；原值写在注释里。 */
+[data-flavor="latte"] {
+  /* 会当文字用的（主色候选 + 红色报错 + 橙色警示）：在 Surface 0 和自身 15% 底色上 ≥ 4.5:1 */
+  --color-rosewater: #8e4334; /* #dc8a78 */
+  --color-mauve: #781edb; /* #8839ef */
+  --color-red: #b0042d; /* #d20f39 */
+  --color-peach: #9c3a03; /* #fe640b */
+  --color-green: #1a6703; /* #40a02b */
+  --color-blue: #014cd6; /* #1e66f5 */
+  /* 只做图标和状态点：在 Crust、自身 15% 底色、快捷入口的图标底上 ≥ 3:1 */
+  --color-flamingo: #b65557; /* #dd7878 */
+  --color-pink: #b7479c; /* #ea76cb */
+  --color-maroon: #d33144; /* #e64553 */
+  --color-yellow: #a46506; /* #df8e1d */
+  --color-teal: #018086; /* #179299 */
+  --color-sky: #067bab; /* #04a5e5 */
+  --color-sapphire: #057e91; /* #209fb5 */
+  --color-lavender: #5869dc; /* #7287fd */
+  /* 灰阶：Text 对 Mantle 只有 6.6:1，三级次要文字只能挤在 4.5–6.6 之间，按 6.0 / 5.4 / 4.6 排开保持层级 */
+  --color-subtext1: #535568; /* #5c5f77 */
+  --color-subtext0: #595c6f; /* #6c6f85 */
+  --color-muted: #64677a;
+  /* 主色压暗后，上面的字用更亮的 Base */
+  --color-on-accent: var(--color-base);
+}
+
 html,
 body {
   @apply bg-crust text-text font-sans antialiased;
@@ -222,6 +253,24 @@ body {
 }
 .animate-indeterminate {
   animation: indeterminate 1.2s ease-in-out infinite;
+}
+
+/* 减少动态效果：motion 组件由 MotionConfig 处理，这里管 CSS 动画 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-ping {
+    animation: none;
+    opacity: 0;
+  }
+  /* 来回滑动的不定进度条改成静止的整条半透明 */
+  .animate-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+  /* 加载转圈是唯一的进行中提示，保留但放慢 */
+  .animate-spin {
+    animation-duration: 2.5s;
+  }
 }
 
 /* 切换口味/主色：新画面从点击处圆形扩散，起点和半径由 theme.ts 写入 --reveal-* */

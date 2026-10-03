@@ -46,12 +46,10 @@ export function LanguagePicker() {
             style={{ originX: 1, originY: 0 }}
             className="absolute right-0 z-30 mt-2 flex w-44 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
           >
-            {LANGS.map((l, i) => (
-              <motion.button
+            {LANGS.map((l) => (
+              <button
                 key={l.id}
                 type="button"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0, transition: { ...spring, delay: 0.03 * i + 0.04 } }}
                 aria-pressed={l.id === lang}
                 onClick={() => {
                   setLang(l.id);
@@ -63,7 +61,7 @@ export function LanguagePicker() {
               >
                 <span className="flex-1">{l.name}</span>
                 {l.id === lang && <Check className="size-4 text-accent" strokeWidth={3} />}
-              </motion.button>
+              </button>
             ))}
           </motion.div>
         )}

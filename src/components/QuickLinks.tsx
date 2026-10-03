@@ -37,7 +37,7 @@ export function QuickLinks({ path, onNavigate }: { path: string; onNavigate: (p:
               />
             )}
             <span
-              className={`relative grid size-6 place-items-center rounded-[50%] bg-crust/60 transition-transform duration-300 group-hover:rotate-[-12deg] group-hover:scale-110 ${color}`}
+              className={`relative grid size-6 place-items-center rounded-[50%] bg-crust/60 ${color}`}
             >
               <Icon className="size-3.5" />
             </span>

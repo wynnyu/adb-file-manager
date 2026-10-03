@@ -12,12 +12,13 @@ const stateStyle: Record<string, [MessageKey, string]> = {
   offline: ["device.offline", "bg-red"],
 };
 
+/** 连上时 ping 一次提示状态变化；key 跟着 state 走，状态不变就不重放 */
 function Dot({ state }: { state: string }) {
   const color = stateStyle[state]?.[1] ?? "bg-overlay0";
   return (
     <span className="relative flex size-2.5">
       {state === "device" && (
-        <span className={`absolute inset-0 animate-ping rounded-[50%] opacity-60 ${color}`} />
+        <span key={state} className={`absolute inset-0 animate-ping rounded-[50%] opacity-60 [animation-iteration-count:1] ${color}`} />
       )}
       <span className={`relative size-2.5 rounded-[50%] ${color}`} />
     </span>
@@ -69,7 +70,7 @@ export function DeviceSelect({
               {current ? current.name : t("device.none")}
             </motion.span>
           </AnimatePresence>
-          <span className="flex items-center gap-1.5 text-xs text-subtext0">
+          <span className="flex items-center gap-1.5 text-xs text-subtext1">
             {current ? (
               <>
                 <Dot state={current.state} />
@@ -97,10 +98,8 @@ export function DeviceSelect({
           {devices.length === 0 && (
             <div className="rounded-full px-4 py-3 text-sm text-subtext0">{t("device.noneDetected")}</div>
           )}
-          {devices.map((d, i) => (
-            <motion.button
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0, transition: { ...spring, delay: 0.03 * i + 0.04 } }}
+          {devices.map((d) => (
+            <button
               key={d.serial}
               type="button"
               onClick={() => {
@@ -116,10 +115,10 @@ export function DeviceSelect({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold">{d.name}</span>
-                <span className="block truncate font-mono text-[11px] text-overlay1">{d.serial}</span>
+                <span className="block truncate font-mono text-[11px] text-muted">{d.serial}</span>
               </span>
               <Dot state={d.state} />
-            </motion.button>
+            </button>
           ))}
         </motion.div>
       )}

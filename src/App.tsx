@@ -264,7 +264,7 @@ export default function App() {
                   {t.path}
                 </li>
               ))}
-              {targets.length > 4 && <li className="text-xs text-overlay1">{t("common.moreItems", { n: targets.length - 4 })}</li>}
+              {targets.length > 4 && <li className="text-xs text-muted">{t("common.moreItems", { n: targets.length - 4 })}</li>}
             </ul>
           </div>
         ),
@@ -472,24 +472,14 @@ export default function App() {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-8">
         {/* 顶栏 */}
         <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
-          <motion.div
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={spring}
-            className="flex min-w-0 items-center gap-3"
-          >
-            <motion.span
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              whileHover={{ rotate: 18, scale: 1.08 }}
-              whileTap={{ scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 260, damping: 14 }}
-              className={`grid size-12 shrink-0 place-items-center rounded-[50%] text-crust shadow-lg transition-[background-color,box-shadow] duration-500 ${
-                rootMode && online ? "bg-red shadow-red/30" : "bg-accent shadow-accent/20"
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className={`grid size-12 shrink-0 place-items-center rounded-[50%] shadow-lg transition-[background-color,box-shadow] duration-500 ${
+                rootMode && online ? "bg-red text-crust shadow-red/30" : "bg-accent text-on-accent shadow-accent/20"
               }`}
             >
               <FolderUp className="size-6" strokeWidth={2.4} />
-            </motion.span>
+            </span>
             <div className="min-w-0">
               <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
                 <span className="truncate">{t("app.name")}</span>
@@ -509,25 +499,16 @@ export default function App() {
               </h1>
               <StorageMeter storage={storage} />
             </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ ...spring, delay: 0.05 }}
-            className="flex shrink-0 items-center gap-2"
-          >
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <DeviceSelect devices={devices} serial={serial} onChange={(s) => setSerial(s)} />
             <LanguagePicker />
             <ThemePicker />
-          </motion.div>
+          </div>
         </header>
 
         {/* 主面板 */}
-        {/* 不要给主面板加 layout：高度变化时会用 scale 过渡，把工具栏和列表整个拉伸变形 */}
-        <motion.main
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ ...spring, delay: 0.08 }}
+        <main
           className={`relative rounded-[2.5rem] bg-mantle p-3 transition-[box-shadow] duration-500 sm:p-5 ${
             rootMode && online
               ? "shadow-[0_0_0_2px_var(--color-red),0_0_60px_-12px_var(--color-red)]"
@@ -562,7 +543,7 @@ export default function App() {
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     placeholder={t("toolbar.filter")}
-                    className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-overlay0"
+                    className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-muted"
                   />
                   {filter && (
                     <button type="button" onClick={() => setFilter("")} className="grid size-5 place-items-center rounded-[50%] hover:bg-surface0">
@@ -621,7 +602,7 @@ export default function App() {
                 onDelete={(e) => askDelete([e])}
               />
 
-              <p className="px-3 pt-2 text-center text-xs text-overlay0">
+              <p className="px-3 pt-2 text-center text-xs text-muted">
                 {t("toolbar.hint", { n: visible.length })}
               </p>
             </motion.div>
@@ -638,13 +619,9 @@ export default function App() {
                 className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[2.25rem] border-2 border-dashed border-accent bg-accent/10 backdrop-blur-[2px]"
               >
                 <div className="flex flex-col items-center gap-3">
-                  <motion.span
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                    className="grid size-20 place-items-center rounded-[50%] bg-accent text-crust shadow-xl shadow-accent/30"
-                  >
+                  <span className="grid size-20 place-items-center rounded-[50%] bg-accent text-on-accent shadow-xl shadow-accent/30">
                     <Upload className="size-9" />
-                  </motion.span>
+                  </span>
                   <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">
                     {rich("toolbar.dropHere", { path: (s) => <span className="font-mono text-accent">{s}</span> }, { path })}
                   </p>
@@ -652,7 +629,7 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.main>
+        </main>
       </div>
 
       {/* 多选操作条 */}
@@ -706,7 +683,7 @@ export default function App() {
           animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
           exit={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
           transition={spring}
-          className="fixed top-4 left-1/2 z-50 rounded-full bg-red/20 px-5 py-2.5 text-sm font-semibold text-red shadow-xl ring-1 ring-red/30 backdrop-blur">
+          className="fixed top-4 left-1/2 z-50 rounded-full bg-red px-5 py-2.5 text-sm font-semibold text-crust shadow-xl shadow-red/30">
           {toast}
         </motion.div>
       )}
@@ -743,6 +720,7 @@ export default function App() {
 function StorageMeter({ storage }: { storage: { total: number; free: number } | null }) {
   const t = useT();
   const pct = storage ? ((storage.total - storage.free) / storage.total) * 100 : 0;
+  const nearlyFull = pct > 90;
   return (
     <AnimatePresence initial={false}>
       {storage && (
@@ -755,8 +733,7 @@ function StorageMeter({ storage }: { storage: { total: number; free: number } | 
         >
           <span className="h-1.5 w-20 overflow-hidden rounded-full bg-surface0">
             <motion.span
-              className="bg-rainbow block h-full rounded-full"
-              style={{ backgroundSize: `${10000 / Math.max(pct, 1)}% 100%` }}
+              className={`block h-full rounded-full transition-colors ${nearlyFull ? "bg-red" : "bg-accent"}`}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.3 }}

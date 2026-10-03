@@ -59,22 +59,15 @@ function SortHeader({ label, k, sort, onSort, className = "" }: { label: string;
   );
 }
 
-function Placeholder({ icon, text, tone = "bg-surface0 text-overlay1" }: { icon: ReactNode; text: string; tone?: string }) {
+function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { icon: ReactNode; text: string; tone?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...spring, delay: 0.1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
       className="flex flex-col items-center gap-3 py-20 text-center"
     >
-      <motion.span
-        initial={{ scale: 0.4, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.12 }}
-        className={`grid size-16 place-items-center rounded-[50%] ${tone}`}
-      >
-        {icon}
-      </motion.span>
+      <span className={`grid size-16 place-items-center rounded-[50%] ${tone}`}>{icon}</span>
       <p className="max-w-md font-semibold">{text}</p>
     </motion.div>
   );
@@ -87,7 +80,7 @@ export function FileList(props: Props) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className={`${cols} px-2 text-xs font-bold tracking-wide text-overlay1 uppercase`}>
+      <div className={`${cols} px-2 text-xs font-bold text-muted`}>
         <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-14" />
         <SortHeader label={t("files.size")} k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
         <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden sm:flex" />
@@ -95,25 +88,21 @@ export function FileList(props: Props) {
       </div>
 
       {onUp && (
-        <motion.div
-          key={`up:${dir}`}
-          initial={{ opacity: 0, x: -12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={spring}
+        <div
           onClick={onUp}
           title={t("files.goUp")}
           className={`${rowBase} ${cols} cursor-pointer hover:bg-surface0/70`}
         >
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-[color,background-color,transform] duration-300 group-hover:-translate-y-0.5 group-hover:bg-accent/15 group-hover:text-accent"
+              className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent"
             >
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
             <span className="font-mono font-semibold text-subtext1">..</span>
-            <span className="hidden text-xs text-overlay0 transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">{t("files.goUp")}</span>
+            <span className="hidden text-xs text-muted transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">{t("files.goUp")}</span>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {error ? (
@@ -121,7 +110,7 @@ export function FileList(props: Props) {
       ) : (
         <div key={dir} className="flex flex-col gap-1">
           {loading && entries.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="flex justify-center py-20 text-overlay1">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="flex justify-center py-20 text-muted">
               <Loader2 className="size-7 animate-spin" />
             </motion.div>
           )}
@@ -131,14 +120,14 @@ export function FileList(props: Props) {
           )}
 
           <AnimatePresence mode="popLayout">
-            {entries.map((entry, i) => {
+            {entries.map((entry) => {
               const isSel = selected.has(entry.path);
               return (
                 <motion.div
                   key={entry.path}
                   layout={animateLayout ? "position" : false}
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring, delay: Math.min(i, 24) * 0.018 } }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.12 } }}
                   exit={{ opacity: 0, x: 40, scale: 0.95, transition: { duration: 0.2 } }}
                   transition={spring}
                   onClick={(e) => props.onSelect(entry, e)}
@@ -152,12 +141,12 @@ export function FileList(props: Props) {
                         e.stopPropagation();
                         props.onToggle(entry);
                       }}
-                      className="relative shrink-0 transition-transform duration-300 group-hover:scale-105"
+                      className="relative shrink-0"
                       title={t("files.select")}
                     >
                       <FileIcon entry={entry} />
                       {!isSel && (
-                        <span className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent/80 text-crust opacity-0 transition-opacity hover:opacity-70">
+                        <span className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent/80 text-on-accent opacity-0 transition-opacity hover:opacity-70">
                           <Check className="size-5" strokeWidth={3} />
                         </span>
                       )}
@@ -168,7 +157,7 @@ export function FileList(props: Props) {
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0, rotate: 90, transition: { duration: 0.15 } }}
                             transition={{ type: "spring", stiffness: 600, damping: 22 }}
-                            className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent text-crust"
+                            className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent text-on-accent"
                           >
                             <Check className="size-5" strokeWidth={3} />
                           </motion.span>
@@ -176,10 +165,10 @@ export function FileList(props: Props) {
                       </AnimatePresence>
                     </button>
                     <span className="min-w-0">
-                      <span className={`block truncate font-semibold ${entry.name.startsWith(".") ? "text-overlay2" : ""}`}>
+                      <span className={`block truncate font-semibold ${entry.name.startsWith(".") ? "text-muted" : ""}`}>
                         {entry.name}
                       </span>
-                      <span className="block truncate text-xs text-overlay1 sm:hidden">
+                      <span className="block truncate text-xs text-muted sm:hidden">
                         {entry.isDir ? t("files.folder") : formatSize(entry.size)}, {formatTime(entry.mtime, lang)}
                       </span>
                     </span>

@@ -54,13 +54,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
                   ) : item.status === "error" ? (
                     <X className="size-5" />
                   ) : (
-                    <motion.span
-                      className="block"
-                      animate={{ y: item.kind === "upload" ? [2, -2, 2] : [-2, 2, -2] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                    >
-                      <Icon className="size-5" />
-                    </motion.span>
+                    <Icon className="size-5" />
                   )}
                 </motion.span>
               </AnimatePresence>
@@ -68,7 +62,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="truncate text-sm font-bold">{item.label}</span>
-                <span className="shrink-0 font-mono text-[11px] text-subtext0">{pct != null ? `${pct}%` : ""}</span>
+                <span className="shrink-0 font-mono text-[11px] text-subtext1">{pct != null ? `${pct}%` : ""}</span>
               </div>
               {busy ? (
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-crust/70">
@@ -85,7 +79,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
                   )}
                 </div>
               ) : null}
-              <div className={`truncate text-xs ${item.status === "error" ? "text-red" : "text-subtext0"}`}>
+              <div className={`truncate text-xs ${item.status === "error" ? "text-red" : "text-subtext1"}`}>
                 {item.error ?? t(statusText[item.status])}
               </div>
             </div>
@@ -93,7 +87,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
               <button
                 type="button"
                 onClick={() => onDismiss(item.id)}
-                className="grid size-8 shrink-0 place-items-center rounded-[50%] text-overlay1 hover:bg-surface1 hover:text-text"
+                className="grid size-8 shrink-0 place-items-center rounded-[50%] text-muted hover:bg-surface1 hover:text-text"
                 title={t("common.close")}
               >
                 <X className="size-4" />

@@ -5,8 +5,8 @@ type Tone = "default" | "accent" | "danger" | "ghost";
 
 const tones: Record<Tone, string> = {
   default: "bg-surface0 text-text hover:bg-surface1",
-  accent: "bg-accent text-crust hover:bg-accent-hover shadow-lg shadow-accent/15 hover:shadow-accent-hover/25",
-  danger: "bg-red/15 text-red hover:bg-red/25",
+  accent: "bg-accent text-on-accent hover:bg-accent-hover shadow-lg shadow-accent/15 hover:shadow-accent-hover/25",
+  danger: "bg-red/15 text-red hover:bg-red hover:text-crust",
   ghost: "text-subtext0 hover:bg-surface0 hover:text-text",
 };
 
@@ -42,8 +42,7 @@ export function PillButton({
   return (
     <motion.button
       type="button"
-      whileHover={{ y: -1 }}
-      whileTap={{ scale: 0.94, y: 0 }}
+      whileTap={{ scale: 0.94 }}
       transition={spring}
       className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition-[background-color,color,box-shadow] disabled:pointer-events-none disabled:opacity-40 ${tones[tone]} ${className}`}
       {...rest}

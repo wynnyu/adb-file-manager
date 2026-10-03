@@ -22,15 +22,10 @@ export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: s
       transition={spring}
       className="flex flex-col items-center gap-8 px-2 py-12 text-center"
     >
-      <div className="relative grid size-28 place-items-center rounded-[50%] bg-accent/10">
-        <span className="absolute inset-0 animate-ping rounded-[50%] bg-accent/10 [animation-duration:2.4s]" />
-        <motion.span
-          animate={{ rotate: [0, -8, 8, -4, 0], y: [0, -4, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1.2, ease: "easeInOut" }}
-          className="grid size-20 place-items-center rounded-[50%] bg-accent/20 text-accent"
-        >
+      <div className="grid size-28 place-items-center rounded-[50%] bg-accent/10">
+        <span className="grid size-20 place-items-center rounded-[50%] bg-accent/20 text-accent">
           <Smartphone className="size-9" />
-        </motion.span>
+        </span>
       </div>
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-extrabold">{unauthorized ? t("nodevice.unauthorized") : t("nodevice.connect")}</h2>
@@ -41,22 +36,16 @@ export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: s
       </div>
       <ol className="grid w-full max-w-4xl gap-3 md:grid-cols-3">
         {steps.map(({ Icon, title, text }, i) => (
-          <motion.li
-            key={title}
-            initial={{ opacity: 0, y: 24, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ ...spring, delay: 0.15 + i * 0.08 }}
-            whileHover={{ y: -4 }}
-            className="flex flex-col items-center gap-3 rounded-[2rem] bg-base p-6">
+          <li key={title} className="flex flex-col items-center gap-3 rounded-[2rem] bg-base p-6">
             <span className="relative grid size-14 place-items-center rounded-[50%] bg-surface0 text-lavender">
               <Icon className="size-6" />
-              <span className="absolute -top-1 -right-1 grid size-6 place-items-center rounded-[50%] bg-accent text-xs font-extrabold text-crust">
+              <span className="absolute -top-1 -right-1 grid size-6 place-items-center rounded-[50%] bg-accent text-xs font-extrabold text-on-accent">
                 {i + 1}
               </span>
             </span>
             <h3 className="font-extrabold">{t(title)}</h3>
             <p className="text-sm text-subtext0">{t(text)}</p>
-          </motion.li>
+          </li>
         ))}
       </ol>
     </motion.div>
