@@ -48,7 +48,30 @@ app.use((req, res, next) => {
 
 type Handler = (req: Request, res: Response) => Promise<unknown>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) =>
-  fn(req, res).catch(next);
+  fn(req, res).catch((err) => rootGuard(req, err).then(next));
+
+const isRootRequest = (req: Request) => {
+  const flag = req.query.root ?? req.body?.root;
+  return flag === "1" || flag === true;
+};
+
+/**
+ * root 请求失败时复查一次 su：权限被撤销的话清掉缓存，
+ * 并以 root_lost 返回，让前端退出 root 模式
+ */
+async function rootGuard(req: Request, err: unknown) {
+  const serial = req.query.serial ?? req.body?.serial;
+  if (!isRootRequest(req) || typeof serial !== "string") return err;
+  try {
+    rootCache.set(serial, await adb.rootMethod(serial));
+    return err;
+  } catch (e) {
+    // 只有 su 检查本身失败才算 root 失效；设备断开等连接错误保持原样
+    if (!(e instanceof adb.AdbError && e.code === "no_root")) return err;
+    rootCache.delete(serial);
+    return new adb.AdbError(e.message, 403, "root_lost");
+  }
+}
 
 function serialOf(req: Request): string {
   const s = req.query.serial ?? req.body?.serial;
@@ -70,8 +93,7 @@ async function rootFor(serial: string) {
 /** 请求带 root=1 时以 root 身份执行 */
 async function ctxOf(req: Request): Promise<adb.Ctx> {
   const serial = serialOf(req);
-  const flag = req.query.root ?? req.body?.root;
-  const root = flag === "1" || flag === true ? await rootFor(serial) : false;
+  const root = isRootRequest(req) ? await rootFor(serial) : false;
   return { serial, root };
 }
 
@@ -81,11 +103,32 @@ function asList(v: unknown): string[] {
   return [];
 }
 
-/** 拒绝删除 / 移动根目录或一级目录（/sdcard、/system …） */
-function assertSafeTarget(p: string) {
-  if (p.split("/").filter(Boolean).length < 2) {
-    throw new adb.AdbError(`为安全起见，不允许操作 ${p}`, 400);
-  }
+/**
+ * 删除 / 移动前不允许碰的路径。会按原路径和 readlink -f 后的真实路径各查一次，
+ * 所以 /sdcard、/storage/emulated/0、/storage/self/primary、/data/media/0 是一回事
+ */
+const PROTECTED: RegExp[] = [
+  /^\/[^/]*$/, // 根目录和一级目录：/system、/sdcard、/storage …
+  /^\/storage\/[^/]+$/, // /storage/emulated、/storage/self、SD 卡根目录
+  /^\/storage\/(emulated|self)\/[^/]+$/, // 各用户的内部存储根目录
+  /^\/data\/[^/]+$/, // /data/data、/data/app、/data/media、/data/adb …
+  /^\/data\/(user|user_de|media|system_ce|system_de|misc_ce|misc_de|vendor_ce|vendor_de)\/\d+$/,
+];
+
+function isProtected(p: string) {
+  if (PROTECTED.some((re) => re.test(p))) return true;
+  // /mnt 下是各种挂载点，只允许操作某个存储（emulated/N 或 SD 卡）里面的内容
+  return p.startsWith("/mnt/") && !/\/(emulated\/\d+|[0-9A-F]{4}-[0-9A-F]{4})\/./i.test(p);
+}
+
+async function assertSafeTargets(ctx: adb.Ctx, paths: string[]) {
+  const real = await adb.realpaths(ctx, paths);
+  paths.forEach((p, i) => {
+    if (isProtected(p) || isProtected(real[i])) {
+      const shown = real[i] !== p ? `${p}（即 ${real[i]}）` : p;
+      throw new adb.AdbError(`为安全起见，不允许删除或移动 ${shown}`, 400);
+    }
+  });
 }
 
 async function tmpDir() {
@@ -170,7 +213,7 @@ function dropJob(token: string) {
   if (!job) return;
   jobs.delete(token);
   clearTimeout(job.timer);
-  void fs.rm(job.dir, { recursive: true, force: true });
+  fs.rm(job.dir, { recursive: true, force: true }).catch((e) => console.warn(`清理临时目录失败：${e.message}`));
 }
 
 // 第一步：adb pull 到电脑临时目录，返回一次性 token
@@ -243,8 +286,9 @@ app.post(
   wrap(async (req, res) => {
     const from = adb.assertAbs(req.body.from);
     const to = adb.assertAbs(req.body.to);
-    assertSafeTarget(from);
-    await adb.rename(await ctxOf(req), from, to);
+    const ctx = await ctxOf(req);
+    await assertSafeTargets(ctx, [from]);
+    await adb.rename(ctx, from, to);
     res.json({ ok: true });
   }),
 );
@@ -254,8 +298,9 @@ app.post(
   wrap(async (req, res) => {
     const paths = asList(req.body.paths).map(adb.assertAbs);
     if (!paths.length) throw new adb.AdbError("缺少 paths 参数", 400);
-    paths.forEach(assertSafeTarget);
-    await adb.remove(await ctxOf(req), paths);
+    const ctx = await ctxOf(req);
+    await assertSafeTargets(ctx, paths);
+    await adb.remove(ctx, paths);
     res.json({ ok: true });
   }),
 );
@@ -274,7 +319,8 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.destroy();
     return;
   }
-  res.status(status).json({ error: message });
+  const code = err instanceof adb.AdbError ? err.code : undefined;
+  res.status(status).json({ error: message, code });
 });
 
 app.listen(PORT, HOST, (err?: Error) => {

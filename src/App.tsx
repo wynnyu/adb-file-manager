@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
-import { api, type Target } from "./api.ts";
+import { api, onRootLost, type Target } from "./api.ts";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { DeviceSelect } from "./components/DeviceSelect.tsx";
 import { Dialog, type DialogState } from "./components/Dialog.tsx";
@@ -315,6 +315,16 @@ export default function App() {
     savePref("afm.rootRemember", false);
     setRootMode(false);
   }, []);
+
+  // 操作途中 root 被撤销：退出 root 模式，但保留「记住选择」，重新授权后下次还能自动开启
+  useEffect(() => {
+    onRootLost((message) => {
+      rootVerified.current = null;
+      setRootMode(false);
+      flash(`已退出 root 模式：${message}`);
+    });
+    return () => onRootLost(() => {});
+  }, [flash]);
 
   useEffect(() => {
     document.title = rootMode ? "⚠ ROOT · ADB File Manager" : "ADB File Manager";

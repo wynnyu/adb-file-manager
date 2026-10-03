@@ -9,6 +9,8 @@ export class AdbError extends Error {
   constructor(
     message: string,
     public status = 500,
+    /** 给前端识别的错误类型，例如 root_lost */
+    public code?: string,
   ) {
     super(message);
   }
@@ -74,18 +76,20 @@ export function shell(ctx: Ctx, cmd: string) {
 
 /** 检测设备能否以 root 运行命令 */
 export async function rootMethod(serial: string): Promise<"adbd" | "su"> {
-  const plain = await shell({ serial, root: false }, "id -u").catch(() => "");
+  // 普通 shell 都跑不通说明是连接问题（设备断开、未授权），原样抛出，不当成「没有 root」
+  const plain = await shell({ serial, root: false }, "id -u");
   if (plain.trim() === "0") return "adbd";
   const viaSu = await shell({ serial, root: "su" }, "id -u").catch((e: Error) => e.message);
   if (viaSu.trim() === "0") return "su";
   const msg = viaSu.trim();
   throw new AdbError(
-    /not found|inaccessible/i.test(msg)
+    /su: (inaccessible or )?not found/i.test(msg)
       ? "这台设备没有 root（找不到 su）"
       : /^\d+$/.test(msg)
         ? `su 没有切换到 root（uid=${msg}）`
         : `无法获取 root 权限：${msg || "su 被拒绝"}。请在手机的 root 管理器里给 Shell 授权`,
     403,
+    "no_root",
   );
 }
 
@@ -161,6 +165,14 @@ export async function isDir(ctx: Ctx, p: string) {
   const r = out.trim();
   if (r === "N") throw new AdbError(`文件不存在：${p}`, 404);
   return r === "D";
+}
+
+/** 解析符号链接后的真实路径（readlink -f），不存在的路径原样返回 */
+export async function realpaths(ctx: Ctx, paths: string[]): Promise<string[]> {
+  // 每个路径固定输出一行，解析失败时为空行
+  const out = await shell(ctx, paths.map((p) => `echo "$(readlink -f ${q(p)} 2>/dev/null)"`).join("; "));
+  const lines = out.split("\n").map((l) => l.replace(/\r$/, ""));
+  return paths.map((p, i) => (lines[i]?.startsWith("/") ? path.normalize(lines[i]) : p));
 }
 
 /** su 模式下 adb push/pull 本身没有 root 权限，先经 /data/local/tmp 中转 */

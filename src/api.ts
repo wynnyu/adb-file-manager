@@ -6,10 +6,23 @@ export interface Target {
   root: boolean;
 }
 
+let rootLostListener: ((message: string) => void) | null = null;
+
+/** 后端发现 root 权限失效（root_lost）时回调 */
+export function onRootLost(fn: (message: string) => void) {
+  rootLostListener = fn;
+}
+
+function fail(data: { error?: string; code?: string }, status: number) {
+  const message = data.error ?? `HTTP ${status}`;
+  if (data.code === "root_lost") rootLostListener?.(message);
+  return new Error(message);
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  if (!res.ok) throw fail(data, res.status);
   return data as T;
 }
 
@@ -61,11 +74,13 @@ export const api = {
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
       xhr.onload = () => {
         if (xhr.status < 300) return resolve();
+        let data = {};
         try {
-          reject(new Error(JSON.parse(xhr.responseText).error));
+          data = JSON.parse(xhr.responseText);
         } catch {
-          reject(new Error(`HTTP ${xhr.status}`));
+          /* 非 JSON 响应 */
         }
+        reject(fail(data, xhr.status));
       };
       xhr.onerror = () => reject(new Error("网络错误"));
       xhr.send(form);
