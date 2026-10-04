@@ -6,7 +6,7 @@ type Lang = "zh" | "en";
 const zh = {
   adbFailed: "adb 执行失败",
   pathNotAbsolute: "路径必须是绝对路径",
-  noSu: "设备未 root（未找到 su）",
+  noSu: "未找到 su，无法以 root 身份执行操作",
   suNotRoot: "su 未能切换到 root（uid={uid}）",
   rootDenied: "无法获取 root 权限：{msg}。请在设备的 root 管理器中为 Shell 授权",
   suRefused: "su 被拒绝",
@@ -31,7 +31,7 @@ export type MsgKey = keyof typeof zh;
 const en: Record<MsgKey, string> = {
   adbFailed: "adb command failed",
   pathNotAbsolute: "Path must be absolute",
-  noSu: "This device is not rooted (su not found)",
+  noSu: "su not found. Operations cannot run as root",
   suNotRoot: "su did not switch to root (uid={uid})",
   rootDenied: "Failed to obtain root access: {msg}. Grant root access to Shell in the root manager on the device",
   suRefused: "su was denied",
