@@ -78,6 +78,8 @@ export default function App() {
   const anchor = useRef<string | null>(null);
   /** 进入目录后要选中的条目（分栏视图里点上层栏的文件）；true 表示选中第一项 */
   const pendingFocus = useRef<string | true | null>(null);
+  /** 进入目录时先用缓存显示了这个目录，加载完别清掉期间的选择 */
+  const seeded = useRef<string | null>(null);
   const [sort, setSort] = useState<Sort>(() => loadPref("afm.sort", { key: "name", asc: true }));
   const [showHidden, setShowHidden] = useState(() => loadPref("afm.hidden", false));
   /** load 里算“第一项”要用当前的排序和隐藏文件设置，又不想让 load 跟着它们变 */
@@ -143,11 +145,14 @@ export default function App() {
         setListError(null);
         const want = pendingFocus.current;
         pendingFocus.current = null;
+        // 先拿缓存顶上的目录已经按缓存选好了，用户可能也已经接着操作，别再动选择
+        const keep = keepSelection || seeded.current === p;
+        seeded.current = null;
         const focus = want === true ? arrange(list, display.current.sort, display.current.showHidden)[0]?.path : want;
         if (focus && list.some((e) => e.path === focus)) {
           anchor.current = focus;
           setSelected(new Set([focus]));
-        } else if (!keepSelection) setSelected(new Set());
+        } else if (!keep) setSelected(new Set());
       } catch (e) {
         if (seq !== loadSeq.current) return;
         setEntries([]);
@@ -178,6 +183,36 @@ export default function App() {
   useEffect(() => savePref("afm.hidden", showHidden), [showHidden]);
   useEffect(() => savePref("afm.view", view), [view]);
 
+  // ---------- 目录缓存 ----------
+  // 当前目录以外还要显示的目录（分栏视图的上层各栏和下一栏、列表视图展开的文件夹）都存在这里。
+  // 进入缓存里有的目录时先拿缓存顶上，界面不用等 ls 回来
+  const [dirs, setDirs] = useState(() => new Map<string, Listing>());
+  const dirsRef = useRef(dirs);
+  dirsRef.current = dirs;
+  const revRef = useRef(rev);
+  revRef.current = rev;
+  const dirInflight = useRef(new Set<string>());
+  /** 换设备时 +1，丢掉之前发出去还没回来的请求 */
+  const dirGen = useRef(0);
+
+  const putDir = useCallback(
+    (dir: string, listing: Listing) =>
+      setDirs((m) => ((m.get(dir)?.rev ?? -1) > listing.rev ? m : new Map(m).set(dir, listing))),
+    [],
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: target 是触发条件，换了设备就清空
+  useEffect(() => {
+    dirGen.current++;
+    dirInflight.current.clear();
+    setDirs(new Map());
+  }, [target]);
+
+  // 当前目录加载好了也记下来，往下走一层时它成了上一栏，不用重新加载
+  useEffect(() => {
+    if (entriesDir) putDir(entriesDir, { rev: revRef.current, entries });
+  }, [entriesDir, entries, putDir]);
+
   /** focus：进入后选中这一项，true 为第一项 */
   const navigate = useCallback(
     (p: string, focus?: string | true) => {
@@ -192,9 +227,23 @@ export default function App() {
         // 点的是当前目录：path 不变不会触发加载 effect，直接刷新，别清空列表
         return void load(p);
       }
-      pendingFocus.current = focus ?? null;
-      setEntries([]);
-      setEntriesDir(null);
+      const known = dirsRef.current.get(p)?.entries;
+      if (known) {
+        // 缓存里有：立刻显示并选好，后台照常重新加载
+        if (focus === true) focus = arrange(known, display.current.sort, display.current.showHidden)[0]?.path;
+        anchor.current = focus ?? null;
+        setSelected(new Set(focus ? [focus] : []));
+        pendingFocus.current = null;
+        seeded.current = p;
+        setEntries(known);
+        setEntriesDir(p);
+      } else {
+        pendingFocus.current = focus ?? null;
+        seeded.current = null;
+        setEntries([]);
+        setEntriesDir(null);
+      }
+      setListError(null);
       setPath(p);
     },
     [path, load, entries],
@@ -231,40 +280,10 @@ export default function App() {
 
   // ---------- 列表视图的展开三角 ----------
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [subdirs, setSubdirs] = useState(() => new Map<string, Listing>());
-  const subdirsRef = useRef(subdirs);
-  subdirsRef.current = subdirs;
-  const subInflight = useRef(new Set<string>());
-  /** 换目录、换设备时 +1，丢掉之前发出去还没回来的请求 */
-  const subGen = useRef(0);
 
   // 换了目录或设备就全部收起
   // biome-ignore lint/correctness/useExhaustiveDependencies: path 和 target 是触发条件，变了就要重置
-  useEffect(() => {
-    subGen.current++;
-    subInflight.current.clear();
-    setExpanded(new Set());
-    setSubdirs(new Map());
-  }, [path, target]);
-
-  // 展开的文件夹：缓存里没有或已过期（增删改、刷新后 rev 变了）的才去拉
-  useEffect(() => {
-    if (!target || view !== "list") return;
-    const gen = subGen.current;
-    for (const dir of expanded) {
-      const key = `${dir}@${rev}`;
-      if (subdirsRef.current.get(dir)?.rev === rev || subInflight.current.has(key)) continue;
-      subInflight.current.add(key);
-      const put = (l: Listing) => gen === subGen.current && setSubdirs((m) => new Map(m).set(dir, l));
-      api
-        .ls(target, dir)
-        .then(
-          (list) => put({ rev, entries: list }),
-          (e: Error) => put({ rev, error: e.message }),
-        )
-        .finally(() => subInflight.current.delete(key));
-    }
-  }, [expanded, rev, target, view]);
+  useEffect(() => setExpanded(new Set()), [path, target]);
 
   const toggleExpand = useCallback((entry: FileEntry, open?: boolean) => {
     setExpanded((s) => {
@@ -282,16 +301,16 @@ export default function App() {
       for (const entry of list) {
         out.push({ entry, depth });
         if (!entry.isDir || !expanded.has(entry.path)) continue;
-        const sub = subdirs.get(entry.path);
+        const sub = dirs.get(entry.path);
         if (sub?.error) out.push({ note: sub.error, key: `${entry.path}\0error`, depth: depth + 1 });
         else if (sub?.entries) walk(arrange(sub.entries, sort, showHidden), depth + 1);
       }
     };
     walk(visible, 0);
     return out;
-  }, [visible, expanded, subdirs, sort, showHidden]);
+  }, [visible, expanded, dirs, sort, showHidden]);
 
-  const pending = useMemo(() => new Set([...expanded].filter((d) => !subdirs.has(d))), [expanded, subdirs]);
+  const pending = useMemo(() => new Set([...expanded].filter((d) => !dirs.has(d))), [expanded, dirs]);
 
   /** 能选中、能用方向键走到的条目：列表视图包括展开的子项 */
   const selectable = useMemo(
@@ -564,6 +583,37 @@ export default function App() {
 
   const selectedEntries = useMemo(() => selectable.filter((v) => selected.has(v.path)), [selectable, selected]);
 
+  /** 当前视图要另外加载的目录：分栏视图是上层各栏，加上选中文件夹的下一栏；列表视图是展开的文件夹 */
+  const wanted = useMemo(() => {
+    if (view === "list") return [...expanded];
+    if (view !== "columns") return [];
+    const parts = path.split("/").filter(Boolean);
+    const out = parts.map((_, i) => "/" + parts.slice(0, i).join("/"));
+    const one = selectedEntries.length === 1 ? selectedEntries[0] : null;
+    if (one?.isDir) out.push(one.path);
+    return out;
+  }, [view, expanded, path, selectedEntries]);
+  const wantedKey = wanted.join("\n");
+
+  // 缓存里没有或已过期（增删改、刷新后 rev 变了）的才去拉
+  useEffect(() => {
+    if (!target) return;
+    const gen = dirGen.current;
+    for (const dir of wantedKey ? wantedKey.split("\n") : []) {
+      const key = `${dir}@${rev}`;
+      if (dirsRef.current.get(dir)?.rev === rev || dirInflight.current.has(key)) continue;
+      dirInflight.current.add(key);
+      const put = (l: Listing) => gen === dirGen.current && putDir(dir, l);
+      api
+        .ls(target, dir)
+        .then(
+          (list) => put({ rev, entries: list }),
+          (e: Error) => put({ rev, error: e.message }),
+        )
+        .finally(() => dirInflight.current.delete(key));
+    }
+  }, [wantedKey, rev, target, putDir]);
+
   // ---------- 剪切 / 拷贝 / 粘贴 ----------
   const canPaste = !!clip && clip.serial === serial;
   const cutPaths = useMemo(
@@ -812,7 +862,12 @@ export default function App() {
         if (path !== "/") navigate(parentPath(path), path);
       } else if (view === "columns" && e.key === "ArrowRight") {
         e.preventDefault();
-        if (selectedEntries.length === 1 && selectedEntries[0].isDir) navigate(selectedEntries[0].path, true);
+        const one = selectedEntries.length === 1 ? selectedEntries[0] : null;
+        if (!one?.isDir) return;
+        // 同访达：空文件夹、打不开的文件夹进不去，焦点留在原处
+        const sub = dirs.get(one.path);
+        if (sub && (sub.error || !arrange(sub.entries ?? [], sort, showHidden).length)) return;
+        navigate(one.path, true);
       } else if (e.key === "Delete" || (e.metaKey && e.key === "Backspace")) askDelete(selectedEntries);
       else if (e.key === "Enter" && selectedEntries.length === 1) open(selectedEntries[0]);
       else if (e.key === "F2" && selectedEntries.length === 1) askRename(selectedEntries[0]);
@@ -837,6 +892,9 @@ export default function App() {
     step,
     expanded,
     toggleExpand,
+    dirs,
+    sort,
+    showHidden,
   ]);
 
   // ---------- 拖拽上传 ----------
@@ -1014,16 +1072,14 @@ export default function App() {
                       key={`${target.serial}:${target.root}`}
                       target={target}
                       path={path}
-                      rawDir={entriesDir}
-                      raw={entries}
                       entries={visible}
-                      loading={loading}
+                      dirs={dirs}
+                      loading={loading && entriesDir !== path}
                       error={listError}
                       selected={selected}
                       cut={cutPaths}
                       sort={sort}
                       showHidden={showHidden}
-                      rev={rev}
                       onNavigate={navigate}
                       onSelect={onSelect}
                       onOpen={open}

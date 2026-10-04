@@ -64,7 +64,7 @@ Run `adb version` to check that adb can be found. With the phone connected, run 
 
 **Browsing**
 
-- Four Finder-style views: icons, list, columns and gallery. The list view has Finder's columns (Name, Date Modified, Size, Kind), and the triangle next to a folder expands it in place. The column view expands from the root one column at a time: a selected folder shows its contents in the next column, a selected file shows its details, with thumbnails for images. The gallery view shows a large preview, a strip of thumbnails and an info panel
+- Four Finder-style views: icons, list, columns and gallery. The list view has Finder's columns (Name, Date Modified, Size, Kind), and the triangle next to a folder expands it in place. The column view expands from the root one column at a time: a click only selects, a selected folder shows its contents in the next column and `→` or a double-click moves into it, a selected file shows its details, with thumbnails for images. The gallery view shows a large preview, a strip of thumbnails and an info panel
 - Breadcrumbs (double-click to type a path) and one-click links to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
 - Filter, sort by name / size / modified time, and show or hide dotfiles
 - Used and total internal storage shown in the toolbar

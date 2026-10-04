@@ -12,21 +12,18 @@ import { IconButton } from "./ui.tsx";
 
 interface Props {
   target: Target;
+  /** 当前目录：选中的条目在这一栏里 */
   path: string;
-  /** raw 属于哪个目录；目录还没加载完时为 null */
-  rawDir: string | null;
-  /** 当前目录未过滤的列表，存进缓存，往下走一层时上一栏不用重新加载 */
-  raw: FileEntry[];
   /** 当前目录过滤、排序后的列表 */
   entries: FileEntry[];
+  /** 其他各栏的列表，由上层按需加载 */
+  dirs: Map<string, Listing>;
   loading: boolean;
   error: string | null;
   selected: Set<string>;
   cut: Set<string>;
   sort: Sort;
   showHidden: boolean;
-  /** 每次刷新 / 增删改后 +1，上层各栏据此重新加载 */
-  rev: number;
   /** focus：进入目录后选中这一项，true 为第一项 */
   onNavigate: (p: string, focus?: string | true) => void;
   onSelect: (entry: FileEntry, e: MouseEvent) => void;
@@ -37,55 +34,31 @@ interface Props {
   onDelete: (entry: FileEntry) => void;
 }
 
-/** 分栏视图：从根目录到当前目录一栏一栏排开，最右边是选中项的预览 */
+/**
+ * 分栏视图：从根目录到当前目录一栏一栏排开，行为照着访达：
+ * 单击只是选中，选中文件夹时右边多一栏列出它的内容，选中文件时显示详情；
+ * 点别的栏里的条目就把选择移到那一栏，它右边的栏跟着换掉；→ 进入选中的文件夹，← 回到上一栏
+ */
 export function ColumnView(props: Props) {
-  const { target, path, rawDir, raw, entries, loading, error, selected, cut, sort, showHidden, rev } = props;
+  const { target, path, entries, dirs, loading, error, selected, cut, sort, showHidden } = props;
   const { t } = useI18n();
   const scroller = useRef<HTMLDivElement>(null);
-  const [cache, setCache] = useState(() => new Map<string, Listing>());
-  const cacheRef = useRef(cache);
-  cacheRef.current = cache;
-  const inflight = useRef(new Set<string>());
 
   const columns = useMemo(() => {
     const parts = path.split("/").filter(Boolean);
     return ["/", ...parts.map((_, i) => "/" + parts.slice(0, i + 1).join("/"))];
   }, [path]);
-  const ancestors = columns.slice(0, -1);
   const preview = selected.size === 1 ? entries.find((e) => selected.has(e.path)) : undefined;
-  /** 选中的是文件夹时，右边再排一栏列出它的内容（同访达）；选中文件才显示属性 */
+  /** 选中的是文件夹时，右边再排一栏列出它的内容；选中文件才显示详情 */
   const child = preview?.isDir ? preview.path : null;
-  /** 当前目录以外需要另外加载的各栏：上层各栏，加上选中文件夹的下一栏 */
-  const othersKey = [...ancestors, ...(child ? [child] : [])].join("\n");
 
-  const put = (dir: string, listing: Listing) =>
-    setCache((c) => ((c.get(dir)?.rev ?? -1) > listing.rev ? c : new Map(c).set(dir, listing)));
-
-  // 当前目录加载好了就记下来
-  // biome-ignore lint/correctness/useExhaustiveDependencies: put 每次渲染都是新函数，只在数据变化时才记录
-  useEffect(() => {
-    if (rawDir && !error) put(rawDir, { rev, entries: raw });
-  }, [rawDir, raw, error, rev]);
-
-  // 上层各栏和下一栏：缓存里没有或已过期的才去拉
-  // biome-ignore lint/correctness/useExhaustiveDependencies: put 每次渲染都是新函数，只在 othersKey 或 rev 变化时才拉取
-  useEffect(() => {
-    for (const dir of othersKey ? othersKey.split("\n") : []) {
-      const key = `${dir}@${rev}`;
-      if (cacheRef.current.get(dir)?.rev === rev || inflight.current.has(key)) continue;
-      inflight.current.add(key);
-      api
-        .ls(target, dir)
-        .then(
-          (list) => put(dir, { rev, entries: list }),
-          (e: Error) => put(dir, { rev, error: e.message }),
-        )
-        .finally(() => inflight.current.delete(key));
-    }
-  }, [othersKey, rev, target]);
-
-  const childListing = child ? cache.get(child) : undefined;
-  const childEntries = childListing?.entries ? arrange(childListing.entries, sort, showHidden) : [];
+  /** 点某一栏里的条目：当前栏照常选择（支持 ⌘ / ⇧ 多选），别的栏把选择移过去 */
+  const pick = (dir: string, entry: FileEntry, e: MouseEvent) => {
+    if (dir === path) props.onSelect(entry, e);
+    else props.onNavigate(dir, entry.path);
+  };
+  /** 双击文件夹进入它并选中第一项，同 →；双击文件打开 */
+  const open = (entry: FileEntry) => (entry.isDir ? props.onNavigate(entry.path, true) : props.onOpen(entry));
 
   // 新的一栏出现时滚到最右边
   // biome-ignore lint/correctness/useExhaustiveDependencies: path 和 preview 路径是触发条件，变了就要滚动
@@ -99,63 +72,38 @@ export function ColumnView(props: Props) {
       ref={scroller}
       className="flex h-[min(68vh,44rem)] min-h-80 overflow-x-auto overflow-y-hidden rounded-[1.75rem] bg-base/60 ring-1 ring-surface0"
     >
-      {columns.map((dir, i) => {
-        const current = i === columns.length - 1;
-        const next = columns[i + 1];
-        const listing = cache.get(dir);
+      {/* 下一栏和其他栏放在同一个数组里，进入它时同一个组件接着用，不会重新淡入 */}
+      {(child ? [...columns, child] : columns).map((dir, i, all) => {
+        const current = dir === path;
+        const next = all[i + 1];
+        const listing = dirs.get(dir);
         return (
           <Column
             key={dir}
-            dir={dir}
             current={current}
             entries={current ? entries : listing?.entries ? arrange(listing.entries, sort, showHidden, "", next) : []}
-            loading={current ? loading && entries.length === 0 : !listing}
+            loading={current ? loading : !listing}
             error={current ? error : (listing?.error ?? null)}
             emptyText={t("files.empty")}
-            activePath={current ? null : next}
+            activePath={current ? null : (next ?? null)}
             selected={selected}
             cut={cut}
-            onRowClick={(entry, e) => {
-              // 进入文件夹时选中它的第一项，焦点跟着走
-              if (!current) props.onNavigate(entry.isDir ? entry.path : dir, entry.isDir ? true : entry.path);
-              else if (entry.isDir && !(e.metaKey || e.ctrlKey || e.shiftKey)) props.onNavigate(entry.path, true);
-              else props.onSelect(entry, e);
-            }}
-            onRowDoubleClick={(entry) => !entry.isDir && props.onOpen(entry)}
+            onRowClick={(entry, e) => pick(dir, entry, e)}
+            onRowDoubleClick={open}
             onBackgroundClick={current ? undefined : () => props.onNavigate(dir)}
             onContextMenu={(e, entry) => props.onContextMenu(e, entry, dir)}
           />
         );
       })}
-      {child ? (
-        <Column
-          key={child}
-          dir={child}
-          current={false}
-          entries={childEntries}
-          loading={!childListing}
-          error={childListing?.error ?? null}
-          emptyText={t("files.empty")}
-          // 第一项标出焦点，按 → 或点进去就选中它
-          activePath={childEntries[0]?.path ?? null}
-          selected={selected}
-          cut={cut}
-          onRowClick={(entry) => props.onNavigate(entry.isDir ? entry.path : child, entry.isDir ? true : entry.path)}
-          onRowDoubleClick={(entry) => !entry.isDir && props.onOpen(entry)}
-          onBackgroundClick={() => props.onNavigate(child)}
-          onContextMenu={(e, entry) => props.onContextMenu(e, entry, child)}
+      {!child && preview && (
+        <Preview
+          key={preview.path}
+          target={target}
+          entry={preview}
+          onDownload={props.onDownload}
+          onRename={props.onRename}
+          onDelete={props.onDelete}
         />
-      ) : (
-        preview && (
-          <Preview
-            key={preview.path}
-            target={target}
-            entry={preview}
-            onDownload={props.onDownload}
-            onRename={props.onRename}
-            onDelete={props.onDelete}
-          />
-        )
       )}
       {/* 余下的空白：点了取消选择、右键是当前目录的菜单，交给外层处理 */}
       <div className="min-w-4 flex-1" />
@@ -164,7 +112,6 @@ export function ColumnView(props: Props) {
 }
 
 interface ColumnProps {
-  dir: string;
   current: boolean;
   entries: FileEntry[];
   loading: boolean;
