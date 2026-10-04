@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { loadPref, savePref } from "../prefs.ts";
+import { loadPref, savePref } from "../lib/prefs.ts";
 import { en } from "./en.ts";
 import { type MessageKey, zh } from "./zh.ts";
 

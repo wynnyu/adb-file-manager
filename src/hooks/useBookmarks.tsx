@@ -1,5 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import type { DialogState } from "../components/Dialog.tsx";
+import { useT } from "../i18n/index.tsx";
 import {
   type Bookmark,
   bookmarkName,
@@ -11,9 +13,7 @@ import {
   presetFields,
   saveBookmarks,
   storedName,
-} from "../bookmarks.ts";
-import type { DialogState } from "../components/Dialog.tsx";
-import { useT } from "../i18n/index.tsx";
+} from "../lib/bookmarks.ts";
 
 /** 快捷入口里的书签：列表本身，以及新建、编辑、删除书签的对话框 */
 export function useBookmarks(path: string, openDialog: (d: DialogState) => void) {

@@ -1,7 +1,7 @@
 import { ArrowUp, ChevronDown, FolderPlus, FolderUp, RotateCw, Search, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
-import { parentPath } from "../format.ts";
 import { useT } from "../i18n/index.tsx";
+import { parentPath } from "../lib/format.ts";
 import type { ViewMode } from "../types.ts";
 import { Breadcrumbs } from "./Breadcrumbs.tsx";
 import type { MenuState } from "./ContextMenu.tsx";

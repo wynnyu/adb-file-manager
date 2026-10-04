@@ -1,4 +1,4 @@
-import type { MessageKey } from "./i18n/zh.ts";
+import type { MessageKey } from "../i18n/zh.ts";
 import { loadPref, savePref } from "./prefs.ts";
 
 /**

@@ -1,6 +1,6 @@
-import { tr } from "./i18n/index.tsx";
+import { tr } from "../i18n/index.tsx";
+import type { FileEntry } from "../types.ts";
 import { kindLabel } from "./kinds.ts";
-import type { FileEntry } from "./types.ts";
 
 export type SortKey = "name" | "mtime" | "size" | "kind";
 export interface Sort {

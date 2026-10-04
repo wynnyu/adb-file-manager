@@ -1,10 +1,10 @@
 import { Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { api, type Target } from "../api.ts";
-import { formatDate, formatSize } from "../format.ts";
 import { type Lang, useI18n } from "../i18n/index.tsx";
-import { kindLabel } from "../kinds.ts";
+import { api, type Target } from "../lib/api.ts";
+import { formatDate, formatSize } from "../lib/format.ts";
+import { kindLabel } from "../lib/kinds.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
 import { Placeholder } from "./FileList.tsx";

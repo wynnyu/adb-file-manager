@@ -1,4 +1,4 @@
-import type { Lang, T } from "./i18n/index.tsx";
+import type { Lang, T } from "../i18n/index.tsx";
 
 export function formatSize(n: number) {
   if (n < 1024) return `${n} B`;

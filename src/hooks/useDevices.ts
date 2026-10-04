@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api.ts";
+import { api } from "../lib/api.ts";
 import type { Device, StorageInfo } from "../types.ts";
 
 /** 每 2 秒轮询一次设备列表；当前设备断开后自动切到另一台已连接的设备 */

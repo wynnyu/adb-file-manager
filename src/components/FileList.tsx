@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
-import type { Sort, SortKey } from "../entries.ts";
-import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
-import { kindLabel } from "../kinds.ts";
+import type { Sort, SortKey } from "../lib/entries.ts";
+import { formatDate, formatSize } from "../lib/format.ts";
+import { kindLabel } from "../lib/kinds.ts";
 import type { FileEntry, TreeRow } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { IconButton, spring } from "./ui.tsx";

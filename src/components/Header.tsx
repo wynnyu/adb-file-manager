@@ -1,7 +1,7 @@
 import { FolderUp, Shield, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { formatSize } from "../format.ts";
 import { useT } from "../i18n/index.tsx";
+import { formatSize } from "../lib/format.ts";
 import type { Device, StorageInfo } from "../types.ts";
 import { DeviceSelect } from "./DeviceSelect.tsx";
 import { LanguagePicker } from "./LanguagePicker.tsx";

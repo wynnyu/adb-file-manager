@@ -8,7 +8,7 @@ import "@fontsource/maple-mono/600.css";
 import "./index.css";
 import App from "./App.tsx";
 import { I18nProvider } from "./i18n/index.tsx";
-import { syncFavicon } from "./theme.ts";
+import { syncFavicon } from "./lib/theme.ts";
 
 syncFavicon();
 

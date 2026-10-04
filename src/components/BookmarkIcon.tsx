@@ -23,7 +23,7 @@ import {
   Terminal,
   Video,
 } from "lucide-react";
-import { type BookmarkColor, isImageIcon } from "../bookmarks.ts";
+import { type BookmarkColor, isImageIcon } from "../lib/bookmarks.ts";
 
 /** 书签可选的图标库；键名会存进 localStorage，改名前要考虑旧数据 */
 export const ICON_LIBRARY: Record<string, LucideIcon> = {

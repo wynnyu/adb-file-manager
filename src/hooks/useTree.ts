@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Target } from "../api.ts";
-import { arrange, type Sort } from "../entries.ts";
+import type { Target } from "../lib/api.ts";
+import { arrange, type Sort } from "../lib/entries.ts";
 import type { FileEntry, Listing, TreeRow } from "../types.ts";
 
 /** 列表视图的展开三角：哪些文件夹展开了、逐行展开后的行，以及还在加载的文件夹 */

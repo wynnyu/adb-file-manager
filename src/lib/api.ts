@@ -1,5 +1,5 @@
-import { getLang, tr } from "./i18n/index.tsx";
-import type { Device, FileEntry, RootMethod, StorageInfo } from "./types.ts";
+import { getLang, tr } from "../i18n/index.tsx";
+import type { Device, FileEntry, RootMethod, StorageInfo } from "../types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
 export interface Target {

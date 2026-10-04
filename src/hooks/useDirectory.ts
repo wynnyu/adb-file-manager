@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, type Target } from "../api.ts";
-import { arrange, type Sort } from "../entries.ts";
-import { parentPath } from "../format.ts";
-import { usePref } from "../prefs.ts";
+import { api, type Target } from "../lib/api.ts";
+import { arrange, type Sort } from "../lib/entries.ts";
+import { parentPath } from "../lib/format.ts";
+import { usePref } from "../lib/prefs.ts";
 import type { FileEntry, Listing } from "../types.ts";
 import type { Selection } from "./useSelection.ts";
 

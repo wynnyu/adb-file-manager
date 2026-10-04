@@ -1,7 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import type { Target } from "./api.ts";
-import type { Bookmark } from "./bookmarks.ts";
 import { ColumnView } from "./components/ColumnView.tsx";
 import { ContextMenu, type MenuState } from "./components/ContextMenu.tsx";
 import { Dialog, type DialogState } from "./components/Dialog.tsx";
@@ -19,8 +17,6 @@ import { Toolbar } from "./components/Toolbar.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
 import { UsageTip } from "./components/UsageTip.tsx";
 import { spring } from "./components/ui.tsx";
-import type { Sort, SortKey } from "./entries.ts";
-import { parentPath } from "./format.ts";
 import { useBookmarks } from "./hooks/useBookmarks.tsx";
 import { useClipboard } from "./hooks/useClipboard.ts";
 import { useDevices, useStorage } from "./hooks/useDevices.ts";
@@ -34,8 +30,12 @@ import { useTransfers } from "./hooks/useTransfers.ts";
 import { useTree } from "./hooks/useTree.ts";
 import { useDropUpload, useUploadPicker } from "./hooks/useUploadSources.tsx";
 import { useT } from "./i18n/index.tsx";
-import { backgroundMenu, bookmarkMenu, itemMenu } from "./menus.tsx";
-import { usePref } from "./prefs.ts";
+import type { Target } from "./lib/api.ts";
+import type { Bookmark } from "./lib/bookmarks.ts";
+import type { Sort, SortKey } from "./lib/entries.ts";
+import { parentPath } from "./lib/format.ts";
+import { backgroundMenu, bookmarkMenu, itemMenu } from "./lib/menus.tsx";
+import { usePref } from "./lib/prefs.ts";
 import type { FileEntry, ViewMode } from "./types.ts";
 
 export default function App() {

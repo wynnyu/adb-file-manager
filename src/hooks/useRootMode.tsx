@@ -1,9 +1,9 @@
 import { ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, onRootLost } from "../api.ts";
 import type { DialogState } from "../components/Dialog.tsx";
 import { useI18n } from "../i18n/index.tsx";
-import { loadPref, savePref } from "../prefs.ts";
+import { api, onRootLost } from "../lib/api.ts";
+import { loadPref, savePref } from "../lib/prefs.ts";
 import type { Flash } from "./useToast.ts";
 
 /**

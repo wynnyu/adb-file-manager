@@ -1,9 +1,9 @@
 import { FolderOpen, Loader2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent } from "react";
-import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
-import { kindLabel } from "../kinds.ts";
+import { formatDate, formatSize } from "../lib/format.ts";
+import { kindLabel } from "../lib/kinds.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { Placeholder } from "./FileList.tsx";

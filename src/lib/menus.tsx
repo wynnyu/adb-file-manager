@@ -14,12 +14,12 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import type { MenuItem } from "../components/ContextMenu.tsx";
+import { VIEWS } from "../components/ViewSwitch.tsx";
+import type { T } from "../i18n/index.tsx";
+import type { Clip, FileEntry, ViewMode } from "../types.ts";
 import type { Bookmark } from "./bookmarks.ts";
-import type { MenuItem } from "./components/ContextMenu.tsx";
-import { VIEWS } from "./components/ViewSwitch.tsx";
 import { MOD } from "./entries.ts";
-import type { T } from "./i18n/index.tsx";
-import type { Clip, FileEntry, ViewMode } from "./types.ts";
 
 /** 右键菜单用到的状态和操作 */
 export interface MenuActions {

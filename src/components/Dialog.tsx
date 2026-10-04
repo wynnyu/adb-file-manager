@@ -1,8 +1,8 @@
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import type { BookmarkFields } from "../bookmarks.ts";
 import { useT } from "../i18n/index.tsx";
+import type { BookmarkFields } from "../lib/bookmarks.ts";
 import { BookmarkForm, BookmarkPreview } from "./BookmarkForm.tsx";
 import { PillButton, spring } from "./ui.tsx";
 

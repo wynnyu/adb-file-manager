@@ -1,5 +1,5 @@
 import { type ChangeEvent, type DragEvent, useRef, useState } from "react";
-import { collectDropped, fromInput, type UploadItem } from "../drop.ts";
+import { collectDropped, fromInput, type UploadItem } from "../lib/drop.ts";
 
 type Upload = (items: UploadItem[], dest?: string) => Promise<void>;
 

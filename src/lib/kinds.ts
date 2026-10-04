@@ -1,6 +1,6 @@
-import type { T } from "./i18n/index.tsx";
-import type { MessageKey } from "./i18n/zh.ts";
-import type { FileEntry } from "./types.ts";
+import type { T } from "../i18n/index.tsx";
+import type { MessageKey } from "../i18n/zh.ts";
+import type { FileEntry } from "../types.ts";
 
 /** 扩展名 → 访达式的“种类”文案，文案里的 {ext} 换成扩展名的显示名 */
 const KINDS: [RegExp, MessageKey][] = [

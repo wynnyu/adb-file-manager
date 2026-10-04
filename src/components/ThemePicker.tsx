@@ -11,7 +11,7 @@ import {
   storedFlavor,
   switchTheme,
   type Theme,
-} from "../theme.ts";
+} from "../lib/theme.ts";
 import { spring } from "./ui.tsx";
 
 /** 扩散起点：鼠标点击取指针位置，键盘触发（detail 为 0）取按钮中心 */
