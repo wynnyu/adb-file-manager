@@ -23,3 +23,14 @@ README 和 CHANGELOG 使用书面语，避免口语化表达：
 - 提示和错误信息说明发生了什么以及如何处理，不寒暄、不拟人，不使用感叹号和 emoji
 - 中文不使用“你”“您”称呼用户；英文尽量避免 you / your，不使用缩写
 - 中英文含义一致，同一概念在全部文案中使用同一术语
+
+## Context Sniper
+
+本仓库已接入 `context-sniper` MCP 服务器。按"是否已经知道代码在哪"选工具：
+
+- 已知文件、标识符或确切字符串：直接用自带的 `Grep` / `Glob` / `Read`。有针对性的 `Grep` 比 `search_code` 省。
+- 不知道代码在哪，或在探索不熟悉的部分：先用 `search_code`，再用 `read_snippet` 扩展。一次回复不超过 6000 字符（约 1.5k token），模糊的查询也不会像宽松的 `Grep` 或整个 `Read` 文件那样淹没上下文。命中告诉你文件之后，换回 `Grep` / `Read`。工具（`root` 一律传本仓库的绝对路径）：
+- `index_repo(root)` —— `.context-index/` 不存在时运行；`git pull`、大改或修改 `.csignore` 之后再运行一次。如果片段的行号和文件对不上，说明索引过期，重建。
+- `search_code(root, query, topK?, maxChars?)` —— 关键词检索（BM25），不是语义检索。用代码里可能出现的词来查，不要写整句；一个词能找到包含它的驼峰标识符，`where is the` 这类疑问词会被忽略。先用默认参数；查询范围宽时调高 `topK`，只有尾注列出的被省略命中你确实需要时才调高 `maxChars`。
+- `read_snippet(root, path, startLine, endLine)` —— 有界读取，最多 300 行。搜索结果里每个省略标记都写明了精确调用参数，照抄即可，不要读整个文件。
+- `run_test_filtered(root, command)` —— `npm_test` / `pnpm_test` / `pytest`，只返回和失败相关的行。改完用它验证，不要直接跑原始测试命令。
