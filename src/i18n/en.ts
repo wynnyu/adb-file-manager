@@ -25,8 +25,10 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "toolbar.newFolder": "New folder",
   "toolbar.uploadFolder": "Upload folder",
   "toolbar.upload": "Upload",
-  "toolbar.hint": "{n} items. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
-  "toolbar.hint_one": "{n} item. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
+  "toolbar.hint":
+    "{n} items. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
+  "toolbar.hint_one":
+    "{n} item. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
   "toolbar.dropHere": "Drop to upload to <path>{path}</path>",
   "toolbar.free": "{size} free",
 
@@ -74,7 +76,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "nodevice.step2.title": "Connect with a USB cable",
   "nodevice.step2.text": "The USB mode can be set to “Charging only”; adb does not rely on MTP file transfer.",
   "nodevice.step3.title": "Authorize debugging on the phone",
-  "nodevice.step3.text": "When the debugging authorization prompt appears, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
+  "nodevice.step3.text":
+    "When the debugging authorization prompt appears, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
   "nodevice.unauthorized": "Allow USB debugging on your phone",
   "nodevice.connect": "Connect a device",
   "nodevice.waiting": "Waiting for a device…",

@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { loadPref, savePref } from "../prefs.ts";
 import { en } from "./en.ts";
-import { zh, type MessageKey } from "./zh.ts";
+import { type MessageKey, zh } from "./zh.ts";
 
 export const LANGS = [
   { id: "zh", name: "中文" },

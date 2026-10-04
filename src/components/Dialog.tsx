@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/index.tsx";
 import { PillButton, spring } from "./ui.tsx";
 
 export type DialogState =
-  | { kind: "prompt"; title: string; icon: ReactNode; initial: string; confirm: string; onSubmit: (v: string) => Promise<void> }
+  | {
+      kind: "prompt";
+      title: string;
+      icon: ReactNode;
+      initial: string;
+      confirm: string;
+      onSubmit: (v: string) => Promise<void>;
+    }
   | {
       kind: "confirm";
       title: string;
@@ -165,7 +172,9 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
                 transition={{ duration: countdown, ease: "linear" }}
               />
             )}
-            <span className="relative">{busy ? t("common.processing") : left > 0 ? `${state.confirm}（${left}）` : state.confirm}</span>
+            <span className="relative">
+              {busy ? t("common.processing") : left > 0 ? `${state.confirm}（${left}）` : state.confirm}
+            </span>
           </PillButton>
         </div>
       </motion.form>

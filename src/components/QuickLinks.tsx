@@ -1,7 +1,7 @@
+import { Camera, Download, FileText, Home, Image, Music, Video } from "lucide-react";
 import { motion } from "motion/react";
 import { useT } from "../i18n/index.tsx";
 import type { MessageKey } from "../i18n/zh.ts";
-import { Camera, Download, FileText, Home, Image, Music, Video } from "lucide-react";
 
 const links: { label: MessageKey; path: string; Icon: typeof Home; color: string }[] = [
   { label: "quick.internal", path: "/sdcard", Icon: Home, color: "text-accent" },
@@ -36,9 +36,7 @@ export function QuickLinks({ path, onNavigate }: { path: string; onNavigate: (p:
                 className="absolute inset-0 rounded-full bg-surface1"
               />
             )}
-            <span
-              className={`relative grid size-6 place-items-center rounded-[50%] bg-crust/60 ${color}`}
-            >
+            <span className={`relative grid size-6 place-items-center rounded-[50%] bg-crust/60 ${color}`}>
               <Icon className="size-3.5" />
             </span>
             <span className="relative">{t(label)}</span>

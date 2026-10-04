@@ -248,8 +248,12 @@ body {
 }
 
 @keyframes indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(250%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
 }
 .animate-indeterminate {
   animation: indeterminate 1.2s ease-in-out infinite;
@@ -280,8 +284,12 @@ body {
   mix-blend-mode: normal;
 }
 @keyframes theme-reveal {
-  from { clip-path: circle(0 at var(--reveal-x) var(--reveal-y)); }
-  to { clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y)); }
+  from {
+    clip-path: circle(0 at var(--reveal-x) var(--reveal-y));
+  }
+  to {
+    clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y));
+  }
 }
 /* 过渡层默认盖在整页上吃掉指针事件：期间没有 hover，点击落到 <html> 上会被当成点了菜单外而关掉菜单。
    放行给下面的真实 DOM，新画面快照是实时的，hover 也能看到 */

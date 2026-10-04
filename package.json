@@ -36,7 +36,11 @@
     "build": "tsc -b && vite build && tsc -p tsconfig.server.json",
     "start": "node dist/server/index.js",
     "typecheck": "tsc -b",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "fix": "biome check --write ."
   },
   "dependencies": {
     "archiver": "^8.0.0",
@@ -44,6 +48,7 @@
     "multer": "^2.4.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@fontsource/maple-mono": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/archiver": "^8.0.0",

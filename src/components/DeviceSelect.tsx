@@ -2,9 +2,9 @@ import { ChevronDown, Smartphone } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/index.tsx";
-import { spring } from "./ui.tsx";
 import type { MessageKey } from "../i18n/zh.ts";
 import type { Device } from "../types.ts";
+import { spring } from "./ui.tsx";
 
 const stateStyle: Record<string, [MessageKey, string]> = {
   device: ["device.device", "bg-green"],
@@ -18,7 +18,10 @@ function Dot({ state }: { state: string }) {
   return (
     <span className="relative flex size-2.5">
       {state === "device" && (
-        <span key={state} className={`absolute inset-0 animate-ping rounded-[50%] opacity-60 [animation-iteration-count:1] ${color}`} />
+        <span
+          key={state}
+          className={`absolute inset-0 animate-ping rounded-[50%] opacity-60 [animation-iteration-count:1] ${color}`}
+        />
       )}
       <span className={`relative size-2.5 rounded-[50%] ${color}`} />
     </span>
@@ -87,41 +90,42 @@ export function DeviceSelect({
       </motion.button>
 
       <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: -8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: -6, transition: { duration: 0.12 } }}
-          transition={spring}
-          style={{ originX: 1, originY: 0 }}
-          className="absolute right-0 z-30 mt-2 flex w-72 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0">
-          {devices.length === 0 && (
-            <div className="rounded-full px-4 py-3 text-sm text-subtext0">{t("device.noneDetected")}</div>
-          )}
-          {devices.map((d) => (
-            <button
-              key={d.serial}
-              type="button"
-              onClick={() => {
-                onChange(d.serial);
-                setOpen(false);
-              }}
-              className={`flex items-center gap-3 rounded-full p-1.5 pr-4 text-left transition-colors hover:bg-surface0 ${
-                d.serial === serial ? "bg-surface0" : ""
-              }`}
-            >
-              <span className="grid size-9 place-items-center rounded-[50%] bg-surface1 text-subtext1">
-                <Smartphone className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold">{d.name}</span>
-                <span className="block truncate font-mono text-[11px] text-muted">{d.serial}</span>
-              </span>
-              <Dot state={d.state} />
-            </button>
-          ))}
-        </motion.div>
-      )}
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -6, transition: { duration: 0.12 } }}
+            transition={spring}
+            style={{ originX: 1, originY: 0 }}
+            className="absolute right-0 z-30 mt-2 flex w-72 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
+          >
+            {devices.length === 0 && (
+              <div className="rounded-full px-4 py-3 text-sm text-subtext0">{t("device.noneDetected")}</div>
+            )}
+            {devices.map((d) => (
+              <button
+                key={d.serial}
+                type="button"
+                onClick={() => {
+                  onChange(d.serial);
+                  setOpen(false);
+                }}
+                className={`flex items-center gap-3 rounded-full p-1.5 pr-4 text-left transition-colors hover:bg-surface0 ${
+                  d.serial === serial ? "bg-surface0" : ""
+                }`}
+              >
+                <span className="grid size-9 place-items-center rounded-[50%] bg-surface1 text-subtext1">
+                  <Smartphone className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold">{d.name}</span>
+                  <span className="block truncate font-mono text-[11px] text-muted">{d.serial}</span>
+                </span>
+                <Dot state={d.state} />
+              </button>
+            ))}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

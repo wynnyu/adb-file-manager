@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type MenuItem =
   | {
@@ -102,6 +102,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
     >
       {menu.items.map((item, i) =>
         item === "sep" ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 分隔线是静态的，没有别的可用作 key
           <div key={`sep-${i}`} className="mx-3 my-1 h-px shrink-0 bg-surface0" />
         ) : (
           <button
@@ -125,7 +126,9 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
                 {item.checked && <Check className="size-4" strokeWidth={3} />}
               </span>
             )}
-            <span className={`grid size-4 shrink-0 place-items-center ${item.danger ? "" : "text-subtext0"}`}>{item.icon}</span>
+            <span className={`grid size-4 shrink-0 place-items-center ${item.danger ? "" : "text-subtext0"}`}>
+              {item.icon}
+            </span>
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
             {item.shortcut && <span className="shrink-0 pl-4 font-mono text-xs text-muted">{item.shortcut}</span>}
           </button>

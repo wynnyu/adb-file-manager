@@ -1,4 +1,4 @@
-import { motion, type HTMLMotionProps } from "motion/react";
+import { type HTMLMotionProps, motion } from "motion/react";
 import type { ReactNode } from "react";
 
 type Tone = "default" | "accent" | "danger" | "ghost";

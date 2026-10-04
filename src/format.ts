@@ -17,7 +17,10 @@ const dtfs = new Map<string, Intl.DateTimeFormat>();
 function dtf(locale: string, opts: Intl.DateTimeFormatOptions) {
   const key = locale + JSON.stringify(opts);
   let f = dtfs.get(key);
-  if (!f) dtfs.set(key, (f = new Intl.DateTimeFormat(locale, opts)));
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, opts);
+    dtfs.set(key, f);
+  }
   return f;
 }
 
@@ -36,7 +39,9 @@ export function formatDate(sec: number, lang: Lang, t: T, long = false) {
   const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
   if (days === 0) return t("date.today", { time });
   if (days === 1) return t("date.yesterday", { time });
-  const date = dtf(locale, { year: "numeric", month: long ? "long" : zh ? "numeric" : "short", day: "numeric" }).format(d);
+  const date = dtf(locale, { year: "numeric", month: long ? "long" : zh ? "numeric" : "short", day: "numeric" }).format(
+    d,
+  );
   return t("date.at", { date, time });
 }
 

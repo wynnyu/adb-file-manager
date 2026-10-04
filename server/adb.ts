@@ -141,7 +141,12 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
     throw new AdbError(t(ctx.root ? "noReadRoot" : "noRead", { path: dir }), 403);
   }
   const [statPart, linkPart = ""] = out.split(LINK_MARK);
-  const linkDirs = new Set(linkPart.split("\n").map((s) => s.trim()).filter(Boolean));
+  const linkDirs = new Set(
+    linkPart
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
   const entries: FileEntry[] = [];
   for (const line of statPart.split("\n")) {
     if (!line) continue;
@@ -205,10 +210,7 @@ export async function pull(ctx: Ctx, remote: string, local: string) {
   }
   const stage = stagingDir();
   try {
-    await checked(
-      ctx,
-      `mkdir -p ${q(stage)} && cp -R ${q(remote)} ${q(stage)}/ && chmod -R a+rX ${q(stage)}`,
-    );
+    await checked(ctx, `mkdir -p ${q(stage)} && cp -R ${q(remote)} ${q(stage)}/ && chmod -R a+rX ${q(stage)}`);
     await run(["-s", ctx.serial, "pull", "-a", `${stage}/${path.basename(remote)}`, local]);
   } finally {
     await shell(ctx, `rm -rf ${q(stage)}`).catch(() => {});

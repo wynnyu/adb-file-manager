@@ -15,7 +15,11 @@ export const VIEWS: { id: ViewMode; Icon: typeof List }[] = [
 export function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   const t = useT();
   return (
-    <div role="radiogroup" aria-label={t("view.title")} className="flex h-10 shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1">
+    <div
+      role="radiogroup"
+      aria-label={t("view.title")}
+      className="flex h-10 shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1"
+    >
       {VIEWS.map(({ id, Icon }) => {
         const active = view === id;
         return (
@@ -34,7 +38,11 @@ export function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: V
             }`}
           >
             {active && (
-              <motion.span layoutId="view-active" transition={spring} className="absolute inset-0 rounded-full bg-accent" />
+              <motion.span
+                layoutId="view-active"
+                transition={spring}
+                className="absolute inset-0 rounded-full bg-accent"
+              />
             )}
             <Icon className="relative size-4" />
           </motion.button>

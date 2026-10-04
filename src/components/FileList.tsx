@@ -1,9 +1,20 @@
-import { ArrowDown, Check, ChevronRight, CornerLeftUp, Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import {
+  ArrowDown,
+  Check,
+  ChevronRight,
+  CornerLeftUp,
+  Download,
+  FolderOpen,
+  Loader2,
+  Pencil,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
+import type { Sort, SortKey } from "../entries.ts";
 import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
-import type { Sort, SortKey } from "../entries.ts";
 import { kindLabel } from "../kinds.ts";
 import type { FileEntry, TreeRow } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
@@ -43,7 +54,19 @@ interface Props {
   onContextMenu: (e: MouseEvent, entry: FileEntry) => void;
 }
 
-function SortHeader({ label, k, sort, onSort, className = "" }: { label: string; k: SortKey; sort: Sort; onSort: (k: SortKey) => void; className?: string }) {
+function SortHeader({
+  label,
+  k,
+  sort,
+  onSort,
+  className = "",
+}: {
+  label: string;
+  k: SortKey;
+  sort: Sort;
+  onSort: (k: SortKey) => void;
+  className?: string;
+}) {
   const active = sort.key === k;
   return (
     <button
@@ -68,7 +91,15 @@ function SortHeader({ label, k, sort, onSort, className = "" }: { label: string;
   );
 }
 
-export function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { icon: ReactNode; text: string; tone?: string }) {
+export function Placeholder({
+  icon,
+  text,
+  tone = "bg-surface0 text-muted",
+}: {
+  icon: ReactNode;
+  text: string;
+  tone?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -90,10 +121,34 @@ export function FileList(props: Props) {
   return (
     <div className="flex flex-col gap-1">
       <div className={`${cols} border-b border-surface0 px-2 pb-1 text-xs font-bold text-muted`}>
-        <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-[4.75rem]" />
-        <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden justify-self-start sm:flex" />
-        <SortHeader label={t("files.size")} k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
-        <SortHeader label={t("files.kind")} k="kind" sort={sort} onSort={onSort} className="hidden justify-self-start lg:flex" />
+        <SortHeader
+          label={t("files.name")}
+          k="name"
+          sort={sort}
+          onSort={onSort}
+          className="justify-self-start pl-[4.75rem]"
+        />
+        <SortHeader
+          label={t("files.mtime")}
+          k="mtime"
+          sort={sort}
+          onSort={onSort}
+          className="hidden justify-self-start sm:flex"
+        />
+        <SortHeader
+          label={t("files.size")}
+          k="size"
+          sort={sort}
+          onSort={onSort}
+          className="hidden justify-self-end sm:flex"
+        />
+        <SortHeader
+          label={t("files.kind")}
+          k="kind"
+          sort={sort}
+          onSort={onSort}
+          className="hidden justify-self-start lg:flex"
+        />
       </div>
 
       {onUp && (
@@ -104,13 +159,13 @@ export function FileList(props: Props) {
         >
           <div className="flex min-w-0 items-center gap-3">
             <span className="-mr-2 w-4 shrink-0" />
-            <span
-              className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent"
-            >
+            <span className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent">
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
             <span className="font-mono font-semibold text-subtext1">..</span>
-            <span className="hidden text-xs text-muted transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">{t("files.goUp")}</span>
+            <span className="hidden text-xs text-muted transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">
+              {t("files.goUp")}
+            </span>
           </div>
         </div>
       )}
@@ -120,7 +175,11 @@ export function FileList(props: Props) {
       ) : (
         <div key={dir} className="flex flex-col gap-1">
           {loading && rows.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="flex justify-center py-20 text-muted">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.15 } }}
+              className="flex justify-center py-20 text-muted"
+            >
               <Loader2 className="size-7 animate-spin" />
             </motion.div>
           )}
@@ -181,7 +240,10 @@ export function FileList(props: Props) {
                         {pending.has(entry.path) ? (
                           <Loader2 className="size-3.5 animate-spin" />
                         ) : (
-                          <ChevronRight className={`size-3.5 transition-transform duration-150 ${open ? "rotate-90" : ""}`} strokeWidth={2.6} />
+                          <ChevronRight
+                            className={`size-3.5 transition-transform duration-150 ${open ? "rotate-90" : ""}`}
+                            strokeWidth={2.6}
+                          />
                         )}
                       </button>
                     ) : (
@@ -217,7 +279,9 @@ export function FileList(props: Props) {
                       </AnimatePresence>
                     </button>
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate font-semibold ${entry.name.startsWith(".") ? "text-muted" : ""}`}>
+                      <span
+                        className={`block truncate font-semibold ${entry.name.startsWith(".") ? "text-muted" : ""}`}
+                      >
                         {entry.name}
                       </span>
                       <span className="block truncate text-xs text-muted sm:hidden">
@@ -230,18 +294,35 @@ export function FileList(props: Props) {
                       onClick={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => e.stopPropagation()}
                     >
-                      <IconButton tone="ghost" className="size-9" title={t("files.download")} onClick={() => props.onDownload(entry)}>
+                      <IconButton
+                        tone="ghost"
+                        className="size-9"
+                        title={t("files.download")}
+                        onClick={() => props.onDownload(entry)}
+                      >
                         <Download className="size-4" />
                       </IconButton>
-                      <IconButton tone="ghost" className="size-9" title={t("files.rename")} onClick={() => props.onRename(entry)}>
+                      <IconButton
+                        tone="ghost"
+                        className="size-9"
+                        title={t("files.rename")}
+                        onClick={() => props.onRename(entry)}
+                      >
                         <Pencil className="size-4" />
                       </IconButton>
-                      <IconButton tone="ghost" className="size-9 hover:!bg-red/15 hover:!text-red" title={t("files.delete")} onClick={() => props.onDelete(entry)}>
+                      <IconButton
+                        tone="ghost"
+                        className="size-9 hover:!bg-red/15 hover:!text-red"
+                        title={t("files.delete")}
+                        onClick={() => props.onDelete(entry)}
+                      >
                         <Trash2 className="size-4" />
                       </IconButton>
                     </div>
                   </div>
-                  <span className="hidden truncate px-3 text-sm text-subtext0 tabular-nums sm:block">{formatDate(entry.mtime, lang, t)}</span>
+                  <span className="hidden truncate px-3 text-sm text-subtext0 tabular-nums sm:block">
+                    {formatDate(entry.mtime, lang, t)}
+                  </span>
                   <span className="hidden px-3 text-right text-sm text-subtext0 tabular-nums sm:block">
                     {entry.isDir ? "--" : formatSize(entry.size)}
                   </span>

@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-import express, { type NextFunction, type Request, type Response } from "express";
-import multer from "multer";
-import { ZipArchive } from "archiver";
 import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import fs from "node:fs/promises";
@@ -9,6 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import posix from "node:path/posix";
 import { fileURLToPath } from "node:url";
+import { ZipArchive } from "archiver";
+import express, { type NextFunction, type Request, type Response } from "express";
+import multer from "multer";
 import * as adb from "./adb.ts";
 import { langMiddleware, msg } from "./i18n.ts";
 
@@ -41,7 +41,10 @@ app.use((req, res, next) => {
   }
   const origin = req.headers.origin;
   const site = req.headers["sec-fetch-site"];
-  if ((origin !== undefined && !isLocalOrigin(origin)) || (site !== undefined && site !== "same-origin" && site !== "none")) {
+  if (
+    (origin !== undefined && !isLocalOrigin(origin)) ||
+    (site !== undefined && site !== "same-origin" && site !== "none")
+  ) {
     res.status(403).json({ error: "forbidden origin" });
     return;
   }

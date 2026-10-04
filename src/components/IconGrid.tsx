@@ -2,8 +2,8 @@ import { FolderOpen, Loader2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent } from "react";
 import { formatDate, formatSize } from "../format.ts";
-import { kindLabel } from "../kinds.ts";
 import { useI18n } from "../i18n/index.tsx";
+import { kindLabel } from "../kinds.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { Placeholder } from "./FileList.tsx";
@@ -31,11 +31,17 @@ export function IconGrid({ dir, entries, loading, error, selected, cut, onSelect
   return (
     <div key={dir}>
       {loading && entries.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="flex justify-center py-20 text-muted">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { delay: 0.15 } }}
+          className="flex justify-center py-20 text-muted"
+        >
           <Loader2 className="size-7 animate-spin" />
         </motion.div>
       )}
-      {!loading && entries.length === 0 && <Placeholder icon={<FolderOpen className="size-7" />} text={t("files.empty")} />}
+      {!loading && entries.length === 0 && (
+        <Placeholder icon={<FolderOpen className="size-7" />} text={t("files.empty")} />
+      )}
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-1 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
         <AnimatePresence mode="popLayout">

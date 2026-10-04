@@ -13,7 +13,17 @@ import {
 } from "lucide-react";
 import type { FileEntry } from "../types.ts";
 
-export type FileKind = "folder" | "link" | "image" | "video" | "audio" | "apk" | "archive" | "document" | "code" | "file";
+export type FileKind =
+  | "folder"
+  | "link"
+  | "image"
+  | "video"
+  | "audio"
+  | "apk"
+  | "archive"
+  | "document"
+  | "code"
+  | "file";
 
 const groups: [RegExp, FileKind, typeof File, string][] = [
   [/\.(jpe?g|png|gif|webp|heic|heif|bmp|svg|avif|dng|raw)$/i, "image", FileImage, "bg-pink/15 text-pink"],
@@ -22,7 +32,12 @@ const groups: [RegExp, FileKind, typeof File, string][] = [
   [/\.(apk|apks|xapk|aab)$/i, "apk", Package, "bg-green/15 text-green"],
   [/\.(zip|rar|7z|tar|gz|tgz|xz|bz2|zst)$/i, "archive", FileArchive, "bg-yellow/15 text-yellow"],
   [/\.(txt|md|pdf|docx?|xlsx?|pptx?|csv|log|epub)$/i, "document", FileText, "bg-blue/15 text-blue"],
-  [/\.(json|xml|ya?ml|js|ts|py|sh|html|css|kt|java|c|cpp|rs|go|toml|ini|conf)$/i, "code", FileCode, "bg-sapphire/15 text-sapphire"],
+  [
+    /\.(json|xml|ya?ml|js|ts|py|sh|html|css|kt|java|c|cpp|rs|go|toml|ini|conf)$/i,
+    "code",
+    FileCode,
+    "bg-sapphire/15 text-sapphire",
+  ],
 ];
 
 function classify(entry: FileEntry): { kind: FileKind; Icon: typeof File; color: string } {
@@ -38,9 +53,20 @@ function classify(entry: FileEntry): { kind: FileKind; Icon: typeof File; color:
 
 /** 浏览器能直接显示、分栏预览里可以加载缩略图的图片 */
 export const isPreviewable = (entry: FileEntry) =>
-  !entry.isDir && entry.size > 0 && entry.size <= 30 * 1024 * 1024 && /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(entry.name);
+  !entry.isDir &&
+  entry.size > 0 &&
+  entry.size <= 30 * 1024 * 1024 &&
+  /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(entry.name);
 
-export function FileIcon({ entry, size = "size-10", stroke = 2.2 }: { entry: FileEntry; size?: string; stroke?: number }) {
+export function FileIcon({
+  entry,
+  size = "size-10",
+  stroke = 2.2,
+}: {
+  entry: FileEntry;
+  size?: string;
+  stroke?: number;
+}) {
   const { Icon, color } = classify(entry);
   return (
     <span className={`grid ${size} shrink-0 place-items-center rounded-[50%] ${color}`}>

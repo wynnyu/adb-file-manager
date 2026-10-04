@@ -1,9 +1,9 @@
 import { Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { api, type Target } from "../api.ts";
 import { formatDate, formatSize } from "../format.ts";
-import { useI18n, type Lang } from "../i18n/index.tsx";
+import { type Lang, useI18n } from "../i18n/index.tsx";
 import { kindLabel } from "../kinds.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
@@ -39,15 +39,18 @@ export function GalleryView(props: Props) {
     entries.find((e) => selected.has(e.path));
 
   // 画廊里总有一项在舞台上：没选中任何东西时选中第一项
+  // biome-ignore lint/correctness/useExhaustiveDependencies: props.onFocus 每次渲染都是新函数，只在选中状态变化时才触发
   useEffect(() => {
     if (!current && !loading && entries.length) props.onFocus(entries[0]);
   }, [current, loading, entries]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 只在选中项的路径变化时才滚动，current 对象本身会随列表刷新而变
   useEffect(() => {
     const el = strip.current;
     const item = current && el?.querySelector<HTMLElement>(`[data-entry="${CSS.escape(current.path)}"]`);
     // 只滚缩略图条本身；scrollIntoView 会连带滚动整个页面
-    if (el && item) el.scrollTo({ left: item.offsetLeft - (el.clientWidth - item.offsetWidth) / 2, behavior: "smooth" });
+    if (el && item)
+      el.scrollTo({ left: item.offsetLeft - (el.clientWidth - item.offsetWidth) / 2, behavior: "smooth" });
   }, [current?.path]);
 
   // 竖向滚轮也能横向翻缩略图
@@ -73,7 +76,11 @@ export function GalleryView(props: Props) {
           {error ? (
             <Placeholder icon={<TriangleAlert className="size-7" />} text={error} tone="bg-red/15 text-red" />
           ) : loading && entries.length === 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="text-muted">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.15 } }}
+              className="text-muted"
+            >
               <Loader2 className="size-7 animate-spin" />
             </motion.div>
           ) : entries.length === 0 ? (
@@ -127,7 +134,11 @@ export function GalleryView(props: Props) {
                 onDoubleClick={() => props.onOpen(entry)}
                 onContextMenu={(e) => props.onContextMenu(e, entry)}
                 className={`grid size-20 shrink-0 cursor-default place-items-center overflow-hidden rounded-2xl p-1.5 transition-colors select-none ${
-                  isCurrent ? "bg-surface1 ring-2 ring-accent" : isSel ? "bg-surface1/70 ring-1 ring-accent/50" : "hover:bg-surface0/70"
+                  isCurrent
+                    ? "bg-surface1 ring-2 ring-accent"
+                    : isSel
+                      ? "bg-surface1/70 ring-1 ring-accent/50"
+                      : "hover:bg-surface0/70"
                 } ${cut.has(entry.path) ? "opacity-50" : ""}`}
               >
                 <Thumb
@@ -145,7 +156,13 @@ export function GalleryView(props: Props) {
       </div>
 
       {current && (
-        <Info entry={current} lang={lang} onDownload={props.onDownload} onRename={props.onRename} onDelete={props.onDelete} />
+        <Info
+          entry={current}
+          lang={lang}
+          onDownload={props.onDownload}
+          onRename={props.onRename}
+          onDelete={props.onDelete}
+        />
       )}
     </div>
   );
@@ -200,7 +217,8 @@ function Info({
     [t("gallery.mtime"), formatDate(entry.mtime, lang, t, true)],
     [t("gallery.atime"), formatDate(entry.atime, lang, t, true)],
   ];
-  if (!entry.isDir && entry.size >= 1024) rows.push([t("preview.size"), t("gallery.bytes", { n: entry.size.toLocaleString() })]);
+  if (!entry.isDir && entry.size >= 1024)
+    rows.push([t("preview.size"), t("gallery.bytes", { n: entry.size.toLocaleString() })]);
   rows.push([t("gallery.where"), entry.path, "font-mono break-all text-left"]);
 
   return (

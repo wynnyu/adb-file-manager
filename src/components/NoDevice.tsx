@@ -1,8 +1,8 @@
 import { Cable, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import { motion } from "motion/react";
-import type { Device } from "../types.ts";
 import { useT } from "../i18n/index.tsx";
 import type { MessageKey } from "../i18n/zh.ts";
+import type { Device } from "../types.ts";
 import { spring } from "./ui.tsx";
 
 const steps: { Icon: typeof Smartphone; title: MessageKey; text: MessageKey }[] = [
@@ -32,7 +32,11 @@ export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: s
         <p className="flex items-center justify-center gap-2 text-subtext0">
           <Loader2 className="size-4 animate-spin" /> {t("nodevice.waiting")}
         </p>
-        {adbError && <p className="mx-auto rounded-full bg-red/15 px-4 py-2 text-sm text-red">{t("nodevice.adbError", { error: adbError })}</p>}
+        {adbError && (
+          <p className="mx-auto rounded-full bg-red/15 px-4 py-2 text-sm text-red">
+            {t("nodevice.adbError", { error: adbError })}
+          </p>
+        )}
       </div>
       <ol className="grid w-full max-w-4xl gap-3 md:grid-cols-3">
         {steps.map(({ Icon, title, text }, i) => (

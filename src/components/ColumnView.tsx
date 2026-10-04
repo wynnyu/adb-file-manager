@@ -1,12 +1,12 @@
 import { ChevronRight, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { type MouseEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api, type Target } from "../api.ts";
 import { arrange, type Sort } from "../entries.ts";
 import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
-import type { FileEntry, Listing } from "../types.ts";
 import { kindLabel } from "../kinds.ts";
+import type { FileEntry, Listing } from "../types.ts";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
 import { IconButton } from "./ui.tsx";
 
@@ -62,11 +62,13 @@ export function ColumnView(props: Props) {
     setCache((c) => ((c.get(dir)?.rev ?? -1) > listing.rev ? c : new Map(c).set(dir, listing)));
 
   // 当前目录加载好了就记下来
+  // biome-ignore lint/correctness/useExhaustiveDependencies: put 每次渲染都是新函数，只在数据变化时才记录
   useEffect(() => {
     if (rawDir && !error) put(rawDir, { rev, entries: raw });
   }, [rawDir, raw, error, rev]);
 
   // 上层各栏和下一栏：缓存里没有或已过期的才去拉
+  // biome-ignore lint/correctness/useExhaustiveDependencies: put 每次渲染都是新函数，只在 othersKey 或 rev 变化时才拉取
   useEffect(() => {
     for (const dir of othersKey ? othersKey.split("\n") : []) {
       const key = `${dir}@${rev}`;
@@ -86,6 +88,7 @@ export function ColumnView(props: Props) {
   const childEntries = childListing?.entries ? arrange(childListing.entries, sort, showHidden) : [];
 
   // 新的一栏出现时滚到最右边
+  // biome-ignore lint/correctness/useExhaustiveDependencies: path 和 preview 路径是触发条件，变了就要滚动
   useLayoutEffect(() => {
     const el = scroller.current;
     el?.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
@@ -142,15 +145,17 @@ export function ColumnView(props: Props) {
           onBackgroundClick={() => props.onNavigate(child)}
           onContextMenu={(e, entry) => props.onContextMenu(e, entry, child)}
         />
-      ) : preview && (
-        <Preview
-          key={preview.path}
-          target={target}
-          entry={preview}
-          onDownload={props.onDownload}
-          onRename={props.onRename}
-          onDelete={props.onDelete}
-        />
+      ) : (
+        preview && (
+          <Preview
+            key={preview.path}
+            target={target}
+            entry={preview}
+            onDownload={props.onDownload}
+            onRename={props.onRename}
+            onDelete={props.onDelete}
+          />
+        )
       )}
       {/* 余下的空白：点了取消选择、右键是当前目录的菜单，交给外层处理 */}
       <div className="min-w-4 flex-1" />
@@ -178,6 +183,7 @@ interface ColumnProps {
 function Column(p: ColumnProps) {
   const activeRow = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activePath 和 loading 是触发条件，变了就要滚动
   useEffect(() => {
     activeRow.current?.scrollIntoView({ block: "nearest" });
   }, [p.activePath, p.loading]);
@@ -227,7 +233,9 @@ function Column(p: ColumnProps) {
               } ${p.cut.has(entry.path) ? "opacity-50" : ""}`}
             >
               <FileIcon entry={entry} size="size-7" />
-              <span className={`min-w-0 flex-1 truncate text-sm font-semibold ${!isSel && entry.name.startsWith(".") ? "text-muted" : ""}`}>
+              <span
+                className={`min-w-0 flex-1 truncate text-sm font-semibold ${!isSel && entry.name.startsWith(".") ? "text-muted" : ""}`}
+              >
                 {entry.name}
               </span>
               {entry.isDir && <ChevronRight className={`size-3.5 shrink-0 ${isSel ? "" : "text-overlay1"}`} />}

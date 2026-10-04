@@ -23,14 +23,14 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  type DragEvent,
+  type MouseEvent,
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type DragEvent,
-  type MouseEvent,
-  type RefObject,
 } from "react";
 import { api, onRootLost, type Target } from "./api.ts";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
@@ -41,13 +41,13 @@ import { Dialog, type DialogState } from "./components/Dialog.tsx";
 import { FileList } from "./components/FileList.tsx";
 import { GalleryView } from "./components/GalleryView.tsx";
 import { IconGrid } from "./components/IconGrid.tsx";
-import { VIEWS, ViewSwitch } from "./components/ViewSwitch.tsx";
+import { LanguagePicker } from "./components/LanguagePicker.tsx";
 import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
 import { ThemePicker } from "./components/ThemePicker.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
-import { LanguagePicker } from "./components/LanguagePicker.tsx";
 import { IconButton, PillButton, spring } from "./components/ui.tsx";
+import { VIEWS, ViewSwitch } from "./components/ViewSwitch.tsx";
 import { collectDropped, fromInput, type UploadItem } from "./drop.ts";
 import { arrange, MOD, type Sort, type SortKey } from "./entries.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
@@ -239,6 +239,7 @@ export default function App() {
   const subGen = useRef(0);
 
   // 换了目录或设备就全部收起
+  // biome-ignore lint/correctness/useExhaustiveDependencies: path 和 target 是触发条件，变了就要重置
   useEffect(() => {
     subGen.current++;
     subInflight.current.clear();
@@ -404,7 +405,9 @@ export default function App() {
                   {t.path}
                 </li>
               ))}
-              {targets.length > 4 && <li className="text-xs text-muted">{t("common.moreItems", { n: targets.length - 4 })}</li>}
+              {targets.length > 4 && (
+                <li className="text-xs text-muted">{t("common.moreItems", { n: targets.length - 4 })}</li>
+              )}
             </ul>
           </div>
         ),
@@ -500,21 +503,24 @@ export default function App() {
     [target, afterChange, t],
   );
 
-  const askMkdir = useCallback((dir: string = path) => {
-    if (!target) return;
-    setDialog({
-      kind: "prompt",
-      icon: <FolderPlus className="size-7" />,
-      title: t("mkdir.title"),
-      initial: t("mkdir.initial"),
-      confirm: t("mkdir.confirm"),
-      onSubmit: async (name) => {
-        if (name.includes("/")) throw new Error(t("name.noSlash"));
-        await api.mkdir(target, joinPath(dir, name));
-        await reload(true);
-      },
-    });
-  }, [target, path, reload, t]);
+  const askMkdir = useCallback(
+    (dir: string = path) => {
+      if (!target) return;
+      setDialog({
+        kind: "prompt",
+        icon: <FolderPlus className="size-7" />,
+        title: t("mkdir.title"),
+        initial: t("mkdir.initial"),
+        confirm: t("mkdir.confirm"),
+        onSubmit: async (name) => {
+          if (name.includes("/")) throw new Error(t("name.noSlash"));
+          await api.mkdir(target, joinPath(dir, name));
+          await reload(true);
+        },
+      });
+    },
+    [target, path, reload, t],
+  );
 
   const open = useCallback(
     (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : void download([entry])),
@@ -585,7 +591,11 @@ export default function App() {
       const move = mode === "cut";
       const id = startTransfer({ kind: move ? "move" : "copy", label, status: move ? "moving" : "copying" });
       try {
-        await (move ? api.move : api.copy)(target, items.map((i) => i.path), dest);
+        await (move ? api.move : api.copy)(
+          target,
+          items.map((i) => i.path),
+          dest,
+        );
         patchTransfer(id, { status: "done" });
         // 剪切的只能粘贴一次；拷贝的可以继续粘贴到别处
         if (move) setClip(null);
@@ -632,7 +642,12 @@ export default function App() {
     const n = targets.length;
     const items: MenuItem[] = [];
     if (single?.isDir) {
-      items.push({ label: t("menu.open"), icon: <FolderOpen className="size-4" />, shortcut: "↵", onSelect: () => navigate(single.path) });
+      items.push({
+        label: t("menu.open"),
+        icon: <FolderOpen className="size-4" />,
+        shortcut: "↵",
+        onSelect: () => navigate(single.path),
+      });
       if (canPaste) {
         items.push({
           label: t("menu.pasteInto", { name: single.name }),
@@ -649,8 +664,18 @@ export default function App() {
         onSelect: () => void download(targets),
       },
       "sep",
-      { label: t("menu.cut"), icon: <Scissors className="size-4" />, shortcut: `${MOD}X`, onSelect: () => toClip("cut", targets) },
-      { label: t("menu.copy"), icon: <Copy className="size-4" />, shortcut: `${MOD}C`, onSelect: () => toClip("copy", targets) },
+      {
+        label: t("menu.cut"),
+        icon: <Scissors className="size-4" />,
+        shortcut: `${MOD}X`,
+        onSelect: () => toClip("cut", targets),
+      },
+      {
+        label: t("menu.copy"),
+        icon: <Copy className="size-4" />,
+        shortcut: `${MOD}C`,
+        onSelect: () => toClip("copy", targets),
+      },
       {
         label: t("menu.copyPath"),
         icon: <Link className="size-4" />,
@@ -658,7 +683,13 @@ export default function App() {
       },
       "sep",
     );
-    if (single) items.push({ label: t("menu.rename"), icon: <Pencil className="size-4" />, shortcut: "F2", onSelect: () => askRename(single) });
+    if (single)
+      items.push({
+        label: t("menu.rename"),
+        icon: <Pencil className="size-4" />,
+        shortcut: "F2",
+        onSelect: () => askRename(single),
+      });
     items.push({
       label: n > 1 ? t("menu.deleteMany", { n }) : t("menu.delete"),
       icon: <Trash2 className="size-4" />,
@@ -676,7 +707,11 @@ export default function App() {
     const items: MenuItem[] = [
       { label: t("menu.newFolder"), icon: <FolderPlus className="size-4" />, onSelect: () => askMkdir(dir) },
       { label: t("menu.upload"), icon: <Upload className="size-4" />, onSelect: () => pickUpload(fileInput, dir) },
-      { label: t("menu.uploadFolder"), icon: <FolderUp className="size-4" />, onSelect: () => pickUpload(folderInput, dir) },
+      {
+        label: t("menu.uploadFolder"),
+        icon: <FolderUp className="size-4" />,
+        onSelect: () => pickUpload(folderInput, dir),
+      },
       "sep",
       {
         label: canPaste && n > 1 ? t("menu.pasteN", { n }) : t("menu.paste"),
@@ -699,7 +734,12 @@ export default function App() {
     }
     items.push(
       { label: t("menu.refresh"), icon: <RotateCw className="size-4" />, onSelect: () => void reload(true) },
-      { label: t("menu.showHidden"), icon: <Eye className="size-4" />, checked: showHidden, onSelect: () => setShowHidden((v) => !v) },
+      {
+        label: t("menu.showHidden"),
+        icon: <Eye className="size-4" />,
+        checked: showHidden,
+        onSelect: () => setShowHidden((v) => !v),
+      },
       "sep",
       ...VIEWS.map(({ id, Icon }) => ({
         label: t(`view.${id}`),
@@ -717,8 +757,10 @@ export default function App() {
   const step = useCallback(
     (delta: 1 | -1) => {
       if (!selectable.length) return;
-      const cur = anchor.current && selected.has(anchor.current) ? selectable.findIndex((v) => v.path === anchor.current) : -1;
-      const i = cur < 0 ? (delta > 0 ? 0 : selectable.length - 1) : Math.min(selectable.length - 1, Math.max(0, cur + delta));
+      const cur =
+        anchor.current && selected.has(anchor.current) ? selectable.findIndex((v) => v.path === anchor.current) : -1;
+      const i =
+        cur < 0 ? (delta > 0 ? 0 : selectable.length - 1) : Math.min(selectable.length - 1, Math.max(0, cur + delta));
       const p = selectable[i].path;
       anchor.current = p;
       setSelected(new Set([p]));
@@ -778,7 +820,24 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialog, menu, selectable, selectedEntries, askDelete, askRename, open, navigate, path, view, canPaste, paste, toClip, step, expanded, toggleExpand]);
+  }, [
+    dialog,
+    menu,
+    selectable,
+    selectedEntries,
+    askDelete,
+    askRename,
+    open,
+    navigate,
+    path,
+    view,
+    canPaste,
+    paste,
+    toClip,
+    step,
+    expanded,
+    toggleExpand,
+  ]);
 
   // ---------- 拖拽上传 ----------
   const dragProps = online
@@ -862,166 +921,178 @@ export default function App() {
           }`}
         >
           <AnimatePresence mode="wait" initial={false}>
-          {!online ? (
-            <NoDevice key="none" devices={devices} adbError={adbError} />
-          ) : (
-            <motion.div
-              key="browser"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={spring}
-              className="flex flex-col gap-4"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <IconButton title={t("toolbar.up")} disabled={path === "/"} onClick={() => navigate(parentPath(path))}>
-                  <ArrowUp className="size-5" />
-                </IconButton>
-                <IconButton title={t("toolbar.refresh")} onClick={() => reload(true)}>
-                  <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
-                </IconButton>
-                <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
-                  <Breadcrumbs path={path} onNavigate={navigate} />
-                </div>
-                <label className="flex h-10 min-w-32 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
-                  <Search className="size-4 shrink-0" />
-                  <input
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    placeholder={t("toolbar.filter")}
-                    className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-muted"
-                  />
-                  {filter && (
-                    <button type="button" onClick={() => setFilter("")} className="grid size-5 place-items-center rounded-[50%] hover:bg-surface0">
-                      <X className="size-3.5" />
-                    </button>
-                  )}
-                </label>
-                <ViewSwitch view={view} onChange={setView} />
-                <IconButton
-                  title={
-                    showHidden
-                      ? t("toolbar.hideHidden")
-                      : hiddenCount
-                        ? t("toolbar.showHiddenCount", { n: hiddenCount })
-                        : t("toolbar.showHidden")
-                  }
-                  tone={showHidden ? "accent" : "default"}
-                  onClick={() => setShowHidden((v) => !v)}
-                >
-                  {showHidden ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
-                </IconButton>
-                <IconButton
-                  title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
-                  tone={rootMode ? "danger" : "default"}
-                  className={rootMode ? "ring-2 ring-red/60" : ""}
-                  onClick={rootMode ? disableRoot : askEnableRoot}
-                >
-                  {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
-                </IconButton>
-                <IconButton title={t("toolbar.newFolder")} onClick={() => askMkdir()}>
-                  <FolderPlus className="size-5" />
-                </IconButton>
-                <IconButton title={t("toolbar.uploadFolder")} onClick={() => pickUpload(folderInput, null)}>
-                  <FolderUp className="size-5" />
-                </IconButton>
-                <PillButton tone="accent" icon={<Upload className="size-4" />} onClick={() => pickUpload(fileInput, null)}>
-                  {t("toolbar.upload")}
-                </PillButton>
-              </div>
-
-              <QuickLinks path={path} onNavigate={navigate} />
-
-              {/* 点空白处取消选择，右键空白处是当前目录的菜单 */}
-              <div
-                className="min-h-[40vh]"
-                onClick={(e) => !(e.target as HTMLElement).closest("[data-entry], button") && setSelected(new Set())}
-                onContextMenu={(e) => openBackgroundMenu(e, path)}
+            {!online ? (
+              <NoDevice key="none" devices={devices} adbError={adbError} />
+            ) : (
+              <motion.div
+                key="browser"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={spring}
+                className="flex flex-col gap-4"
               >
-                {view === "columns" && target ? (
-                  <ColumnView
-                    key={`${target.serial}:${target.root}`}
-                    target={target}
-                    path={path}
-                    rawDir={entriesDir}
-                    raw={entries}
-                    entries={visible}
-                    loading={loading}
-                    error={listError}
-                    selected={selected}
-                    cut={cutPaths}
-                    sort={sort}
-                    showHidden={showHidden}
-                    rev={rev}
-                    onNavigate={navigate}
-                    onSelect={onSelect}
-                    onOpen={open}
-                    onContextMenu={(e, entry, dir) => (entry ? openItemMenu(e, entry, dir) : openBackgroundMenu(e, dir))}
-                    onDownload={(e) => download([e])}
-                    onRename={askRename}
-                    onDelete={(e) => askDelete([e])}
-                  />
-                ) : view === "gallery" && target ? (
-                  <GalleryView
-                    target={target}
-                    entries={visible}
-                    loading={loading}
-                    error={listError}
-                    selected={selected}
-                    cut={cutPaths}
-                    focused={anchor.current}
-                    onSelect={onSelect}
-                    onFocus={(entry) => {
-                      anchor.current = entry.path;
-                      setSelected(new Set([entry.path]));
-                    }}
-                    onOpen={open}
-                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
-                    onDownload={(e) => download([e])}
-                    onRename={askRename}
-                    onDelete={(e) => askDelete([e])}
-                  />
-                ) : view === "icons" ? (
-                  <IconGrid
-                    dir={path}
-                    entries={visible}
-                    loading={loading}
-                    error={listError}
-                    selected={selected}
-                    cut={cutPaths}
-                    onSelect={onSelect}
-                    onOpen={open}
-                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
-                  />
-                ) : (
-                  <FileList
-                    dir={path}
-                    onUp={path === "/" ? undefined : () => navigate(parentPath(path))}
-                    rows={rows}
-                    expanded={expanded}
-                    pending={pending}
-                    onToggleExpand={toggleExpand}
-                    loading={loading}
-                    error={listError}
-                    selected={selected}
-                    cut={cutPaths}
-                    sort={sort}
-                    onSort={(key: SortKey) => setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }))}
-                    onSelect={onSelect}
-                    onToggle={onToggle}
-                    onOpen={open}
-                    onDownload={(e) => download([e])}
-                    onRename={askRename}
-                    onDelete={(e) => askDelete([e])}
-                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
-                  />
-                )}
-                <p className="px-3 pt-6 text-center text-xs text-muted">
-                  {t("toolbar.hint", { n: visible.length })}
-                </p>
-              </div>
-            </motion.div>
-          )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <IconButton
+                    title={t("toolbar.up")}
+                    disabled={path === "/"}
+                    onClick={() => navigate(parentPath(path))}
+                  >
+                    <ArrowUp className="size-5" />
+                  </IconButton>
+                  <IconButton title={t("toolbar.refresh")} onClick={() => reload(true)}>
+                    <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
+                  </IconButton>
+                  <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
+                    <Breadcrumbs path={path} onNavigate={navigate} />
+                  </div>
+                  <label className="flex h-10 min-w-32 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
+                    <Search className="size-4 shrink-0" />
+                    <input
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder={t("toolbar.filter")}
+                      className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-muted"
+                    />
+                    {filter && (
+                      <button
+                        type="button"
+                        onClick={() => setFilter("")}
+                        className="grid size-5 place-items-center rounded-[50%] hover:bg-surface0"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </label>
+                  <ViewSwitch view={view} onChange={setView} />
+                  <IconButton
+                    title={
+                      showHidden
+                        ? t("toolbar.hideHidden")
+                        : hiddenCount
+                          ? t("toolbar.showHiddenCount", { n: hiddenCount })
+                          : t("toolbar.showHidden")
+                    }
+                    tone={showHidden ? "accent" : "default"}
+                    onClick={() => setShowHidden((v) => !v)}
+                  >
+                    {showHidden ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
+                  </IconButton>
+                  <IconButton
+                    title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
+                    tone={rootMode ? "danger" : "default"}
+                    className={rootMode ? "ring-2 ring-red/60" : ""}
+                    onClick={rootMode ? disableRoot : askEnableRoot}
+                  >
+                    {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
+                  </IconButton>
+                  <IconButton title={t("toolbar.newFolder")} onClick={() => askMkdir()}>
+                    <FolderPlus className="size-5" />
+                  </IconButton>
+                  <IconButton title={t("toolbar.uploadFolder")} onClick={() => pickUpload(folderInput, null)}>
+                    <FolderUp className="size-5" />
+                  </IconButton>
+                  <PillButton
+                    tone="accent"
+                    icon={<Upload className="size-4" />}
+                    onClick={() => pickUpload(fileInput, null)}
+                  >
+                    {t("toolbar.upload")}
+                  </PillButton>
+                </div>
+
+                <QuickLinks path={path} onNavigate={navigate} />
+
+                {/* 点空白处取消选择，右键空白处是当前目录的菜单 */}
+                <div
+                  className="min-h-[40vh]"
+                  onClick={(e) => !(e.target as HTMLElement).closest("[data-entry], button") && setSelected(new Set())}
+                  onContextMenu={(e) => openBackgroundMenu(e, path)}
+                >
+                  {view === "columns" && target ? (
+                    <ColumnView
+                      key={`${target.serial}:${target.root}`}
+                      target={target}
+                      path={path}
+                      rawDir={entriesDir}
+                      raw={entries}
+                      entries={visible}
+                      loading={loading}
+                      error={listError}
+                      selected={selected}
+                      cut={cutPaths}
+                      sort={sort}
+                      showHidden={showHidden}
+                      rev={rev}
+                      onNavigate={navigate}
+                      onSelect={onSelect}
+                      onOpen={open}
+                      onContextMenu={(e, entry, dir) =>
+                        entry ? openItemMenu(e, entry, dir) : openBackgroundMenu(e, dir)
+                      }
+                      onDownload={(e) => download([e])}
+                      onRename={askRename}
+                      onDelete={(e) => askDelete([e])}
+                    />
+                  ) : view === "gallery" && target ? (
+                    <GalleryView
+                      target={target}
+                      entries={visible}
+                      loading={loading}
+                      error={listError}
+                      selected={selected}
+                      cut={cutPaths}
+                      focused={anchor.current}
+                      onSelect={onSelect}
+                      onFocus={(entry) => {
+                        anchor.current = entry.path;
+                        setSelected(new Set([entry.path]));
+                      }}
+                      onOpen={open}
+                      onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                      onDownload={(e) => download([e])}
+                      onRename={askRename}
+                      onDelete={(e) => askDelete([e])}
+                    />
+                  ) : view === "icons" ? (
+                    <IconGrid
+                      dir={path}
+                      entries={visible}
+                      loading={loading}
+                      error={listError}
+                      selected={selected}
+                      cut={cutPaths}
+                      onSelect={onSelect}
+                      onOpen={open}
+                      onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                    />
+                  ) : (
+                    <FileList
+                      dir={path}
+                      onUp={path === "/" ? undefined : () => navigate(parentPath(path))}
+                      rows={rows}
+                      expanded={expanded}
+                      pending={pending}
+                      onToggleExpand={toggleExpand}
+                      loading={loading}
+                      error={listError}
+                      selected={selected}
+                      cut={cutPaths}
+                      sort={sort}
+                      onSort={(key: SortKey) => setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }))}
+                      onSelect={onSelect}
+                      onToggle={onToggle}
+                      onOpen={open}
+                      onDownload={(e) => download([e])}
+                      onRename={askRename}
+                      onDelete={(e) => askDelete([e])}
+                      onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                    />
+                  )}
+                  <p className="px-3 pt-6 text-center text-xs text-muted">{t("toolbar.hint", { n: visible.length })}</p>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           <AnimatePresence>
@@ -1038,7 +1109,11 @@ export default function App() {
                     <Upload className="size-9" />
                   </span>
                   <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">
-                    {rich("toolbar.dropHere", { path: (s) => <span className="font-mono text-accent">{s}</span> }, { path })}
+                    {rich(
+                      "toolbar.dropHere",
+                      { path: (s) => <span className="font-mono text-accent">{s}</span> },
+                      { path },
+                    )}
                   </p>
                 </div>
               </motion.div>
@@ -1049,63 +1124,65 @@ export default function App() {
 
       {/* 多选操作条 */}
       <AnimatePresence>
-      {/* 画廊视图的信息面板里已经有单项操作，只选一项时不弹 */}
-      {online && selectedEntries.length > (view === "gallery" ? 1 : 0) && (
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.9, x: "-50%" }}
-          animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
-          exit={{ opacity: 0, y: 40, scale: 0.9, x: "-50%", transition: { duration: 0.18 } }}
-          transition={spring}
-          className="fixed bottom-4 left-1/2 z-30 flex items-center gap-2 rounded-full bg-surface0 p-1.5 pl-5 shadow-2xl shadow-crust ring-1 ring-surface1"
-        >
-          <span className="flex items-center text-sm font-bold whitespace-nowrap">
-            {t("selection.selected")}
-            <span className="relative mx-1 inline-flex h-5 min-w-5 justify-center overflow-hidden">
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={selectedEntries.length}
-                  initial={{ y: 14, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -14, opacity: 0 }}
-                  transition={spring}
-                  className="font-mono text-accent"
-                >
-                  {selectedEntries.length}
-                </motion.span>
-              </AnimatePresence>
+        {/* 画廊视图的信息面板里已经有单项操作，只选一项时不弹 */}
+        {online && selectedEntries.length > (view === "gallery" ? 1 : 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.9, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+            exit={{ opacity: 0, y: 40, scale: 0.9, x: "-50%", transition: { duration: 0.18 } }}
+            transition={spring}
+            className="fixed bottom-4 left-1/2 z-30 flex items-center gap-2 rounded-full bg-surface0 p-1.5 pl-5 shadow-2xl shadow-crust ring-1 ring-surface1"
+          >
+            <span className="flex items-center text-sm font-bold whitespace-nowrap">
+              {t("selection.selected")}
+              <span className="relative mx-1 inline-flex h-5 min-w-5 justify-center overflow-hidden">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={selectedEntries.length}
+                    initial={{ y: 14, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -14, opacity: 0 }}
+                    transition={spring}
+                    className="font-mono text-accent"
+                  >
+                    {selectedEntries.length}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+              {t("selection.unit")}
             </span>
-            {t("selection.unit")}
-          </span>
-          <PillButton tone="accent" icon={<Download className="size-4" />} onClick={() => download(selectedEntries)}>
-            {t("selection.download")}
-          </PillButton>
-          <PillButton tone="danger" icon={<Trash2 className="size-4" />} onClick={() => askDelete(selectedEntries)}>
-            {t("selection.delete")}
-          </PillButton>
-          <IconButton tone="ghost" title={t("selection.cancel")} onClick={() => setSelected(new Set())}>
-            <X className="size-5" />
-          </IconButton>
-        </motion.div>
-      )}
+            <PillButton tone="accent" icon={<Download className="size-4" />} onClick={() => download(selectedEntries)}>
+              {t("selection.download")}
+            </PillButton>
+            <PillButton tone="danger" icon={<Trash2 className="size-4" />} onClick={() => askDelete(selectedEntries)}>
+              {t("selection.delete")}
+            </PillButton>
+            <IconButton tone="ghost" title={t("selection.cancel")} onClick={() => setSelected(new Set())}>
+              <X className="size-5" />
+            </IconButton>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <TransferQueue items={transfers} onDismiss={(id) => setTransfers((l) => l.filter((t) => t.id !== id))} />
 
       <AnimatePresence>
-      {toast && (
-        <motion.div
-          key={toast.msg}
-          initial={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
-          exit={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
-          transition={spring}
-          className={`fixed top-4 left-1/2 z-50 max-w-[calc(100vw-2rem)] rounded-full px-5 py-2.5 text-sm font-semibold shadow-xl ${
-            toast.tone === "error" ? "bg-red text-crust shadow-red/30" : "bg-surface0 text-text shadow-crust ring-1 ring-surface1"
-          }`}
-        >
-          {toast.msg}
-        </motion.div>
-      )}
+        {toast && (
+          <motion.div
+            key={toast.msg}
+            initial={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+            exit={{ opacity: 0, y: -30, x: "-50%", scale: 0.9 }}
+            transition={spring}
+            className={`fixed top-4 left-1/2 z-50 max-w-[calc(100vw-2rem)] rounded-full px-5 py-2.5 text-sm font-semibold shadow-xl ${
+              toast.tone === "error"
+                ? "bg-red text-crust shadow-red/30"
+                : "bg-surface0 text-text shadow-crust ring-1 ring-surface1"
+            }`}
+          >
+            {toast.msg}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1113,7 +1190,9 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {dialog && <Dialog key={dialog.title} state={dialog} onClose={() => setDialog((d) => (d === dialog ? null : d))} />}
+        {dialog && (
+          <Dialog key={dialog.title} state={dialog} onClose={() => setDialog((d) => (d === dialog ? null : d))} />
+        )}
       </AnimatePresence>
 
       <input
