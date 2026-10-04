@@ -67,7 +67,7 @@ import { arrange, MOD, type Sort, type SortKey } from "./entries.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
 import { useI18n, useT } from "./i18n/index.tsx";
 import { loadPref, savePref } from "./prefs.ts";
-import type { Clip, Device, FileEntry, Listing, Transfer, TreeRow, ViewMode } from "./types.ts";
+import type { Clip, Device, FileEntry, Listing, StorageInfo, Transfer, TreeRow, ViewMode } from "./types.ts";
 
 const HOME = "/sdcard";
 
@@ -117,7 +117,7 @@ export default function App() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(loadBookmarks);
   const [rootMode, setRootMode] = useState(() => loadPref("afm.rootRemember", false));
   const rootVerified = useRef<string | null>(null);
-  const [storage, setStorage] = useState<{ total: number; free: number } | null>(null);
+  const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -1449,7 +1449,7 @@ export default function App() {
   );
 }
 
-function StorageMeter({ storage }: { storage: { total: number; free: number } | null }) {
+function StorageMeter({ storage }: { storage: StorageInfo | null }) {
   const t = useT();
   const pct = storage ? ((storage.total - storage.free) / storage.total) * 100 : 0;
   const nearlyFull = pct > 90;

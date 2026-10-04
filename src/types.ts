@@ -1,19 +1,6 @@
-export interface Device {
-  serial: string;
-  state: "device" | "unauthorized" | "offline" | string;
-  model: string;
-  name: string;
-}
+import type { FileEntry } from "../shared/types.d.ts";
 
-export interface FileEntry {
-  name: string;
-  path: string;
-  type: "dir" | "file" | "link";
-  isDir: boolean;
-  size: number;
-  mtime: number;
-  atime: number;
-}
+export type { Device, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
 
 export type TransferStatus = "uploading" | "pushing" | "pulling" | "copying" | "moving" | "done" | "error";
 

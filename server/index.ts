@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { ZipArchive } from "archiver";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
+import type { RootMethod } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { langMiddleware, msg } from "./i18n.ts";
 
@@ -84,7 +85,7 @@ function serialOf(req: Request): string {
   return s;
 }
 
-const rootCache = new Map<string, "adbd" | "su">();
+const rootCache = new Map<string, RootMethod>();
 
 async function rootFor(serial: string) {
   let m = rootCache.get(serial);

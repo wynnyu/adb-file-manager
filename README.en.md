@@ -167,6 +167,8 @@ server/
   adb.ts        adb wrapper: listing, push / pull, root detection, copy / move / delete
   index.ts      HTTP API and security checks; serves the frontend after a build
   i18n.ts       English and Chinese strings for backend error messages
+shared/
+  types.d.ts    API data types shared by the backend and frontend
 src/
   App.tsx       main screen and most of the interaction logic
   components/   UI components

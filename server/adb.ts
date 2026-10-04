@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
+import type { Device, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
@@ -15,24 +16,6 @@ export class AdbError extends Error {
   ) {
     super(message);
   }
-}
-
-export interface Device {
-  serial: string;
-  state: string;
-  model: string;
-  name: string;
-}
-
-export interface FileEntry {
-  name: string;
-  path: string;
-  type: "dir" | "file" | "link";
-  isDir: boolean;
-  size: number;
-  mtime: number;
-  /** 上次访问时间；多数 Android 挂载用 relatime，只是近似值 */
-  atime: number;
 }
 
 function run(args: string[], timeout = 0): Promise<string> {
@@ -69,7 +52,7 @@ export function assertAbs(p: unknown): string {
  */
 export interface Ctx {
   serial: string;
-  root: false | "adbd" | "su";
+  root: false | RootMethod;
 }
 
 export function shell(ctx: Ctx, cmd: string) {
@@ -78,7 +61,7 @@ export function shell(ctx: Ctx, cmd: string) {
 }
 
 /** 检测设备能否以 root 运行命令 */
-export async function rootMethod(serial: string): Promise<"adbd" | "su"> {
+export async function rootMethod(serial: string): Promise<RootMethod> {
   // 普通 shell 都跑不通说明是连接问题（设备断开、未授权），原样抛出，不当成“没有 root”
   const plain = await shell({ serial, root: false }, "id -u");
   if (plain.trim() === "0") return "adbd";
@@ -252,7 +235,7 @@ export function cat(ctx: Ctx, p: string) {
   });
 }
 
-export async function storage(ctx: Ctx) {
+export async function storage(ctx: Ctx): Promise<StorageInfo> {
   const out = await shell(ctx, "df -k /sdcard/ | tail -n 1");
   const [, total, , avail] = out.trim().split(/\s+/).map(Number);
   if (!total) throw new AdbError(t("noStorage"));

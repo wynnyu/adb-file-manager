@@ -1,5 +1,5 @@
 import { getLang, tr } from "./i18n/index.tsx";
-import type { Device, FileEntry } from "./types.ts";
+import type { Device, FileEntry, RootMethod, StorageInfo } from "./types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
 export interface Target {
@@ -43,10 +43,9 @@ const qs = (t: Target, extra: Record<string, string> = {}) =>
 export const api = {
   devices: () => request<Device[]>("/api/devices"),
 
-  rootCheck: (serial: string) => post<{ method: "adbd" | "su" }>("/api/root-check", { serial }),
+  rootCheck: (serial: string) => post<{ method: RootMethod }>("/api/root-check", { serial }),
 
-  storage: (serial: string) =>
-    request<{ total: number; free: number }>(`/api/storage?${new URLSearchParams({ serial })}`),
+  storage: (serial: string) => request<StorageInfo>(`/api/storage?${new URLSearchParams({ serial })}`),
 
   ls: (t: Target, path: string) => request<FileEntry[]>(`/api/ls?${qs(t, { path })}`),
 

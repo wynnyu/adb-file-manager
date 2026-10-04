@@ -167,6 +167,8 @@ server/
   adb.ts        adb 命令封装：列目录、push / pull、root 检测、复制移动删除等
   index.ts      HTTP API 和安全校验；构建后同时托管前端页面
   i18n.ts       后端错误信息的中英文文案
+shared/
+  types.d.ts    前后端共用的接口数据类型
 src/
   App.tsx       主界面和大部分交互逻辑
   components/   界面组件
