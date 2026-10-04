@@ -1,5 +1,6 @@
 import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, FolderInput, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import type { ReactNode } from "react";
 import { useT } from "../i18n/index.tsx";
 import type { MessageKey } from "../i18n/zh.ts";
 import type { Transfer } from "../types.ts";
@@ -24,7 +25,16 @@ const statusText: Record<Transfer["status"], MessageKey> = {
   error: "transfer.error",
 };
 
-export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismiss: (id: string) => void }) {
+/** 右下角的传输卡片；children 排在最下面（首次使用的提示），和传输卡片共用这一角，不会互相盖住 */
+export function TransferQueue({
+  items,
+  onDismiss,
+  children,
+}: {
+  items: Transfer[];
+  onDismiss: (id: string) => void;
+  children?: ReactNode;
+}) {
   const t = useT();
   return (
     <div className="fixed right-4 bottom-4 z-40 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
@@ -109,6 +119,7 @@ export function TransferQueue({ items, onDismiss }: { items: Transfer[]; onDismi
           );
         })}
       </AnimatePresence>
+      {children}
     </div>
   );
 }

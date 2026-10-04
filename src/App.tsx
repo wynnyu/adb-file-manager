@@ -46,6 +46,7 @@ import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
 import { ThemePicker } from "./components/ThemePicker.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
+import { UsageTip } from "./components/UsageTip.tsx";
 import { IconButton, PillButton, spring } from "./components/ui.tsx";
 import { VIEWS, ViewSwitch } from "./components/ViewSwitch.tsx";
 import { collectDropped, fromInput, type UploadItem } from "./drop.ts";
@@ -1145,8 +1146,18 @@ export default function App() {
                       onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
                     />
                   )}
-                  <p className="px-3 pt-6 text-center text-xs text-muted">{t("toolbar.hint", { n: visible.length })}</p>
                 </div>
+
+                {/* 状态栏，同访达窗口底部：项目数和剩余空间 */}
+                <footer className="-mb-1 flex min-h-8 flex-wrap items-center justify-between gap-x-4 border-t border-surface0 px-3 pt-3 text-xs text-subtext0">
+                  <span>
+                    {entriesDir === path &&
+                      (hiddenCount && !showHidden
+                        ? t("toolbar.countHidden", { n: visible.length, hidden: hiddenCount })
+                        : t("toolbar.count", { n: visible.length }))}
+                  </span>
+                  {storage && <span>{t("toolbar.free", { size: formatSize(storage.free) })}</span>}
+                </footer>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1220,7 +1231,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <TransferQueue items={transfers} onDismiss={(id) => setTransfers((l) => l.filter((t) => t.id !== id))} />
+      <TransferQueue items={transfers} onDismiss={(id) => setTransfers((l) => l.filter((t) => t.id !== id))}>
+        {online && <UsageTip />}
+      </TransferQueue>
 
       <AnimatePresence>
         {toast && (

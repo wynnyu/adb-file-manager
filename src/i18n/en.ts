@@ -25,12 +25,17 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "toolbar.newFolder": "New folder",
   "toolbar.uploadFolder": "Upload folder",
   "toolbar.upload": "Upload",
-  "toolbar.hint":
-    "{n} items. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
-  "toolbar.hint_one":
-    "{n} item. Double-click to open, right-click for more. Drop files or folders anywhere to upload to this folder.",
+  "toolbar.count": "{n} items",
+  "toolbar.count_one": "{n} item",
+  "toolbar.countHidden": "{n} items, {hidden} hidden",
+  "toolbar.countHidden_one": "{n} item, {hidden} hidden",
   "toolbar.dropHere": "Drop to upload to <path>{path}</path>",
   "toolbar.free": "{size} free",
+
+  "tip.title": "Tips",
+  "tip.rightClick": "Right-click an item or empty space for more actions",
+  "tip.drop": "Drop files or folders anywhere in the window to upload them here",
+  "tip.dismiss": "Got it, don't show again",
 
   "selection.selected": "Selected",
   "selection.unit": "",
@@ -43,7 +48,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "files.mtime": "Date Modified",
   "files.kind": "Kind",
   "files.goUp": "Go up",
-  "files.empty": "Empty folder. Drop files here to upload.",
+  "files.empty": "Empty folder",
   "files.select": "Select",
   "files.folder": "Folder",
   "files.expand": "Expand (→)",
