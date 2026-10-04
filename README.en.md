@@ -2,69 +2,146 @@
 
 English · [中文](README.md)
 
-A web-based Android file manager. It works even when the phone's USB mode is set to "charging only": everything goes through `adb push` / `adb pull` / `adb shell`, with no MTP involved.
+Manage the files on your Android phone from a browser.
 
-## Prerequisites
-1. adb (Android SDK platform-tools) installed on your computer, either on your `PATH` or pointed to with `ADB_PATH=/path/to/adb`
-2. On the phone: Developer options → enable **USB debugging**, then tap **Allow** on the phone after connecting it
-3. Node.js 20 or later
+Everything goes through adb (`adb push` / `adb pull` / `adb shell`) rather than MTP, so it works even when the phone's USB mode is set to "charging only", and you avoid the usual MTP trouble: dropped connections, stalled large transfers and hidden directories you can't see. On a rooted phone you can also turn on root mode to reach system directories such as `/data`.
 
-## Usage
+## Quick start
+
+You need:
+
+- Node.js 20 or later
+- adb (Android SDK Platform-Tools), either on your `PATH` or pointed to with `ADB_PATH`
+- USB debugging enabled on the phone: go to Settings → About phone, tap "Build number" 7 times to unlock developer mode, then turn on "USB debugging" under "Developer options"
+
+Then run:
+
 ```bash
-npx adb-file-manager     # then open http://127.0.0.1:3001
+npx adb-file-manager
 ```
 
-From source:
-```bash
-pnpm install
-pnpm dev                 # development: http://127.0.0.1:5173
-pnpm build && pnpm start # production:  http://127.0.0.1:3001
-```
+Open <http://127.0.0.1:3001> in your browser, connect the phone with a USB cable, and tap **Allow** when the phone asks you to authorize debugging.
 
-### Environment variables
+## Features
+
+**Browsing**
+
+- Three views: icons, list and columns. The column view expands from the root one column at a time, like Finder, and shows details of the selected item on the right, with thumbnails for images
+- Breadcrumbs (double-click to type a path) and one-click links to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
+- Filter, sort by name / size / modified time, and show or hide dotfiles
+- Used and total internal storage shown in the toolbar
+
+**Transfers**
+
+- Upload with the buttons or by dragging files and folders into the window; folder structure is preserved
+- A single file downloads as is; folders and multiple selections download as a zip
+- A transfer queue shows the progress and result of each job
+
+**Organizing**
+
+- Right-click menu: open, download, cut / copy / paste, copy path, rename, delete. Right-click empty space to create a folder, upload to the current folder or switch views
+- Copies never overwrite: name clashes get a number (`photo 2.jpg`, `photo 3.jpg`, …). Renames and moves onto an existing name fail with an error
+- A folder can't be moved or copied into itself
+
+**Devices and UI**
+
+- Switch between several connected devices, with automatic detection when they are plugged in or removed; devices are shown by their marketing name
+- English and Chinese UI, following your browser language by default
+- [Catppuccin](https://catppuccin.com) theme with four flavors (Latte / Frappé / Macchiato / Mocha) and five accent colors, following the system light / dark setting by default
+
+### Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Open |
+| `F2` | Rename |
+| `Delete` / `⌘ Backspace` | Delete |
+| `Backspace` / `Alt ↑` | Up one level |
+| `⌘/Ctrl A` | Select all |
+| `⌘/Ctrl C` / `X` / `V` | Copy / cut / paste |
+| `↑` `↓` | Move the selection |
+| `←` `→` | Go into and out of folders in column view |
+| `Esc` | Clear the selection |
+
+## Root mode
+
+Turn it on with the shield button in the toolbar. It is off by default and asks for confirmation first; tick "remember my choice" to have it turn on automatically next time.
+
+When you turn it on, the tool first checks how the device provides root:
+
+- If adbd itself runs as root (for example on engineering builds or emulators after `adb root`), it uses that directly
+- Otherwise it escalates with `su -c`, which works with Magisk, KernelSU and APatch. The first time, your root manager will show a prompt on the phone; grant root to **Shell**
+
+When running through su, `adb push` / `adb pull` have no root privileges of their own, so uploads and downloads are staged through a temporary directory under `/data/local/tmp`, which is cleaned up afterwards.
+
+To guard against mistakes:
+
+- A warning banner appears at the top, the main panel gets a red outline, and the tab title shows `⚠ ROOT`
+- Deleting takes two confirmations; the second one lists the full paths and has a 3-second countdown
+- If root access is revoked during an operation, root mode turns itself off and tells you why
+
+## Configuration
+
+Set these environment variables:
+
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3001` | Port to listen on |
 | `ADB_PATH` | `adb` | Path to the adb executable |
-| `ADBFM_SU` | `su -c` | Privilege-escalation prefix used in root mode |
+| `ADBFM_SU` | `su -c` | Privilege-escalation prefix used in root mode. Change it if your su takes different arguments, e.g. `ADBFM_SU="su 0 sh -c"` |
 
-## Features
-- Browse directories, with breadcrumbs (double-click to type a path), quick links, filtering, sorting and a show-hidden-files toggle
-- Upload files and folders (with the button or by dragging them into the window) and download files; folders and multi-selections download as a zip
-- Three views: icons, list and columns (Finder-style columns from the root down, with a preview of the selected item on the right; images show a thumbnail)
-- Right-click menu: open, download, cut / copy / paste (copies never overwrite; name clashes get a number), copy path, rename, delete; right-click empty space to create a folder, upload here or switch views
-- Create folders, rename, move and delete (top-level directories such as `/` and `/sdcard` are protected)
-- Switch between multiple devices, with automatic detection when devices are plugged in or removed
-
-## Root mode
-Turn it on with the shield button in the toolbar. It is off by default and asks for confirmation first, with an optional "remember my choice". Once it is on, every operation runs as root through `su -c`, so directories such as `/data` become accessible:
-- Uploads and downloads are staged through `/data/local/tmp` (adb push/pull have no root privileges of their own), and the staging files are cleaned up afterwards
-- Deleting takes two confirmations; the second one lists the full paths and has a 3-second countdown
-- A warning banner appears at the top, the main panel gets a red outline, and the tab title shows ⚠ ROOT
-- The first time you turn it on, Magisk / KernelSU on the phone shows a prompt; grant root to **Shell**
-- If your su takes different arguments, set `ADBFM_SU`, e.g. `ADBFM_SU="su 0 sh -c"`
-
-Shortcuts: `Enter` open · `F2` rename · `Delete` delete · `Backspace` up one level · `⌘/Ctrl+A` select all · `⌘/Ctrl+C` / `X` / `V` copy / cut / paste · `↑` `↓` select · `←` `→` go in and out of folders in column view · `Esc` clear selection
-
-The UI is available in English and Chinese. It follows your browser language by default; switch it with the language button in the top bar.
+```bash
+PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
+```
 
 ## Security
-This tool can read and write any file on the phone (including system directories in root mode), so the backend only serves the local machine:
+
+This tool can read and write any file on the phone, including system partitions and app data in root mode, so the backend only serves the local machine:
+
 - It listens on `127.0.0.1` only, so other devices on your network can't reach it
-- It rejects requests whose Host isn't localhost (DNS rebinding protection)
-- It rejects cross-site requests from other web pages by checking `Origin` / `Sec-Fetch-Site` (CSRF protection)
+- It rejects requests whose `Host` isn't localhost (DNS rebinding protection)
+- It checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
+- Before deleting, renaming or moving, it resolves symlinks and refuses to touch the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
+- Previews are limited to common image formats, and SVGs are shown in a sandbox so their scripts don't run
 
-Do not expose it to the internet through a reverse proxy.
+Do not expose it to your network or the internet through a reverse proxy or similar.
 
-## Project layout
-- `server/adb.ts`: adb wrapper (calls adb via `execFile`, single-quote-escapes device-side paths)
-- `server/index.ts`: Express API (`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete` `copy` `move` `preview`); after a build it also serves the frontend
-- `src/`: React + TypeScript + Tailwind CSS v4 + motion; all four Catppuccin flavors (Latte / Frappé / Macchiato / Mocha) and 5 accent colors are defined in `src/index.css`, with switching logic in `src/theme.ts`; fonts (MiSans / Maple Mono) are bundled locally
-- Build output: `dist/web/` (frontend bundled by vite) and `dist/server/` (backend compiled by tsc, also the npm package's `bin` entry)
+## Development
+
+```bash
+pnpm install
+pnpm dev      # frontend at http://127.0.0.1:5173, backend on port 3001, both with hot reload
+pnpm build    # build into dist/
+pnpm start    # run the build: http://127.0.0.1:3001
+```
+
+Stack:
+
+- Backend: Node.js + Express 5. adb is called through `execFile`, and paths in device-side commands are single-quote-escaped
+- Frontend: React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion. Fonts (MiSans, Maple Mono) are bundled locally, so no network access is needed
+
+Layout:
+
+```
+server/
+  adb.ts        adb wrapper: listing, push / pull, root detection, copy / move / delete
+  index.ts      HTTP API and security checks; serves the frontend after a build
+  i18n.ts       English and Chinese strings for backend error messages
+src/
+  App.tsx       main screen and most of the interaction logic
+  components/   UI components
+  i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
+  index.css     Catppuccin palettes and theme variables
+  theme.ts      theme switching
+```
+
+Build output: `dist/web/` is the frontend and `dist/server/` is the compiled backend, which is also the npm package's `bin` entry.
 
 ## License
+
 The code is released under the [MIT](LICENSE) license.
 
 The fonts bundled into the frontend have their own licenses:
+
 - [MiSans](https://hyperos.mi.com/font/): Xiaomi's MiSans Font IP License Agreement
 - [Maple Mono](https://github.com/subframe7536/maple-font): SIL Open Font License 1.1

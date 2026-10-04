@@ -2,69 +2,146 @@
 
 [English](README.en.md) · 中文
 
-网页版安卓文件管理器。手机 USB 选「仅充电」也能用 —— 底层走 `adb push` / `adb pull` / `adb shell`，不依赖 MTP。
+在浏览器里管理安卓手机上的文件。
 
-## 准备
-1. 电脑装好 adb（Android SDK platform-tools），`adb` 在 PATH 里，或设置 `ADB_PATH=/path/to/adb`
-2. 手机：开发者选项 → 打开「USB 调试」，连上电脑后在手机上点「允许」
-3. Node.js 20 及以上
+所有操作都通过 adb（`adb push` / `adb pull` / `adb shell`）完成，不依赖 MTP，所以手机的 USB 模式设为「仅充电」也能用，也不会遇到 MTP 断连、大文件卡住、隐藏目录看不到之类的问题。手机已 root 的话，还可以开启 root 模式访问 `/data` 等系统目录。
 
-## 运行
+## 快速开始
+
+需要：
+
+- Node.js 20 及以上
+- adb（Android SDK Platform-Tools），放在 `PATH` 里，或者用 `ADB_PATH` 指定路径
+- 手机开启 USB 调试：设置 → 关于手机，连点「版本号」7 次进入开发者模式，再到「开发者选项」里打开「USB 调试」
+
+然后运行：
+
 ```bash
-npx adb-file-manager     # 然后打开 http://127.0.0.1:3001
+npx adb-file-manager
 ```
 
-从源码运行：
-```bash
-pnpm install
-pnpm dev                 # 开发：http://127.0.0.1:5173
-pnpm build && pnpm start # 生产：http://127.0.0.1:3001
-```
+浏览器打开 <http://127.0.0.1:3001>，用数据线连接手机，在手机弹出的调试授权提示里点「允许」即可。
 
-### 环境变量
+## 功能
+
+**浏览**
+
+- 图标、列表、分栏三种显示方式。分栏视图像 Finder 一样从根目录逐级展开，最右侧显示选中项的详情，图片直接显示缩略图
+- 面包屑导航，双击可以直接输入路径；常用目录（内部存储、下载、相机、图片、视频、音乐、文档）一键直达
+- 筛选、按名称 / 大小 / 修改时间排序、显示或隐藏点开头的文件
+- 工具栏显示内部存储的已用和总容量
+
+**传输**
+
+- 点按钮或直接把文件、文件夹拖进窗口上传，保留目录结构
+- 下载单个文件时原样下载；文件夹和多选内容会打包成 zip
+- 传输队列显示每个任务的进度和结果
+
+**整理**
+
+- 右键菜单：打开、下载、剪切 / 拷贝 / 粘贴、拷贝路径、重命名、删除；在空白处右键可以新建文件夹、上传到当前目录、切换显示方式
+- 拷贝遇到重名时自动编号（`照片 2.jpg`、`照片 3.jpg`…），不会覆盖已有文件；重命名和移动遇到重名会直接报错
+- 不能把文件夹移动或拷贝到它自己里面
+
+**设备与界面**
+
+- 同时连接多台设备时可以切换，插拔自动检测，显示设备的商品名
+- 界面支持中文和英文，默认跟随浏览器语言
+- 主题采用 [Catppuccin](https://catppuccin.com) 配色，四种口味（Latte / Frappé / Macchiato / Mocha）和五种主色可选，默认跟随系统深浅色
+
+### 快捷键
+
+| 按键 | 操作 |
+| --- | --- |
+| `Enter` | 打开 |
+| `F2` | 重命名 |
+| `Delete` / `⌘ Backspace` | 删除 |
+| `Backspace` / `Alt ↑` | 返回上一级 |
+| `⌘/Ctrl A` | 全选 |
+| `⌘/Ctrl C` / `X` / `V` | 拷贝 / 剪切 / 粘贴 |
+| `↑` `↓` | 移动选择 |
+| `←` `→` | 分栏视图中进入或退出目录 |
+| `Esc` | 取消选择 |
+
+## root 模式
+
+点击工具栏上的盾牌按钮开启。默认关闭，开启前会弹窗确认，可以勾选「记住选择」让下次自动开启。
+
+开启时会先检测设备的 root 方式：
+
+- adbd 本身以 root 运行（例如执行过 `adb root` 的工程机或模拟器）时直接使用
+- 否则通过 `su -c` 提权，适用于 Magisk、KernelSU、APatch。第一次开启时手机上会弹出授权提示，请允许 **Shell** 获取 root 权限
+
+通过 su 运行时，`adb push` / `adb pull` 本身没有 root 权限，上传和下载会先经 `/data/local/tmp` 下的临时目录中转，完成后自动清理。
+
+为了防止误操作：
+
+- 页面顶部显示警示横幅，主面板加红色描边，标签页标题带 `⚠ ROOT`
+- 删除需要两次确认，第二次会列出完整路径，并有 3 秒倒计时
+- 操作过程中 root 权限被撤销时，会自动退出 root 模式并提示原因
+
+## 配置
+
+通过环境变量配置：
+
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `PORT` | `3001` | 监听端口 |
-| `ADB_PATH` | `adb` | adb 可执行文件路径 |
-| `ADBFM_SU` | `su -c` | root 模式下的提权命令前缀 |
+| `ADB_PATH` | `adb` | adb 可执行文件的路径 |
+| `ADBFM_SU` | `su -c` | root 模式下的提权命令前缀。su 用法不同时可以修改，例如 `ADBFM_SU="su 0 sh -c"` |
 
-## 功能
-- 浏览目录、面包屑（双击可直接输入路径）、快捷入口、筛选、排序、显示隐藏文件
-- 上传文件 / 文件夹（按钮或直接拖进窗口），下载文件；文件夹和多选会打包成 zip
-- 三种显示方式：图标、列表、分栏（像 Finder 一样从根目录一栏栏展开，最右侧预览选中项，图片直接显示缩略图）
-- 右键菜单：打开、下载、剪切 / 拷贝 / 粘贴（拷贝重名时自动编号，不覆盖）、拷贝路径、重命名、删除；空白处右键可新建文件夹、上传到这里、切换显示方式
-- 新建文件夹、重命名、移动、删除（不允许操作 `/`、`/sdcard` 这类一级目录）
-- 多设备切换，设备插拔自动检测
-
-## root 模式
-工具栏的盾牌按钮可开启（默认关闭，开启前需确认，可选「记住选择」）。开启后所有操作经 `su -c` 以 root 执行，可访问 `/data` 等目录：
-- 上传 / 下载经 `/data/local/tmp` 中转（adb push/pull 本身没有 root 权限），完成后自动清理
-- 删除需要两层确认，第二层列出完整路径并有 3 秒倒计时
-- 顶部有警示横幅，主面板红色描边，标签页标题带 ⚠ ROOT
-- 首次开启时手机上的 Magisk / KernelSU 会弹窗，需允许 **Shell** 获取 root
-- su 写法不同可设置 `ADBFM_SU`，例如 `ADBFM_SU="su 0 sh -c"`
-
-快捷键：`Enter` 打开 · `F2` 重命名 · `Delete` 删除 · `Backspace` 上一级 · `⌘/Ctrl+A` 全选 · `⌘/Ctrl+C` / `X` / `V` 拷贝 / 剪切 / 粘贴 · `↑` `↓` 选择 · `←` `→` 分栏视图里进出目录 · `Esc` 取消选择
-
-界面支持中文和英文，默认跟随浏览器语言，可以用顶栏的语言按钮切换。
+```bash
+PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
+```
 
 ## 安全
-这个工具能读写手机上的任意文件（root 模式下包括系统目录），所以后端只为本机服务：
-- 只监听 `127.0.0.1`，局域网里的其他设备访问不到
-- 拒绝 Host 不是 localhost 的请求（防 DNS rebinding）
-- 拒绝来自其他网页的跨站请求（校验 `Origin` / `Sec-Fetch-Site`，防 CSRF）
 
-不要把它用反向代理暴露到公网。
+这个工具可以读写手机上的任意文件，开启 root 模式后还包括系统分区和应用数据，因此后端只为本机服务：
 
-## 结构
-- `server/adb.ts`：adb 封装（`execFile` 调用，设备端路径单引号转义）
-- `server/index.ts`：Express API：`/api/devices` `ls` `upload` `pull` + `fetch/:token` `mkdir` `rename` `delete` `copy` `move` `preview`；构建后同时托管前端页面
-- `src/`：React + TypeScript + Tailwind CSS v4 + motion 动画；Catppuccin 四种口味（Latte / Frappé / Macchiato / Mocha）和 5 种主色定义在 `src/index.css`，切换逻辑在 `src/theme.ts`；字体（MiSans / Maple Mono）本地打包
-- 构建产物：`dist/web/`（vite 打包的前端），`dist/server/`（tsc 编译的后端，也是 npm 包的 `bin` 入口）
+- 只监听 `127.0.0.1`，局域网中的其他设备无法访问
+- 拒绝 `Host` 不是 localhost 的请求，防止 DNS rebinding
+- 校验 `Origin` 和 `Sec-Fetch-Site`，拒绝其他网页发起的跨站请求，防止 CSRF
+- 删除、重命名、移动之前会解析符号链接，拒绝操作根目录、一级目录（`/system`、`/data`、`/sdcard` 等）和各个存储的根目录
+- 预览只放行常见图片格式，SVG 在沙箱中显示，不执行其中的脚本
+
+请不要通过反向代理等方式把它暴露到局域网或公网。
+
+## 开发
+
+```bash
+pnpm install
+pnpm dev      # 前端 http://127.0.0.1:5173，后端 3001 端口，均支持热更新
+pnpm build    # 构建到 dist/
+pnpm start    # 运行构建产物：http://127.0.0.1:3001
+```
+
+技术栈：
+
+- 后端：Node.js + Express 5，通过 `execFile` 调用 adb，拼接设备端命令时对路径做单引号转义
+- 前端：React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion，字体（MiSans、Maple Mono）打包在本地，无需联网
+
+目录结构：
+
+```
+server/
+  adb.ts        adb 命令封装：列目录、push / pull、root 检测、复制移动删除等
+  index.ts      HTTP API 和安全校验；构建后同时托管前端页面
+  i18n.ts       后端错误信息的中英文文案
+src/
+  App.tsx       主界面和大部分交互逻辑
+  components/   各个界面组件
+  i18n/         前端中英文文案（zh.ts 是类型来源，en.ts 须与之对齐）
+  index.css     Catppuccin 配色和主题变量
+  theme.ts      主题切换
+```
+
+构建产物：`dist/web/` 是前端，`dist/server/` 是编译后的后端，也是 npm 包的 `bin` 入口。
 
 ## 许可证
+
 代码以 [MIT](LICENSE) 协议发布。
 
-打包进前端的字体各有自己的许可：
+打包进前端的字体有各自的许可：
+
 - [MiSans](https://hyperos.mi.com/font/)：小米《MiSans 字体知识产权许可协议》
 - [Maple Mono](https://github.com/subframe7536/maple-font)：SIL Open Font License 1.1
