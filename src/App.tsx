@@ -80,7 +80,7 @@ export default function App() {
   const pendingFocus = useRef<string | true | null>(null);
   const [sort, setSort] = useState<Sort>(() => loadPref("afm.sort", { key: "name", asc: true }));
   const [showHidden, setShowHidden] = useState(() => loadPref("afm.hidden", false));
-  /** load 里算「第一项」要用当前的排序和隐藏文件设置，又不想让 load 跟着它们变 */
+  /** load 里算“第一项”要用当前的排序和隐藏文件设置，又不想让 load 跟着它们变 */
   const display = useRef({ sort, showHidden });
   display.current = { sort, showHidden };
   const [filter, setFilter] = useState("");
@@ -96,7 +96,7 @@ export default function App() {
   const dragDepth = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
-  /** 右键「上传到这里」的目标目录；为 null 时上传到当前目录 */
+  /** 右键“上传到这里”的目标目录；为 null 时上传到当前目录 */
   const uploadDest = useRef<string | null>(null);
   const loadSeq = useRef(0);
 
@@ -464,7 +464,7 @@ export default function App() {
     setRootMode(false);
   }, []);
 
-  // 操作途中 root 被撤销：退出 root 模式，但保留「记住选择」，重新授权后下次还能自动开启
+  // 操作途中 root 被撤销：退出 root 模式，但保留“记住选择”，重新授权后下次还能自动开启
   useEffect(() => {
     onRootLost((message) => {
       rootVerified.current = null;

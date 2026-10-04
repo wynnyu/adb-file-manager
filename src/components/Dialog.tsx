@@ -42,7 +42,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
     return () => clearTimeout(t);
   }, [left]);
 
-  // 有倒计时的危险操作默认聚焦「取消」，防止回车误触
+  // 有倒计时的危险操作默认聚焦“取消”，防止回车误触
   useEffect(() => {
     if (state.kind === "confirm" && state.countdown) cancelBtn.current?.focus();
   }, [state]);

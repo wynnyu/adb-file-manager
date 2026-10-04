@@ -280,10 +280,7 @@ function Preview({
       </div>
       <div className="w-full text-center">
         <p className="font-bold break-all">{entry.name}</p>
-        <p className="mt-0.5 text-xs text-muted">
-          {kind}
-          {!entry.isDir && ` · ${formatSize(entry.size)}`}
-        </p>
+        <p className="mt-0.5 text-xs text-muted">{kind}</p>
       </div>
       <dl className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-2xl bg-mantle/70 p-3 text-xs">
         <dt className="text-muted">{t("preview.kind")}</dt>

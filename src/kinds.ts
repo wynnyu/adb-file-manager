@@ -2,7 +2,7 @@ import type { T } from "./i18n/index.tsx";
 import type { MessageKey } from "./i18n/zh.ts";
 import type { FileEntry } from "./types.ts";
 
-/** 扩展名 → 访达式的「种类」文案，文案里的 {ext} 换成扩展名的显示名 */
+/** 扩展名 → 访达式的“种类”文案，文案里的 {ext} 换成扩展名的显示名 */
 const KINDS: [RegExp, MessageKey][] = [
   [/^(jpe?g|png|gif|webp|heic|heif|bmp|svg|avif|dng|raw|tiff?|ico)$/, "kind.imageOf"],
   [/^(mp4|mkv|mov|avi|webm|3gp|m4v|flv|ts|wmv)$/, "kind.videoOf"],
@@ -54,7 +54,7 @@ const EXT_NAMES: Record<string, string> = {
   h: "C",
 };
 
-/** 访达列表「种类」一栏的文字，例如「PNG 图像」「纯文本文稿」「磁盘映像」 */
+/** 访达列表“种类”一栏的文字，例如“PNG 图像”“纯文本文稿”“磁盘映像” */
 export function kindLabel(entry: FileEntry, t: T) {
   if (entry.isDir) return t("kind.folder");
   if (entry.type === "link") return t("kind.link");

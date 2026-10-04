@@ -1,7 +1,7 @@
 {
   "name": "adb-file-manager",
   "version": "0.1.0",
-  "description": "Web-based Android file manager over adb — works even when USB is set to \"charging only\", no MTP needed",
+  "description": "Web-based Android file manager over adb. Works even when USB is set to \"charging only\", no MTP needed",
   "keywords": [
     "adb",
     "android",

@@ -1,6 +1,6 @@
 # ADB File Manager
 
-English · [中文](README.md)
+English | [中文](README.md)
 
 Manage the files on your Android phone from a browser.
 
@@ -12,6 +12,8 @@ You need:
 
 - Node.js 20 or later
 - adb (Android SDK Platform-Tools), either on your `PATH` or pointed to with `ADB_PATH`
+
+  If you don't have them yet, see [Installing Node.js and adb](#installing-nodejs-and-adb) below
 - USB debugging enabled on the phone: go to Settings → About phone, tap "Build number" 7 times to unlock developer mode, then turn on "USB debugging" under "Developer options"
 
 Then run:
@@ -21,6 +23,42 @@ npx adb-file-manager
 ```
 
 Open <http://127.0.0.1:3001> in your browser, connect the phone with a USB cable, and tap **Allow** when the phone asks you to authorize debugging.
+
+### Installing Node.js and adb
+
+**Node.js**
+
+Download the LTS installer from [nodejs.org](https://nodejs.org/), or use a package manager:
+
+```bash
+# macOS (Homebrew)
+brew install node
+# Windows (winget)
+winget install OpenJS.NodeJS.LTS
+```
+
+The Node.js shipped by Linux distributions may be older than 20; it's better to install it with a version manager such as nvm, following the [nodejs.org download page](https://nodejs.org/en/download). Afterwards, run `node -v` and check that the version is 20 or later.
+
+**adb (Android SDK Platform-Tools)**
+
+You only need Platform-Tools, not Android Studio or the full Android SDK. Install it with a package manager:
+
+```bash
+# macOS (Homebrew)
+brew install --cask android-platform-tools
+# Windows (winget)
+winget install Google.PlatformTools
+# Debian / Ubuntu
+sudo apt install adb
+# Arch Linux
+sudo pacman -S android-tools
+# Fedora
+sudo dnf install android-tools
+```
+
+Or download the official zip from the [Android developers site](https://developer.android.com/tools/releases/platform-tools) ([Windows](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) / [macOS](https://dl.google.com/android/repository/platform-tools-latest-darwin.zip) / [Linux](https://dl.google.com/android/repository/platform-tools-latest-linux.zip)), unzip it, and either add the `platform-tools` folder to your `PATH` or point `ADB_PATH` at the `adb` inside it (`adb.exe` on Windows).
+
+Run `adb version` to check that adb can be found. With the phone connected, run `adb devices`: if the phone is listed with the state `device`, the connection works. If it doesn't show up on Windows, you may need a USB driver: the [Google USB Driver](https://developer.android.com/studio/run/win-usb) for Pixel phones, or the manufacturer's driver for other brands.
 
 ## Features
 

@@ -24,8 +24,8 @@ function dtf(locale: string, opts: Intl.DateTimeFormatOptions) {
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /**
- * 访达式日期：今天、昨天的只写「今天 下午8:10」，其余「2026/9/10 下午8:10」。
- * long 为 true 时写全「2026年9月10日 下午8:10」，用在信息面板
+ * 访达式日期：今天、昨天的只写“今天 下午8:10”，其余“2026/9/10 下午8:10”。
+ * long 为 true 时写全“2026年9月10日 下午8:10”，用在信息面板
  */
 export function formatDate(sec: number, lang: Lang, t: T, long = false) {
   if (!sec) return "--";

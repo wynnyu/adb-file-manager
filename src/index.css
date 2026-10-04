@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Catppuccin — https://catppuccin.com/palette
+/* Catppuccin: https://catppuccin.com/palette
  * @theme 里是 Mocha 默认值；下面按 data-flavor 覆盖，data-accent 选主色。
  * 用 static 保证没被类名引用的颜色变量也会输出，主色切换要靠它们。 */
 @theme static {

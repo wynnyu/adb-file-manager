@@ -79,7 +79,7 @@ export function shell(ctx: Ctx, cmd: string) {
 
 /** 检测设备能否以 root 运行命令 */
 export async function rootMethod(serial: string): Promise<"adbd" | "su"> {
-  // 普通 shell 都跑不通说明是连接问题（设备断开、未授权），原样抛出，不当成「没有 root」
+  // 普通 shell 都跑不通说明是连接问题（设备断开、未授权），原样抛出，不当成“没有 root”
   const plain = await shell({ serial, root: false }, "id -u");
   if (plain.trim() === "0") return "adbd";
   const viaSu = await shell({ serial, root: "su" }, "id -u").catch((e: Error) => e.message);
@@ -228,7 +228,7 @@ export const rename = (ctx: Ctx, from: string, to: string) =>
   checked(ctx, `[ ! -e ${q(to)} ] || { echo __ADBFM_EXISTS__; exit 1; }; mv ${q(from)} ${q(to)}`);
 export const remove = (ctx: Ctx, paths: string[]) => checked(ctx, `rm -rf ${paths.map(q).join(" ")}`);
 
-/** 复制到目标目录下；重名时依次改成「名字 2.扩展名」「名字 3.扩展名」…，从不覆盖 */
+/** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”…，从不覆盖 */
 export function copyInto(ctx: Ctx, src: string, destDir: string) {
   const name = path.basename(src);
   const dot = name.lastIndexOf(".");

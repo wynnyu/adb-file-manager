@@ -1,10 +1,10 @@
 # ADB File Manager
 
-[English](README.en.md) · 中文
+[English](README.en.md) | 中文
 
 在浏览器里管理安卓手机上的文件。
 
-所有操作都通过 adb（`adb push` / `adb pull` / `adb shell`）完成，不依赖 MTP，所以手机的 USB 模式设为「仅充电」也能用，也不会遇到 MTP 断连、大文件卡住、隐藏目录看不到之类的问题。手机已 root 的话，还可以开启 root 模式访问 `/data` 等系统目录。
+所有操作都通过 adb（`adb push` / `adb pull` / `adb shell`）完成，不依赖 MTP，所以手机的 USB 模式设为“仅充电”也能用，也不会遇到 MTP 断连、大文件卡住、隐藏目录看不到之类的问题。手机已 root 的话，还可以开启 root 模式访问 `/data` 等系统目录。
 
 ## 快速开始
 
@@ -12,7 +12,9 @@
 
 - Node.js 20 及以上
 - adb（Android SDK Platform-Tools），放在 `PATH` 里，或者用 `ADB_PATH` 指定路径
-- 手机开启 USB 调试：设置 → 关于手机，连点「版本号」7 次进入开发者模式，再到「开发者选项」里打开「USB 调试」
+
+  还没装的话，见下方[安装 Node.js 和 adb](#安装-nodejs-和-adb)
+- 手机开启 USB 调试：设置 → 关于手机，连点“版本号”7 次进入开发者模式，再到“开发者选项”里打开“USB 调试”
 
 然后运行：
 
@@ -20,7 +22,43 @@
 npx adb-file-manager
 ```
 
-浏览器打开 <http://127.0.0.1:3001>，用数据线连接手机，在手机弹出的调试授权提示里点「允许」即可。
+浏览器打开 <http://127.0.0.1:3001>，用数据线连接手机，在手机弹出的调试授权提示里点 **允许** 即可。
+
+### 安装 Node.js 和 adb
+
+**Node.js**
+
+从 [nodejs.org](https://nodejs.org/) 下载 LTS 版本的安装包，或者用包管理器安装：
+
+```bash
+# macOS（Homebrew）
+brew install node
+# Windows（winget）
+winget install OpenJS.NodeJS.LTS
+```
+
+Linux 发行版自带的 Node.js 可能低于 20，建议按 [nodejs.org 下载页](https://nodejs.org/en/download) 的说明用 nvm 等版本管理器安装。装好后运行 `node -v`，确认版本在 20 以上。
+
+**adb（Android SDK Platform-Tools）**
+
+只需要 Platform-Tools，不用安装 Android Studio 或完整的 Android SDK。可以用包管理器安装：
+
+```bash
+# macOS（Homebrew）
+brew install --cask android-platform-tools
+# Windows（winget）
+winget install Google.PlatformTools
+# Debian / Ubuntu
+sudo apt install adb
+# Arch Linux
+sudo pacman -S android-tools
+# Fedora
+sudo dnf install android-tools
+```
+
+也可以从 [Android 开发者网站](https://developer.android.com/tools/releases/platform-tools)下载官方压缩包（[Windows](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) / [macOS](https://dl.google.com/android/repository/platform-tools-latest-darwin.zip) / [Linux](https://dl.google.com/android/repository/platform-tools-latest-linux.zip)），解压后把 `platform-tools` 目录加入 `PATH`，或者用 `ADB_PATH` 指向其中的 `adb`（Windows 上是 `adb.exe`）。
+
+装好后运行 `adb version` 确认能找到 adb。连上手机后运行 `adb devices`，列表里出现设备且状态为 `device` 就说明连接正常。Windows 上如果看不到设备，可能需要安装 USB 驱动：Pixel 用 [Google USB 驱动](https://developer.android.com/studio/run/win-usb)，其他品牌到厂商官网下载。
 
 ## 功能
 
@@ -65,7 +103,7 @@ npx adb-file-manager
 
 ## root 模式
 
-点击工具栏上的盾牌按钮开启。默认关闭，开启前会弹窗确认，可以勾选「记住选择」让下次自动开启。
+点击工具栏上的盾牌按钮开启。默认关闭，开启前会弹窗确认，可以勾选“记住选择”让下次自动开启。
 
 开启时会先检测设备的 root 方式：
 

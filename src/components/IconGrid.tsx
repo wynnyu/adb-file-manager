@@ -53,7 +53,7 @@ export function IconGrid({ dir, entries, loading, error, selected, cut, onSelect
                 onClick={(e) => onSelect(entry, e)}
                 onDoubleClick={() => onOpen(entry)}
                 onContextMenu={(e) => onContextMenu(e, entry)}
-                title={`${entry.name}\n${entry.isDir ? kindLabel(entry, t) : `${kindLabel(entry, t)} · ${formatSize(entry.size)}`}\n${formatDate(entry.mtime, lang, t)}`}
+                title={`${entry.name}\n${kindLabel(entry, t)}${entry.isDir ? "" : `\n${formatSize(entry.size)}`}\n${formatDate(entry.mtime, lang, t)}`}
                 className={`group flex cursor-default flex-col items-center gap-1.5 rounded-[1.75rem] px-2 pt-3 pb-2.5 select-none ${
                   cut.has(entry.path) ? "opacity-50" : ""
                 }`}
