@@ -66,14 +66,9 @@ export function useBookmarks(path: string, openDialog: (d: DialogState) => void)
       openDialog({
         kind: "confirm",
         tone: "danger",
-        icon: <Trash2 className="size-7" />,
+        icon: Trash2,
         title: t("bookmark.deleteTitle", { name: bookmarkName(b, t) }),
-        message: (
-          <>
-            <p>{t(b.preset ? "bookmark.deletePresetMessage" : "bookmark.deleteMessage")}</p>
-            <p className="mt-2 font-mono text-xs text-muted">{b.path}</p>
-          </>
-        ),
+        message: { kind: "bookmarkDelete", preset: !!b.preset, path: b.path },
         confirm: t("common.delete"),
         onSubmit: async () => setBookmarks((list) => list.filter((x) => x.id !== b.id)),
       }),

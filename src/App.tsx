@@ -15,20 +15,21 @@ import { StatusBar } from "./components/StatusBar.tsx";
 import { Toast } from "./components/Toast.tsx";
 import { Toolbar } from "./components/Toolbar.tsx";
 import { TransferQueue } from "./components/TransferQueue.tsx";
+import { UploadInputs } from "./components/UploadInputs.tsx";
 import { UsageTip } from "./components/UsageTip.tsx";
 import { spring } from "./components/ui.tsx";
-import { useBookmarks } from "./hooks/useBookmarks.tsx";
+import { useBookmarks } from "./hooks/useBookmarks.ts";
 import { useClipboard } from "./hooks/useClipboard.ts";
 import { useDevices, useStorage } from "./hooks/useDevices.ts";
 import { useDirectory, usePrefetchDirs } from "./hooks/useDirectory.ts";
-import { useFileOps } from "./hooks/useFileOps.tsx";
-import { useRootMode } from "./hooks/useRootMode.tsx";
+import { useFileOps } from "./hooks/useFileOps.ts";
+import { useRootMode } from "./hooks/useRootMode.ts";
 import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
 import { useToast } from "./hooks/useToast.ts";
 import { useTransfers } from "./hooks/useTransfers.ts";
 import { useTree } from "./hooks/useTree.ts";
-import { useDropUpload, useUploadPicker } from "./hooks/useUploadSources.tsx";
+import { useDropUpload, useUploadPicker } from "./hooks/useUploadSources.ts";
 import { useT } from "./i18n/index.tsx";
 import type { Target } from "./lib/api.ts";
 import type { Bookmark } from "./lib/bookmarks.ts";
@@ -355,7 +356,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {picker.inputs}
+      <UploadInputs {...picker.inputs} />
     </div>
   );
 }

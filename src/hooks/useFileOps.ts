@@ -1,7 +1,7 @@
 import { FolderPlus, Pencil, Skull, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import type { DialogState } from "../components/Dialog.tsx";
-import { type T, useI18n } from "../i18n/index.tsx";
+import { type T, useT } from "../i18n/index.tsx";
 import { api, type Target } from "../lib/api.ts";
 import type { UploadItem } from "../lib/drop.ts";
 import { joinPath, parentPath } from "../lib/format.ts";
@@ -49,7 +49,7 @@ export function useFileOps({
   refreshStorage: () => void;
   openDialog: (d: DialogState) => void;
 }) {
-  const { t, rich } = useI18n();
+  const t = useT();
 
   const upload = useCallback(
     async (items: UploadItem[], dest = path) => {
@@ -140,26 +140,12 @@ export function useFileOps({
         openDialog({
           kind: "confirm",
           tone: "danger",
-          icon: <Skull className="size-7" />,
+          icon: Skull,
           title: t(single ? "delete.titleRoot" : "delete.titleRootMany", params),
           countdown: 3,
           confirm: t("delete.root.confirm"),
           checkbox: t("delete.root.noWarn"),
-          message: (
-            <div className="flex flex-col items-center gap-3">
-              <p>{rich("delete.root.message", { b: (s) => <b className="text-red">{s}</b> })}</p>
-              <ul className="flex w-full flex-col gap-1">
-                {rooted.slice(0, 4).map((x) => (
-                  <li key={x.path} className="truncate rounded-full bg-red/10 px-4 py-1.5 font-mono text-xs text-red">
-                    {x.path}
-                  </li>
-                ))}
-                {rooted.length > 4 && (
-                  <li className="text-xs text-muted">{t("common.moreItems", { n: rooted.length - 4 })}</li>
-                )}
-              </ul>
-            </div>
-          ),
+          message: { kind: "rootDelete", paths: rooted.map((x) => x.path) },
           onSubmit: async (noWarn) => {
             if (noWarn) savePref("afm.rootDeleteNoWarn", true);
             await doDelete();
@@ -170,7 +156,7 @@ export function useFileOps({
       openDialog({
         kind: "confirm",
         tone: "danger",
-        icon: <Trash2 className="size-7" />,
+        icon: Trash2,
         title: t(
           single
             ? rooted.length
@@ -186,7 +172,7 @@ export function useFileOps({
         onSubmit: doDelete,
       });
     },
-    [target, rootMode, afterChange, refreshStorage, openDialog, t, rich],
+    [target, rootMode, afterChange, refreshStorage, openDialog, t],
   );
 
   const askRename = useCallback(
@@ -194,7 +180,7 @@ export function useFileOps({
       if (!target) return;
       openDialog({
         kind: "prompt",
-        icon: <Pencil className="size-7" />,
+        icon: Pencil,
         title: t("rename.title"),
         initial: entry.name,
         confirm: t("common.confirm"),
@@ -215,7 +201,7 @@ export function useFileOps({
       if (!target) return;
       openDialog({
         kind: "prompt",
-        icon: <FolderPlus className="size-7" />,
+        icon: FolderPlus,
         title: t("mkdir.title"),
         initial: t("mkdir.initial"),
         confirm: t("mkdir.confirm"),

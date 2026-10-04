@@ -5,7 +5,7 @@ type Upload = (items: UploadItem[], dest?: string) => Promise<void>;
 
 /**
  * 隐藏的文件 / 文件夹选择框。pick 打开选择框；dest 为 null 时上传到 upload 的默认目录（当前目录），
- * 右键“上传到这里”时为所点的目录。inputs 需要渲染到页面上
+ * 右键“上传到这里”时为所点的目录。inputs 需要传给 UploadInputs 渲染到页面上
  */
 export function useUploadPicker(upload: Upload) {
   const files = useRef<HTMLInputElement>(null);
@@ -23,14 +23,7 @@ export function useUploadPicker(upload: Upload) {
     e.target.value = "";
   };
 
-  const inputs = (
-    <>
-      <input ref={files} type="file" multiple hidden onChange={onChange} />
-      <input ref={folder} type="file" hidden {...{ webkitdirectory: "" }} onChange={onChange} />
-    </>
-  );
-
-  return { pick, inputs };
+  return { pick, inputs: { filesRef: files, folderRef: folder, onChange } };
 }
 
 /** 把文件、文件夹拖进窗口上传。enabled 为 false 时不响应拖拽；dragProps 放在接收拖放的容器上 */

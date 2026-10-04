@@ -1,7 +1,7 @@
 import { ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DialogState } from "../components/Dialog.tsx";
-import { useI18n } from "../i18n/index.tsx";
+import { useT } from "../i18n/index.tsx";
 import { api, onRootLost } from "../lib/api.ts";
 import { loadPref, savePref } from "../lib/prefs.ts";
 import type { Flash } from "./useToast.ts";
@@ -21,7 +21,7 @@ export function useRootMode({
   flash: Flash;
   openDialog: (d: DialogState) => void;
 }) {
-  const { t, rich } = useI18n();
+  const t = useT();
   const [rootMode, setRootMode] = useState(() => loadPref("afm.rootRemember", false));
   /** 已确认能拿到 root 的设备，切回这台设备时不再检查 */
   const rootVerified = useRef<string | null>(null);
@@ -43,15 +43,9 @@ export function useRootMode({
     openDialog({
       kind: "confirm",
       tone: "warn",
-      icon: <ShieldAlert className="size-7" />,
+      icon: ShieldAlert,
       title: t("root.enable.title"),
-      message: (
-        <p>
-          {rich("root.enable.message", {
-            code: (s) => <code className="rounded-full bg-crust px-2 py-0.5 font-mono text-peach">{s}</code>,
-          })}
-        </p>
-      ),
+      message: { kind: "rootEnable" },
       checkbox: t("root.enable.remember"),
       confirm: t("root.enable.confirm"),
       onSubmit: async (remember) => {
@@ -61,7 +55,7 @@ export function useRootMode({
         setRootMode(true);
       },
     });
-  }, [serial, openDialog, t, rich]);
+  }, [serial, openDialog, t]);
 
   const disableRoot = useCallback(() => {
     rootVerified.current = null;

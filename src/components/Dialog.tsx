@@ -1,16 +1,17 @@
-import { Check } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/index.tsx";
 import type { BookmarkFields } from "../lib/bookmarks.ts";
 import { BookmarkForm, BookmarkPreview } from "./BookmarkForm.tsx";
+import { type DialogMessage, DialogMessageBody } from "./DialogMessage.tsx";
 import { PillButton, spring } from "./ui.tsx";
 
 export type DialogState =
   | {
       kind: "prompt";
       title: string;
-      icon: ReactNode;
+      icon: LucideIcon;
       initial: string;
       confirm: string;
       onSubmit: (v: string) => Promise<void>;
@@ -18,8 +19,8 @@ export type DialogState =
   | {
       kind: "confirm";
       title: string;
-      icon: ReactNode;
-      message: ReactNode;
+      icon: LucideIcon;
+      message: DialogMessage;
       confirm: string;
       tone?: "danger" | "warn";
       /** 附带一个可勾选项，结果传给 onSubmit */
@@ -127,7 +128,9 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
           <BookmarkPreview value={bookmark} />
         ) : (
           state.kind !== "bookmark" && (
-            <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>{state.icon}</span>
+            <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>
+              <state.icon className="size-7" />
+            </span>
           )
         )}
         <h2 className="w-full text-lg font-extrabold wrap-anywhere">{state.title}</h2>
@@ -148,7 +151,11 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             onError={setError}
           />
         ) : (
-          state.kind === "confirm" && <div className="w-full text-sm text-subtext1 wrap-anywhere">{state.message}</div>
+          state.kind === "confirm" && (
+            <div className="w-full text-sm text-subtext1 wrap-anywhere">
+              <DialogMessageBody message={state.message} />
+            </div>
+          )
         )}
         {state.kind === "confirm" && state.checkbox && (
           <button
