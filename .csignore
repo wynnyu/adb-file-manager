@@ -1,0 +1,2 @@
+# context-sniper 索引排除列表，gitignore 语法
+.claude/settings.local.json
