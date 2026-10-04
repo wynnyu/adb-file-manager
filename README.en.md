@@ -26,7 +26,7 @@ Open <http://127.0.0.1:3001> in your browser, connect the phone with a USB cable
 
 **Browsing**
 
-- Four Finder-style views: icons, list, columns and gallery. The list view has Finder's columns (Name, Date Modified, Size, Kind). The column view expands from the root one column at a time: a selected folder shows its contents in the next column, a selected file shows its details, with thumbnails for images. The gallery view shows a large preview, a strip of thumbnails and an info panel
+- Four Finder-style views: icons, list, columns and gallery. The list view has Finder's columns (Name, Date Modified, Size, Kind), and the triangle next to a folder expands it in place. The column view expands from the root one column at a time: a selected folder shows its contents in the next column, a selected file shows its details, with thumbnails for images. The gallery view shows a large preview, a strip of thumbnails and an info panel
 - Breadcrumbs (double-click to type a path) and one-click links to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
 - Filter, sort by name / size / modified time, and show or hide dotfiles
 - Used and total internal storage shown in the toolbar
@@ -60,7 +60,7 @@ Open <http://127.0.0.1:3001> in your browser, connect the phone with a USB cable
 | `⌘/Ctrl A` | Select all |
 | `⌘/Ctrl C` / `X` / `V` | Copy / cut / paste |
 | `↑` `↓` | Move the selection |
-| `←` `→` | Go into and out of folders in column view; previous / next item in gallery view |
+| `←` `→` | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view |
 | `Esc` | Clear the selection |
 
 ## Root mode

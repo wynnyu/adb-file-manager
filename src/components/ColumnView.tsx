@@ -5,17 +5,10 @@ import { api, type Target } from "../api.ts";
 import { arrange, type Sort } from "../entries.ts";
 import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
-import type { FileEntry } from "../types.ts";
+import type { FileEntry, Listing } from "../types.ts";
 import { kindLabel } from "../kinds.ts";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
 import { IconButton } from "./ui.tsx";
-
-interface Listing {
-  /** 拉取时的刷新序号，和 props.rev 不一致说明过期了 */
-  rev: number;
-  entries?: FileEntry[];
-  error?: string;
-}
 
 interface Props {
   target: Target;

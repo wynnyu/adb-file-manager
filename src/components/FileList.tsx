@@ -1,11 +1,11 @@
-import { ArrowDown, Check, CornerLeftUp, Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, CornerLeftUp, Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
 import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
 import type { Sort, SortKey } from "../entries.ts";
 import { kindLabel } from "../kinds.ts";
-import type { FileEntry } from "../types.ts";
+import type { FileEntry, TreeRow } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { IconButton, spring } from "./ui.tsx";
 
@@ -13,11 +13,19 @@ import { IconButton, spring } from "./ui.tsx";
 const cols =
   "grid grid-cols-[minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_11rem_5.5rem] lg:grid-cols-[minmax(0,1fr)_11rem_5.5rem_9.5rem] items-center gap-2";
 const rowBase = "group cursor-default rounded-full py-1.5 pr-2 pl-1.5 transition-colors select-none";
+/** 每深一层名称往右缩进的距离 */
+const INDENT_REM = 1.5;
 
 interface Props {
   /** 当前目录，切换目录时重新播放进场动画 */
   dir: string;
-  entries: FileEntry[];
+  /** 当前目录的条目，加上展开的文件夹里的条目（同访达的展开三角） */
+  rows: TreeRow[];
+  /** 展开了的文件夹 */
+  expanded: Set<string>;
+  /** 展开了但内容还没加载好的文件夹 */
+  pending: Set<string>;
+  onToggleExpand: (entry: FileEntry) => void;
   loading: boolean;
   error: string | null;
   selected: Set<string>;
@@ -75,14 +83,14 @@ export function Placeholder({ icon, text, tone = "bg-surface0 text-muted" }: { i
 }
 
 export function FileList(props: Props) {
-  const { dir, entries, loading, error, selected, cut, sort, onSort, onUp } = props;
+  const { dir, rows, expanded, pending, loading, error, selected, cut, sort, onSort, onUp } = props;
   const { t, lang } = useI18n();
-  const animateLayout = entries.length <= 200;
+  const animateLayout = rows.length <= 200;
 
   return (
     <div className="flex flex-col gap-1">
       <div className={`${cols} border-b border-surface0 px-2 pb-1 text-xs font-bold text-muted`}>
-        <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-14" />
+        <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-[4.75rem]" />
         <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden justify-self-start sm:flex" />
         <SortHeader label={t("files.size")} k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
         <SortHeader label={t("files.kind")} k="kind" sort={sort} onSort={onSort} className="hidden justify-self-start lg:flex" />
@@ -95,6 +103,7 @@ export function FileList(props: Props) {
           className={`${rowBase} ${cols} cursor-pointer hover:bg-surface0/70`}
         >
           <div className="flex min-w-0 items-center gap-3">
+            <span className="-mr-2 w-4 shrink-0" />
             <span
               className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent"
             >
@@ -110,19 +119,35 @@ export function FileList(props: Props) {
         <Placeholder icon={<TriangleAlert className="size-7" />} text={error} tone="bg-red/15 text-red" />
       ) : (
         <div key={dir} className="flex flex-col gap-1">
-          {loading && entries.length === 0 && (
+          {loading && rows.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.15 } }} className="flex justify-center py-20 text-muted">
               <Loader2 className="size-7 animate-spin" />
             </motion.div>
           )}
 
-          {!loading && entries.length === 0 && (
+          {!loading && rows.length === 0 && (
             <Placeholder icon={<FolderOpen className="size-7" />} text={t("files.empty")} />
           )}
 
           <AnimatePresence mode="popLayout">
-            {entries.map((entry) => {
+            {rows.map((row) => {
+              if (!("entry" in row)) {
+                return (
+                  <motion.p
+                    key={row.key}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ paddingLeft: `${row.depth * INDENT_REM + 4.75}rem` }}
+                    className="truncate py-1 text-xs text-red"
+                  >
+                    {row.note}
+                  </motion.p>
+                );
+              }
+              const { entry, depth } = row;
               const isSel = selected.has(entry.path);
+              const open = entry.isDir && expanded.has(entry.path);
               return (
                 <motion.div
                   key={entry.path}
@@ -139,7 +164,29 @@ export function FileList(props: Props) {
                     cut.has(entry.path) ? "opacity-50" : ""
                   }`}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3" style={{ paddingLeft: `${depth * INDENT_REM}rem` }}>
+                    {/* 展开三角：只展开 / 收起，不改变选择 */}
+                    {entry.isDir ? (
+                      <button
+                        type="button"
+                        title={t(open ? "files.collapse" : "files.expand")}
+                        aria-expanded={open}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          props.onToggleExpand(entry);
+                        }}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        className={`-mr-2 grid h-8 w-4 shrink-0 place-items-center rounded-full ${isSel ? "" : "text-overlay2 hover:text-text"}`}
+                      >
+                        {pending.has(entry.path) ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <ChevronRight className={`size-3.5 transition-transform duration-150 ${open ? "rotate-90" : ""}`} strokeWidth={2.6} />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="-mr-2 w-4 shrink-0" />
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {

@@ -44,6 +44,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "files.empty": "Empty folder. Drop files here to upload.",
   "files.select": "Select",
   "files.folder": "Folder",
+  "files.expand": "Expand (→)",
+  "files.collapse": "Collapse (←)",
   "files.download": "Download to computer",
   "files.rename": "Rename",
   "files.delete": "Delete",

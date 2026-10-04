@@ -53,7 +53,7 @@ import { arrange, MOD, type Sort, type SortKey } from "./entries.ts";
 import { formatSize, joinPath, parentPath } from "./format.ts";
 import { useI18n, useT } from "./i18n/index.tsx";
 import { loadPref, savePref } from "./prefs.ts";
-import type { Clip, Device, FileEntry, Transfer, ViewMode } from "./types.ts";
+import type { Clip, Device, FileEntry, Listing, Transfer, TreeRow, ViewMode } from "./types.ts";
 
 const HOME = "/sdcard";
 
@@ -228,6 +228,75 @@ export default function App() {
   );
 
   const visible = useMemo(() => arrange(entries, sort, showHidden, filter), [entries, filter, showHidden, sort]);
+
+  // ---------- 列表视图的展开三角 ----------
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [subdirs, setSubdirs] = useState(() => new Map<string, Listing>());
+  const subdirsRef = useRef(subdirs);
+  subdirsRef.current = subdirs;
+  const subInflight = useRef(new Set<string>());
+  /** 换目录、换设备时 +1，丢掉之前发出去还没回来的请求 */
+  const subGen = useRef(0);
+
+  // 换了目录或设备就全部收起
+  useEffect(() => {
+    subGen.current++;
+    subInflight.current.clear();
+    setExpanded(new Set());
+    setSubdirs(new Map());
+  }, [path, target]);
+
+  // 展开的文件夹：缓存里没有或已过期（增删改、刷新后 rev 变了）的才去拉
+  useEffect(() => {
+    if (!target || view !== "list") return;
+    const gen = subGen.current;
+    for (const dir of expanded) {
+      const key = `${dir}@${rev}`;
+      if (subdirsRef.current.get(dir)?.rev === rev || subInflight.current.has(key)) continue;
+      subInflight.current.add(key);
+      const put = (l: Listing) => gen === subGen.current && setSubdirs((m) => new Map(m).set(dir, l));
+      api
+        .ls(target, dir)
+        .then(
+          (list) => put({ rev, entries: list }),
+          (e: Error) => put({ rev, error: e.message }),
+        )
+        .finally(() => subInflight.current.delete(key));
+    }
+  }, [expanded, rev, target, view]);
+
+  const toggleExpand = useCallback((entry: FileEntry, open?: boolean) => {
+    setExpanded((s) => {
+      if (open === s.has(entry.path)) return s;
+      const n = new Set(s);
+      if (!n.delete(entry.path)) n.add(entry.path);
+      return n;
+    });
+  }, []);
+
+  /** 列表视图逐行展开后的样子：文件夹下面紧跟它的内容 */
+  const rows = useMemo(() => {
+    const out: TreeRow[] = [];
+    const walk = (list: FileEntry[], depth: number) => {
+      for (const entry of list) {
+        out.push({ entry, depth });
+        if (!entry.isDir || !expanded.has(entry.path)) continue;
+        const sub = subdirs.get(entry.path);
+        if (sub?.error) out.push({ note: sub.error, key: `${entry.path}\0error`, depth: depth + 1 });
+        else if (sub?.entries) walk(arrange(sub.entries, sort, showHidden), depth + 1);
+      }
+    };
+    walk(visible, 0);
+    return out;
+  }, [visible, expanded, subdirs, sort, showHidden]);
+
+  const pending = useMemo(() => new Set([...expanded].filter((d) => !subdirs.has(d))), [expanded, subdirs]);
+
+  /** 能选中、能用方向键走到的条目：列表视图包括展开的子项 */
+  const selectable = useMemo(
+    () => (view === "list" ? rows.flatMap((r) => ("entry" in r ? [r.entry] : [])) : visible),
+    [view, rows, visible],
+  );
 
   // ---------- 提示 & 传输队列 ----------
   const flash = useCallback((msg: string, tone: "error" | "info" = "error") => {
@@ -456,11 +525,11 @@ export default function App() {
   const onSelect = useCallback(
     (entry: FileEntry, e: MouseEvent) => {
       if (e.shiftKey && anchor.current) {
-        const a = visible.findIndex((v) => v.path === anchor.current);
-        const b = visible.findIndex((v) => v.path === entry.path);
+        const a = selectable.findIndex((v) => v.path === anchor.current);
+        const b = selectable.findIndex((v) => v.path === entry.path);
         if (a >= 0 && b >= 0) {
           const [lo, hi] = a < b ? [a, b] : [b, a];
-          setSelected(new Set(visible.slice(lo, hi + 1).map((v) => v.path)));
+          setSelected(new Set(selectable.slice(lo, hi + 1).map((v) => v.path)));
           return;
         }
       }
@@ -475,7 +544,7 @@ export default function App() {
         setSelected(new Set([entry.path]));
       }
     },
-    [visible],
+    [selectable],
   );
 
   const onToggle = useCallback((entry: FileEntry) => {
@@ -487,7 +556,7 @@ export default function App() {
     });
   }, []);
 
-  const selectedEntries = useMemo(() => visible.filter((v) => selected.has(v.path)), [visible, selected]);
+  const selectedEntries = useMemo(() => selectable.filter((v) => selected.has(v.path)), [selectable, selected]);
 
   // ---------- 剪切 / 拷贝 / 粘贴 ----------
   const canPaste = !!clip && clip.serial === serial;
@@ -624,8 +693,8 @@ export default function App() {
         label: t("menu.selectAll"),
         icon: <CheckCheck className="size-4" />,
         shortcut: `${MOD}A`,
-        disabled: !visible.length,
-        onSelect: () => setSelected(new Set(visible.map((v) => v.path))),
+        disabled: !selectable.length,
+        onSelect: () => setSelected(new Set(selectable.map((v) => v.path))),
       });
     }
     items.push(
@@ -647,15 +716,15 @@ export default function App() {
   /** 方向键选择上一项 / 下一项，并滚动到可见 */
   const step = useCallback(
     (delta: 1 | -1) => {
-      if (!visible.length) return;
-      const cur = anchor.current && selected.has(anchor.current) ? visible.findIndex((v) => v.path === anchor.current) : -1;
-      const i = cur < 0 ? (delta > 0 ? 0 : visible.length - 1) : Math.min(visible.length - 1, Math.max(0, cur + delta));
-      const p = visible[i].path;
+      if (!selectable.length) return;
+      const cur = anchor.current && selected.has(anchor.current) ? selectable.findIndex((v) => v.path === anchor.current) : -1;
+      const i = cur < 0 ? (delta > 0 ? 0 : selectable.length - 1) : Math.min(selectable.length - 1, Math.max(0, cur + delta));
+      const p = selectable[i].path;
       anchor.current = p;
       setSelected(new Set([p]));
       document.querySelector(`[data-entry="${CSS.escape(p)}"]`)?.scrollIntoView({ block: "nearest" });
     },
-    [visible, selected],
+    [selectable, selected],
   );
 
   // ---------- 快捷键 ----------
@@ -666,7 +735,7 @@ export default function App() {
       if (e.key === "Escape") setSelected(new Set());
       else if (mod && e.key === "a") {
         e.preventDefault();
-        setSelected(new Set(visible.map((v) => v.path)));
+        setSelected(new Set(selectable.map((v) => v.path)));
       } else if (mod && (e.key === "c" || e.key === "x")) {
         // 页面上选中了文字时让浏览器正常复制
         if (!selectedEntries.length || window.getSelection()?.toString()) return;
@@ -682,6 +751,20 @@ export default function App() {
       } else if (view === "gallery" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
         step(e.key === "ArrowRight" ? 1 : -1);
+      } else if (view === "list" && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+        const one = selectedEntries.length === 1 ? selectedEntries[0] : null;
+        if (!one) return;
+        e.preventDefault();
+        if (e.key === "ArrowRight") {
+          if (one.isDir) toggleExpand(one, true);
+        } else if (one.isDir && expanded.has(one.path)) toggleExpand(one, false);
+        else if (parentPath(one.path) !== path) {
+          // 展开出来的子项：跳回它所在的文件夹
+          const parent = parentPath(one.path);
+          anchor.current = parent;
+          setSelected(new Set([parent]));
+          document.querySelector(`[data-entry="${CSS.escape(parent)}"]`)?.scrollIntoView({ block: "nearest" });
+        }
       } else if (view === "columns" && e.key === "ArrowLeft") {
         e.preventDefault();
         if (path !== "/") navigate(parentPath(path), path);
@@ -695,7 +778,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialog, menu, visible, selectedEntries, askDelete, askRename, open, navigate, path, view, canPaste, paste, toClip, step]);
+  }, [dialog, menu, selectable, selectedEntries, askDelete, askRename, open, navigate, path, view, canPaste, paste, toClip, step, expanded, toggleExpand]);
 
   // ---------- 拖拽上传 ----------
   const dragProps = online
@@ -914,7 +997,10 @@ export default function App() {
                   <FileList
                     dir={path}
                     onUp={path === "/" ? undefined : () => navigate(parentPath(path))}
-                    entries={visible}
+                    rows={rows}
+                    expanded={expanded}
+                    pending={pending}
+                    onToggleExpand={toggleExpand}
                     loading={loading}
                     error={listError}
                     selected={selected}

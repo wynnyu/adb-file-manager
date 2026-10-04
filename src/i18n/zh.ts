@@ -41,6 +41,8 @@ export const zh = {
   "files.empty": "空文件夹，把文件拖到这里上传",
   "files.select": "选择",
   "files.folder": "文件夹",
+  "files.expand": "展开（→）",
+  "files.collapse": "收起（←）",
   "files.download": "下载到电脑",
   "files.rename": "重命名",
   "files.delete": "删除",
