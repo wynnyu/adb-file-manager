@@ -25,6 +25,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "toolbar.newFolder": "New folder",
   "toolbar.uploadFolder": "Upload folder",
   "toolbar.upload": "Upload",
+  "toolbar.uploadFiles": "Upload files",
+  "toolbar.uploadMore": "More upload options",
   "toolbar.count": "{n} items",
   "toolbar.count_one": "{n} item",
   "toolbar.countHidden": "{n} items, {hidden} hidden",

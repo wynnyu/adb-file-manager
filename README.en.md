@@ -99,11 +99,12 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 | `⌘/Ctrl C` / `X` / `V` | Copy / cut / paste |
 | `↑` `↓` | Move the selection |
 | `←` `→` | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view |
+| `⌘/Ctrl Shift .` | Show or hide dotfiles |
 | `Esc` | Clear the selection |
 
 ## Root mode
 
-Root mode is enabled with the shield button in the toolbar. It is disabled by default and requires confirmation before it is enabled; selecting "Remember my choice and enable automatically next time" enables it automatically on subsequent visits.
+Root mode is enabled with the shield button in the header, to the left of the device selector. It is disabled by default and requires confirmation before it is enabled; selecting "Remember my choice and enable automatically next time" enables it automatically on subsequent visits.
 
 When root mode is enabled, the tool first detects how the device provides root access:
 

@@ -31,6 +31,8 @@ export type MenuItem =
 export interface MenuState {
   x: number;
   y: number;
+  /** end：菜单右边缘对齐 x，用于靠右的按钮 */
+  align?: "end";
   items: MenuItem[];
 }
 
@@ -45,7 +47,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
     const el = ref.current;
     if (!el) return;
     const { width, height } = el.getBoundingClientRect();
-    const flipX = menu.x + width > innerWidth - EDGE;
+    const flipX = menu.align === "end" ? menu.x - width >= EDGE : menu.x + width > innerWidth - EDGE;
     const flipY = menu.y + height > innerHeight - EDGE;
     setPos({
       left: Math.max(EDGE, flipX ? menu.x - width : menu.x),

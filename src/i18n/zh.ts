@@ -23,6 +23,8 @@ export const zh = {
   "toolbar.newFolder": "新建文件夹",
   "toolbar.uploadFolder": "上传文件夹",
   "toolbar.upload": "上传",
+  "toolbar.uploadFiles": "上传文件",
+  "toolbar.uploadMore": "更多上传方式",
   "toolbar.count": "共 {n} 项",
   "toolbar.countHidden": "共 {n} 项，另有 {hidden} 项已隐藏",
   "toolbar.dropHere": "释放以上传到 <path>{path}</path>",

@@ -56,12 +56,19 @@ export function DeviceSelect({
         whileTap={{ scale: 0.96 }}
         transition={spring}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-12 items-center gap-3 rounded-full bg-surface0 py-1 pr-4 pl-1 transition-colors hover:bg-surface1"
+        title={current?.name}
+        className="flex h-12 items-center gap-2 rounded-full bg-surface0 py-1 pr-3 pl-1 transition-colors hover:bg-surface1 sm:gap-3 sm:pr-4"
       >
-        <span className="grid size-10 place-items-center rounded-[50%] bg-accent/20 text-accent">
+        <span className="relative grid size-10 place-items-center rounded-[50%] bg-accent/20 text-accent">
           <Smartphone className="size-5" />
+          {/* 窄屏只留图标，连接状态改用角标 */}
+          {current && (
+            <span className="absolute right-0 bottom-0 flex rounded-[50%] ring-2 ring-surface0 sm:hidden">
+              <Dot state={current.state} />
+            </span>
+          )}
         </span>
-        <span className="flex flex-col items-start leading-tight">
+        <span className="hidden flex-col items-start leading-tight sm:flex">
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span
               key={current?.serial ?? "none"}

@@ -1,6 +1,7 @@
 import {
   ArrowUp,
   CheckCheck,
+  ChevronDown,
   ClipboardPaste,
   Copy,
   Download,
@@ -893,6 +894,7 @@ export default function App() {
       {
         label: t("menu.showHidden"),
         icon: <Eye className="size-4" />,
+        shortcut: `${MOD}⇧.`,
         checked: showHidden,
         onSelect: () => setShowHidden((v) => !v),
       },
@@ -931,7 +933,11 @@ export default function App() {
       if (dialog || menu || (e.target as HTMLElement).closest("input, textarea")) return;
       const mod = e.metaKey || e.ctrlKey;
       if (e.key === "Escape") setSelected(new Set());
-      else if (mod && e.key === "a") {
+      // 同访达的 ⌘⇧. ，按 code 判断，Shift 下 key 是 ">"
+      else if (mod && e.shiftKey && e.code === "Period") {
+        e.preventDefault();
+        setShowHidden((v) => !v);
+      } else if (mod && e.key === "a") {
         e.preventDefault();
         setSelected(new Set(selectable.map((v) => v.path)));
       } else if (mod && (e.key === "c" || e.key === "x")) {
@@ -1066,6 +1072,24 @@ export default function App() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {online && (
+              <motion.button
+                type="button"
+                title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
+                aria-label={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
+                aria-pressed={rootMode}
+                whileTap={{ scale: 0.9 }}
+                transition={spring}
+                onClick={rootMode ? disableRoot : askEnableRoot}
+                className={`grid size-12 place-items-center rounded-[50%] transition-colors ${
+                  rootMode
+                    ? "bg-red/15 text-red ring-2 ring-red/60 hover:bg-red hover:text-crust"
+                    : "bg-surface0 text-accent hover:bg-surface1"
+                }`}
+              >
+                {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
+              </motion.button>
+            )}
             <DeviceSelect devices={devices} serial={serial} onChange={(s) => setSerial(s)} />
             <LanguagePicker />
             <ThemePicker />
@@ -1086,7 +1110,8 @@ export default function App() {
                 transition={spring}
                 className="flex flex-col gap-4"
               >
-                <div className="flex flex-wrap items-center gap-2">
+                {/* 按容器宽度分档：路径 @4xl 起并入工具行，显示方式 @2xl 起展开，筛选 @md 起并入工具行 */}
+                <div className="@container flex flex-wrap items-center gap-2">
                   <IconButton
                     title={t("toolbar.up")}
                     disabled={path === "/"}
@@ -1097,10 +1122,10 @@ export default function App() {
                   <IconButton title={t("toolbar.refresh")} onClick={() => reload(true)}>
                     <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
                   </IconButton>
-                  <div className="order-last flex min-w-0 basis-full md:order-none md:basis-0 md:flex-1">
+                  <div className="order-2 flex min-w-0 basis-full @4xl:order-none @4xl:basis-0 @4xl:flex-1">
                     <Breadcrumbs path={path} onNavigate={navigate} />
                   </div>
-                  <label className="flex h-10 min-w-32 flex-1 items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 md:w-48 md:flex-none">
+                  <label className="order-1 flex h-10 basis-full items-center gap-2 rounded-full bg-base px-4 text-subtext0 focus-within:ring-2 focus-within:ring-accent/60 @md:order-none @md:min-w-28 @md:flex-1 @md:basis-0 @4xl:w-48 @4xl:flex-none">
                     <Search className="size-4 shrink-0" />
                     <input
                       value={filter}
@@ -1118,41 +1143,57 @@ export default function App() {
                       </button>
                     )}
                   </label>
-                  <ViewSwitch view={view} onChange={setView} />
-                  <IconButton
-                    title={
-                      showHidden
-                        ? t("toolbar.hideHidden")
-                        : hiddenCount
-                          ? t("toolbar.showHiddenCount", { n: hiddenCount })
-                          : t("toolbar.showHidden")
-                    }
-                    tone={showHidden ? "accent" : "default"}
-                    onClick={() => setShowHidden((v) => !v)}
-                  >
-                    {showHidden ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
-                  </IconButton>
-                  <IconButton
-                    title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
-                    tone={rootMode ? "danger" : "default"}
-                    className={rootMode ? "ring-2 ring-red/60" : ""}
-                    onClick={rootMode ? disableRoot : askEnableRoot}
-                  >
-                    {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
-                  </IconButton>
-                  <IconButton title={t("toolbar.newFolder")} onClick={() => askMkdir()}>
-                    <FolderPlus className="size-5" />
-                  </IconButton>
-                  <IconButton title={t("toolbar.uploadFolder")} onClick={() => pickUpload(folderInput, null)}>
-                    <FolderUp className="size-5" />
-                  </IconButton>
-                  <PillButton
-                    tone="accent"
-                    icon={<Upload className="size-4" />}
-                    onClick={() => pickUpload(fileInput, null)}
-                  >
-                    {t("toolbar.upload")}
-                  </PillButton>
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <ViewSwitch view={view} onChange={setView} onMenu={setMenu} />
+                    <IconButton title={t("toolbar.newFolder")} onClick={() => askMkdir()}>
+                      <FolderPlus className="size-5" />
+                    </IconButton>
+                    <div className="flex shrink-0 rounded-full shadow-lg shadow-accent/15">
+                      <motion.button
+                        type="button"
+                        title={t("toolbar.uploadFiles")}
+                        aria-label={t("toolbar.uploadFiles")}
+                        whileTap={{ scale: 0.94 }}
+                        transition={spring}
+                        onClick={() => pickUpload(fileInput, null)}
+                        className="inline-flex h-10 items-center gap-2 rounded-l-full bg-accent pr-3 pl-3.5 text-sm font-bold text-on-accent transition-colors hover:bg-accent-hover @sm:pl-4"
+                      >
+                        <Upload className="size-4" />
+                        <span className="hidden @sm:inline">{t("toolbar.upload")}</span>
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        title={t("toolbar.uploadMore")}
+                        aria-label={t("toolbar.uploadMore")}
+                        aria-haspopup="menu"
+                        whileTap={{ scale: 0.94 }}
+                        transition={spring}
+                        onClick={(e) => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setMenu({
+                            x: r.right,
+                            y: r.bottom + 6,
+                            align: "end",
+                            items: [
+                              {
+                                label: t("toolbar.uploadFiles"),
+                                icon: <Upload className="size-4" />,
+                                onSelect: () => pickUpload(fileInput, null),
+                              },
+                              {
+                                label: t("toolbar.uploadFolder"),
+                                icon: <FolderUp className="size-4" />,
+                                onSelect: () => pickUpload(folderInput, null),
+                              },
+                            ],
+                          });
+                        }}
+                        className="grid h-10 w-9 place-items-center rounded-r-full border-l border-on-accent/20 bg-accent pr-1 text-on-accent transition-colors hover:bg-accent-hover"
+                      >
+                        <ChevronDown className="size-4" />
+                      </motion.button>
+                    </div>
+                  </div>
                 </div>
 
                 <QuickLinks
@@ -1252,11 +1293,27 @@ export default function App() {
 
                 {/* 状态栏，同访达窗口底部：项目数和剩余空间 */}
                 <footer className="-mb-1 flex min-h-8 flex-wrap items-center justify-between gap-x-4 border-t border-surface0 px-3 pt-3 text-xs text-subtext0">
-                  <span>
+                  <span className="flex items-center gap-2">
                     {entriesDir === path &&
                       (hiddenCount && !showHidden
                         ? t("toolbar.countHidden", { n: visible.length, hidden: hiddenCount })
                         : t("toolbar.count", { n: visible.length }))}
+                    {(hiddenCount > 0 || showHidden) && (
+                      <button
+                        type="button"
+                        aria-pressed={showHidden}
+                        title={`${MOD}⇧.`}
+                        onClick={() => setShowHidden((v) => !v)}
+                        className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
+                          showHidden
+                            ? "bg-accent/15 text-accent hover:bg-accent/25"
+                            : "hover:bg-surface0 hover:text-text"
+                        }`}
+                      >
+                        {showHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        {showHidden ? t("toolbar.hideHidden") : t("toolbar.showHidden")}
+                      </button>
+                    )}
                   </span>
                   {storage && <span>{t("toolbar.free", { size: formatSize(storage.free) })}</span>}
                 </footer>
