@@ -135,7 +135,7 @@ export function GalleryView(props: Props) {
                   entry={entry}
                   lazy
                   className="size-full"
-                  imgClass="size-full rounded-xl object-cover"
+                  imgClass="absolute inset-0 size-full rounded-xl object-cover"
                   icon={<FileIcon entry={entry} size="size-14" stroke={1.8} />}
                 />
               </div>

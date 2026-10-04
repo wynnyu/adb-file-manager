@@ -76,10 +76,13 @@ export default function App() {
   const [listError, setListError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const anchor = useRef<string | null>(null);
-  /** 进入目录后要选中的条目（分栏视图里点上层栏的文件） */
-  const pendingFocus = useRef<string | null>(null);
+  /** 进入目录后要选中的条目（分栏视图里点上层栏的文件）；true 表示选中第一项 */
+  const pendingFocus = useRef<string | true | null>(null);
   const [sort, setSort] = useState<Sort>(() => loadPref("afm.sort", { key: "name", asc: true }));
   const [showHidden, setShowHidden] = useState(() => loadPref("afm.hidden", false));
+  /** load 里算「第一项」要用当前的排序和隐藏文件设置，又不想让 load 跟着它们变 */
+  const display = useRef({ sort, showHidden });
+  display.current = { sort, showHidden };
   const [filter, setFilter] = useState("");
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -138,8 +141,9 @@ export default function App() {
         setEntries(list);
         setEntriesDir(p);
         setListError(null);
-        const focus = pendingFocus.current;
+        const want = pendingFocus.current;
         pendingFocus.current = null;
+        const focus = want === true ? arrange(list, display.current.sort, display.current.showHidden)[0]?.path : want;
         if (focus && list.some((e) => e.path === focus)) {
           anchor.current = focus;
           setSelected(new Set([focus]));
@@ -174,11 +178,12 @@ export default function App() {
   useEffect(() => savePref("afm.hidden", showHidden), [showHidden]);
   useEffect(() => savePref("afm.view", view), [view]);
 
-  /** focus：进入后选中这一项 */
+  /** focus：进入后选中这一项，true 为第一项 */
   const navigate = useCallback(
-    (p: string, focus?: string) => {
+    (p: string, focus?: string | true) => {
       setFilter("");
       if (p === path) {
+        if (focus === true) focus = arrange(entries, display.current.sort, display.current.showHidden)[0]?.path;
         if (focus) {
           anchor.current = focus;
           setSelected(new Set([focus]));
@@ -192,7 +197,7 @@ export default function App() {
       setEntriesDir(null);
       setPath(p);
     },
-    [path, load],
+    [path, load, entries],
   );
 
   /** 增删改之后：刷新当前目录，并让分栏视图的上层各栏也重新加载 */
@@ -682,7 +687,7 @@ export default function App() {
         if (path !== "/") navigate(parentPath(path), path);
       } else if (view === "columns" && e.key === "ArrowRight") {
         e.preventDefault();
-        if (selectedEntries.length === 1 && selectedEntries[0].isDir) navigate(selectedEntries[0].path);
+        if (selectedEntries.length === 1 && selectedEntries[0].isDir) navigate(selectedEntries[0].path, true);
       } else if (e.key === "Delete" || (e.metaKey && e.key === "Backspace")) askDelete(selectedEntries);
       else if (e.key === "Enter" && selectedEntries.length === 1) open(selectedEntries[0]);
       else if (e.key === "F2" && selectedEntries.length === 1) askRename(selectedEntries[0]);

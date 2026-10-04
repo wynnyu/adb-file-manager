@@ -34,8 +34,8 @@ interface Props {
   showHidden: boolean;
   /** 每次刷新 / 增删改后 +1，上层各栏据此重新加载 */
   rev: number;
-  /** focus：进入目录后选中这一项 */
-  onNavigate: (p: string, focus?: string) => void;
+  /** focus：进入目录后选中这一项，true 为第一项 */
+  onNavigate: (p: string, focus?: string | true) => void;
   onSelect: (entry: FileEntry, e: MouseEvent) => void;
   onOpen: (entry: FileEntry) => void;
   onContextMenu: (e: MouseEvent, entry: FileEntry | null, dir: string) => void;
@@ -90,6 +90,7 @@ export function ColumnView(props: Props) {
   }, [othersKey, rev, target]);
 
   const childListing = child ? cache.get(child) : undefined;
+  const childEntries = childListing?.entries ? arrange(childListing.entries, sort, showHidden) : [];
 
   // 新的一栏出现时滚到最右边
   useLayoutEffect(() => {
@@ -119,8 +120,9 @@ export function ColumnView(props: Props) {
             selected={selected}
             cut={cut}
             onRowClick={(entry, e) => {
-              if (!current) props.onNavigate(entry.isDir ? entry.path : dir, entry.isDir ? undefined : entry.path);
-              else if (entry.isDir && !(e.metaKey || e.ctrlKey || e.shiftKey)) props.onNavigate(entry.path);
+              // 进入文件夹时选中它的第一项，焦点跟着走
+              if (!current) props.onNavigate(entry.isDir ? entry.path : dir, entry.isDir ? true : entry.path);
+              else if (entry.isDir && !(e.metaKey || e.ctrlKey || e.shiftKey)) props.onNavigate(entry.path, true);
               else props.onSelect(entry, e);
             }}
             onRowDoubleClick={(entry) => !entry.isDir && props.onOpen(entry)}
@@ -134,14 +136,15 @@ export function ColumnView(props: Props) {
           key={child}
           dir={child}
           current={false}
-          entries={childListing?.entries ? arrange(childListing.entries, sort, showHidden) : []}
+          entries={childEntries}
           loading={!childListing}
           error={childListing?.error ?? null}
           emptyText={t("files.empty")}
-          activePath={null}
+          // 第一项标出焦点，按 → 或点进去就选中它
+          activePath={childEntries[0]?.path ?? null}
           selected={selected}
           cut={cut}
-          onRowClick={(entry) => props.onNavigate(entry.isDir ? entry.path : child, entry.isDir ? undefined : entry.path)}
+          onRowClick={(entry) => props.onNavigate(entry.isDir ? entry.path : child, entry.isDir ? true : entry.path)}
           onRowDoubleClick={(entry) => !entry.isDir && props.onOpen(entry)}
           onBackgroundClick={() => props.onNavigate(child)}
           onContextMenu={(e, entry) => props.onContextMenu(e, entry, child)}
@@ -277,7 +280,8 @@ function Preview({
             alt=""
             onLoad={() => setImg("ok")}
             onError={() => setImg("failed")}
-            className={`max-h-full max-w-full rounded-2xl object-contain shadow-lg shadow-crust/40 ${img === "ok" ? "" : "hidden"}`}
+            // 绝对定位才能让 max-h-full 按这块固定高度算；放在网格里百分比高度不生效，大图会溢出盖住下面的信息
+            className={`absolute inset-0 m-auto max-h-full max-w-full rounded-2xl shadow-lg shadow-crust/40 ${img === "ok" ? "" : "hidden"}`}
           />
         )}
       </div>
