@@ -84,6 +84,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "bookmark.name": "Name",
   "bookmark.path": "Path",
   "bookmark.color": "Icon color",
+  "bookmark.followAccent": "Follow accent",
   "bookmark.create": "Create",
   "bookmark.save": "Save",
   "bookmark.badPath": "Path must start with /",

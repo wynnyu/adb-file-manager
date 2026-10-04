@@ -1,7 +1,14 @@
-import { Check, Upload } from "lucide-react";
+import { Check, Palette, Upload } from "lucide-react";
 import { motion } from "motion/react";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
-import { BOOKMARK_COLORS, type BookmarkFields, bookmarkName, imageToIcon, isImageIcon } from "../bookmarks.ts";
+import {
+  BOOKMARK_COLORS,
+  type BookmarkColor,
+  type BookmarkFields,
+  bookmarkName,
+  imageToIcon,
+  isImageIcon,
+} from "../bookmarks.ts";
 import { useT } from "../i18n/index.tsx";
 import { BookmarkGlyph, colorVar, ICON_LIBRARY } from "./BookmarkIcon.tsx";
 
@@ -93,6 +100,35 @@ export function BookmarkForm({
   };
 
   const usingImage = isImageIcon(value.icon);
+
+  const swatch = (c: BookmarkColor) => {
+    const active = c === value.color;
+    const label = c === "accent" ? t("bookmark.followAccent") : capitalize(c);
+    return (
+      <motion.button
+        key={c}
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-pressed={active}
+        tabIndex={usingImage ? -1 : undefined}
+        whileTap={{ scale: 0.85 }}
+        onClick={() => set({ color: c })}
+        style={{ background: colorVar(c) }}
+        className={`relative grid size-8 shrink-0 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-base transition-shadow ${
+          active ? "ring-2 ring-text" : "hover:ring-2 hover:ring-surface2"
+        }`}
+      >
+        {active && <Check className="size-4" strokeWidth={3} />}
+        {/* 角标表示这一格跟随主题主色 */}
+        {c === "accent" && (
+          <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-[50%] bg-base text-text">
+            <Palette className="size-2.5" strokeWidth={2.5} />
+          </span>
+        )}
+      </motion.button>
+    );
+  };
 
   return (
     <div className="flex w-full flex-col gap-3 text-left">
@@ -196,32 +232,13 @@ export function BookmarkForm({
       </Section>
 
       <Section label={t("bookmark.color")} dim={usingImage}>
-        <div
-          aria-disabled={usingImage}
-          className="grid grid-cols-8 justify-items-center gap-y-2 rounded-[1.75rem] bg-base p-2.5"
-        >
-          {BOOKMARK_COLORS.map((c) => {
-            const active = c === value.color;
-            const label = c === "accent" ? t("theme.accent") : capitalize(c);
-            return (
-              <motion.button
-                key={c}
-                type="button"
-                title={label}
-                aria-label={label}
-                aria-pressed={active}
-                tabIndex={usingImage ? -1 : undefined}
-                whileTap={{ scale: 0.85 }}
-                onClick={() => set({ color: c })}
-                style={{ background: colorVar(c) }}
-                className={`grid size-8 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-base transition-shadow ${
-                  active ? "ring-2 ring-text" : "hover:ring-2 hover:ring-surface2"
-                }`}
-              >
-                {active && <Check className="size-4" strokeWidth={3} />}
-              </motion.button>
-            );
-          })}
+        {/* 主色单独放在左边，和同色的固定色区分开；其余 14 个固定色正好排满两行 */}
+        <div aria-disabled={usingImage} className="flex items-center gap-2.5 rounded-[1.75rem] bg-base p-2.5">
+          {swatch("accent")}
+          <span className="h-14 w-px shrink-0 bg-surface1" />
+          <div className="grid flex-1 grid-cols-7 justify-items-center gap-y-2">
+            {BOOKMARK_COLORS.filter((c) => c !== "accent").map(swatch)}
+          </div>
         </div>
       </Section>
     </div>

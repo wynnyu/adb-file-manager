@@ -79,6 +79,7 @@ export const zh = {
   "bookmark.name": "名称",
   "bookmark.path": "路径",
   "bookmark.color": "图标颜色",
+  "bookmark.followAccent": "跟随主色",
   "bookmark.create": "创建",
   "bookmark.save": "保存",
   "bookmark.badPath": "路径须以 / 开头",
