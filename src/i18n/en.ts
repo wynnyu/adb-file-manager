@@ -38,7 +38,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "files.name": "Name",
   "files.size": "Size",
-  "files.mtime": "Modified",
+  "files.mtime": "Date Modified",
+  "files.kind": "Kind",
   "files.goUp": "Go up",
   "files.empty": "Empty folder. Drop files here to upload.",
   "files.select": "Select",
@@ -121,6 +122,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "view.icons": "Icons",
   "view.list": "List",
   "view.columns": "Columns",
+  "view.gallery": "Gallery",
   "view.title": "View",
 
   "menu.open": "Open",
@@ -157,14 +159,28 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "kind.folder": "Folder",
   "kind.link": "Symbolic link",
-  "kind.image": "Image",
-  "kind.video": "Video",
-  "kind.audio": "Audio",
   "kind.apk": "Android package",
-  "kind.archive": "Archive",
-  "kind.document": "Document",
-  "kind.code": "Code / config",
-  "kind.file": "File",
+  "kind.text": "Plain Text Document",
+  "kind.diskImage": "Disk Image",
+  "kind.imageOf": "{ext} image",
+  "kind.videoOf": "{ext} movie",
+  "kind.audioOf": "{ext} audio",
+  "kind.archiveOf": "{ext} archive",
+  "kind.documentOf": "{ext} document",
+  "kind.scriptOf": "{ext} script",
+  "kind.sourceOf": "{ext} source",
+  "kind.fileOf": "{ext} file",
+  "kind.file": "Document",
+
+  "date.today": "Today at {time}",
+  "date.yesterday": "Yesterday at {time}",
+  "date.at": "{date} at {time}",
+
+  "gallery.info": "Information",
+  "gallery.mtime": "Modified",
+  "gallery.atime": "Last accessed",
+  "gallery.where": "Where",
+  "gallery.bytes": "{n} bytes",
 
   "lang.title": "Language",
 };

@@ -1,6 +1,8 @@
+import { tr } from "./i18n/index.tsx";
+import { kindLabel } from "./kinds.ts";
 import type { FileEntry } from "./types.ts";
 
-export type SortKey = "name" | "size" | "mtime";
+export type SortKey = "name" | "mtime" | "size" | "kind";
 export interface Sort {
   key: SortKey;
   asc: boolean;
@@ -21,6 +23,7 @@ export function arrange(entries: FileEntry[], sort: Sort, showHidden: boolean, f
     let r = 0;
     if (sort.key === "size") r = a.size - b.size;
     else if (sort.key === "mtime") r = a.mtime - b.mtime;
+    else if (sort.key === "kind") r = kindLabel(a, tr).localeCompare(kindLabel(b, tr), "zh-CN");
     if (r === 0) r = a.name.localeCompare(b.name, "zh-CN", { numeric: true, sensitivity: "base" });
     return r * dir;
   });

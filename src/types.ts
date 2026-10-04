@@ -12,6 +12,7 @@ export interface FileEntry {
   isDir: boolean;
   size: number;
   mtime: number;
+  atime: number;
 }
 
 export type TransferStatus = "uploading" | "pushing" | "pulling" | "copying" | "moving" | "done" | "error";
@@ -26,7 +27,7 @@ export interface Transfer {
   error?: string;
 }
 
-export type ViewMode = "icons" | "list" | "columns";
+export type ViewMode = "icons" | "list" | "columns" | "gallery";
 
 /** 应用内剪贴板：剪切 / 拷贝的条目，只能粘贴回同一台设备 */
 export interface Clip {

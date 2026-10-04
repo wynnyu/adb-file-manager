@@ -31,6 +31,8 @@ export interface FileEntry {
   isDir: boolean;
   size: number;
   mtime: number;
+  /** 上次访问时间；多数 Android 挂载用 relatime，只是近似值 */
+  atime: number;
 }
 
 function run(args: string[], timeout = 0): Promise<string> {
@@ -129,7 +131,7 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
   // 末尾加 / 让 find 跟随 /sdcard 这类符号链接目录
   const base = dir === "/" ? "/" : dir + "/";
   const cmd =
-    `find ${q(base)} -mindepth 1 -maxdepth 1 -exec stat -c '%F|%s|%Y|%n' {} + 2>/dev/null; ` +
+    `find ${q(base)} -mindepth 1 -maxdepth 1 -exec stat -c '%F|%s|%Y|%X|%n' {} + 2>/dev/null; ` +
     `echo ${LINK_MARK}; ` +
     `find ${q(base)} -mindepth 1 -maxdepth 1 -type l -exec sh -c 'for f; do [ -d "$f" ] && echo "$f"; done' _ {} + 2>/dev/null; ` +
     `if [ ! -d ${q(base)} ]; then echo __ADBFM_NOTDIR__; elif [ ! -r ${q(base)} ]; then echo __ADBFM_NOPERM__; fi`;
@@ -144,9 +146,9 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
   for (const line of statPart.split("\n")) {
     if (!line) continue;
     const parts = line.split("|");
-    if (parts.length < 4) continue;
-    const [kind, size, mtime] = parts;
-    const full = parts.slice(3).join("|").replace(/\r$/, "");
+    if (parts.length < 5) continue;
+    const [kind, size, mtime, atime] = parts;
+    const full = parts.slice(4).join("|").replace(/\r$/, "");
     const p = path.normalize(full);
     const type = kind === "directory" ? "dir" : kind === "symbolic link" ? "link" : "file";
     entries.push({
@@ -156,6 +158,7 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
       isDir: type === "dir" || (type === "link" && linkDirs.has(full)),
       size: Number(size) || 0,
       mtime: Number(mtime) || 0,
+      atime: Number(atime) || 0,
     });
   }
   return entries;

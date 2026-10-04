@@ -36,8 +36,6 @@ function classify(entry: FileEntry): { kind: FileKind; Icon: typeof File; color:
   return { kind: "file", Icon: File, color: "bg-overlay0/20 text-overlay2" };
 }
 
-export const fileKind = (entry: FileEntry) => classify(entry).kind;
-
 /** 浏览器能直接显示、分栏预览里可以加载缩略图的图片 */
 export const isPreviewable = (entry: FileEntry) =>
   !entry.isDir && entry.size > 0 && entry.size <= 30 * 1024 * 1024 && /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(entry.name);

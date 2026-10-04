@@ -3,10 +3,11 @@ import { motion } from "motion/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { api, type Target } from "../api.ts";
 import { arrange, type Sort } from "../entries.ts";
-import { formatSize, formatTime } from "../format.ts";
+import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
 import type { FileEntry } from "../types.ts";
-import { FileIcon, fileKind, isPreviewable } from "./FileIcon.tsx";
+import { kindLabel } from "../kinds.ts";
+import { FileIcon, isPreviewable } from "./FileIcon.tsx";
 import { IconButton } from "./ui.tsx";
 
 interface Listing {
@@ -58,7 +59,11 @@ export function ColumnView(props: Props) {
     return ["/", ...parts.map((_, i) => "/" + parts.slice(0, i + 1).join("/"))];
   }, [path]);
   const ancestors = columns.slice(0, -1);
-  const ancestorsKey = ancestors.join("\n");
+  const preview = selected.size === 1 ? entries.find((e) => selected.has(e.path)) : undefined;
+  /** 选中的是文件夹时，右边再排一栏列出它的内容（同访达）；选中文件才显示属性 */
+  const child = preview?.isDir ? preview.path : null;
+  /** 当前目录以外需要另外加载的各栏：上层各栏，加上选中文件夹的下一栏 */
+  const othersKey = [...ancestors, ...(child ? [child] : [])].join("\n");
 
   const put = (dir: string, listing: Listing) =>
     setCache((c) => ((c.get(dir)?.rev ?? -1) > listing.rev ? c : new Map(c).set(dir, listing)));
@@ -68,9 +73,9 @@ export function ColumnView(props: Props) {
     if (rawDir && !error) put(rawDir, { rev, entries: raw });
   }, [rawDir, raw, error, rev]);
 
-  // 上层各栏：缓存里没有或已过期的才去拉
+  // 上层各栏和下一栏：缓存里没有或已过期的才去拉
   useEffect(() => {
-    for (const dir of ancestorsKey ? ancestorsKey.split("\n") : []) {
+    for (const dir of othersKey ? othersKey.split("\n") : []) {
       const key = `${dir}@${rev}`;
       if (cacheRef.current.get(dir)?.rev === rev || inflight.current.has(key)) continue;
       inflight.current.add(key);
@@ -82,9 +87,9 @@ export function ColumnView(props: Props) {
         )
         .finally(() => inflight.current.delete(key));
     }
-  }, [ancestorsKey, rev, target]);
+  }, [othersKey, rev, target]);
 
-  const preview = selected.size === 1 ? entries.find((e) => selected.has(e.path)) : undefined;
+  const childListing = child ? cache.get(child) : undefined;
 
   // 新的一栏出现时滚到最右边
   useLayoutEffect(() => {
@@ -124,7 +129,24 @@ export function ColumnView(props: Props) {
           />
         );
       })}
-      {preview && (
+      {child ? (
+        <Column
+          key={child}
+          dir={child}
+          current={false}
+          entries={childListing?.entries ? arrange(childListing.entries, sort, showHidden) : []}
+          loading={!childListing}
+          error={childListing?.error ?? null}
+          emptyText={t("files.empty")}
+          activePath={null}
+          selected={selected}
+          cut={cut}
+          onRowClick={(entry) => props.onNavigate(entry.isDir ? entry.path : child, entry.isDir ? undefined : entry.path)}
+          onRowDoubleClick={(entry) => !entry.isDir && props.onOpen(entry)}
+          onBackgroundClick={() => props.onNavigate(child)}
+          onContextMenu={(e, entry) => props.onContextMenu(e, entry, child)}
+        />
+      ) : preview && (
         <Preview
           key={preview.path}
           target={target}
@@ -236,7 +258,7 @@ function Preview({
 }) {
   const { t, lang } = useI18n();
   const [img, setImg] = useState<"loading" | "ok" | "failed">(isPreviewable(entry) ? "loading" : "failed");
-  const kind = t(`kind.${fileKind(entry)}`);
+  const kind = kindLabel(entry, t);
 
   return (
     <motion.aside
@@ -279,7 +301,7 @@ function Preview({
           </>
         )}
         <dt className="text-muted">{t("preview.mtime")}</dt>
-        <dd className="font-mono">{formatTime(entry.mtime, lang)}</dd>
+        <dd>{formatDate(entry.mtime, lang, t, true)}</dd>
         <dt className="text-muted">{t("preview.path")}</dt>
         <dd className="font-mono break-all">{entry.path}</dd>
       </dl>

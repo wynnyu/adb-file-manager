@@ -1,4 +1,4 @@
-import { Columns3, LayoutGrid, List } from "lucide-react";
+import { Columns3, GalleryThumbnails, LayoutGrid, List } from "lucide-react";
 import { motion } from "motion/react";
 import { useT } from "../i18n/index.tsx";
 import type { ViewMode } from "../types.ts";
@@ -8,9 +8,10 @@ export const VIEWS: { id: ViewMode; Icon: typeof List }[] = [
   { id: "icons", Icon: LayoutGrid },
   { id: "list", Icon: List },
   { id: "columns", Icon: Columns3 },
+  { id: "gallery", Icon: GalleryThumbnails },
 ];
 
-/** Finder 式的显示方式切换：图标 / 列表 / 分栏 */
+/** Finder 式的显示方式切换：图标 / 列表 / 分栏 / 画廊 */
 export function ViewSwitch({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   const t = useT();
   return (

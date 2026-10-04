@@ -1,14 +1,17 @@
 import { ArrowDown, Check, CornerLeftUp, Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
-import { formatSize, formatTime } from "../format.ts";
+import { formatDate, formatSize } from "../format.ts";
 import { useI18n } from "../i18n/index.tsx";
 import type { Sort, SortKey } from "../entries.ts";
+import { kindLabel } from "../kinds.ts";
 import type { FileEntry } from "../types.ts";
 import { FileIcon } from "./FileIcon.tsx";
 import { IconButton, spring } from "./ui.tsx";
 
-const cols = "grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_6.5rem_10.5rem_auto] items-center gap-3";
+/** 列的顺序同访达：名称、修改日期、大小、种类；窄屏只留名称 */
+const cols =
+  "grid grid-cols-[minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_11rem_5.5rem] lg:grid-cols-[minmax(0,1fr)_11rem_5.5rem_9.5rem] items-center gap-2";
 const rowBase = "group cursor-default rounded-full py-1.5 pr-2 pl-1.5 transition-colors select-none";
 
 interface Props {
@@ -78,11 +81,11 @@ export function FileList(props: Props) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className={`${cols} px-2 text-xs font-bold text-muted`}>
+      <div className={`${cols} border-b border-surface0 px-2 pb-1 text-xs font-bold text-muted`}>
         <SortHeader label={t("files.name")} k="name" sort={sort} onSort={onSort} className="justify-self-start pl-14" />
+        <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden justify-self-start sm:flex" />
         <SortHeader label={t("files.size")} k="size" sort={sort} onSort={onSort} className="hidden justify-self-end sm:flex" />
-        <SortHeader label={t("files.mtime")} k="mtime" sort={sort} onSort={onSort} className="hidden sm:flex" />
-        <span className="w-[8.5rem]" />
+        <SortHeader label={t("files.kind")} k="kind" sort={sort} onSort={onSort} className="hidden justify-self-start lg:flex" />
       </div>
 
       {onUp && (
@@ -132,7 +135,7 @@ export function FileList(props: Props) {
                   onClick={(e) => props.onSelect(entry, e)}
                   onDoubleClick={() => props.onOpen(entry)}
                   onContextMenu={(e) => props.onContextMenu(e, entry)}
-                  className={`${rowBase} ${cols} ${isSel ? "bg-accent/15 ring-1 ring-accent/40" : "hover:bg-surface0/70"} ${
+                  className={`${rowBase} ${cols} ${isSel ? "bg-accent/15 ring-1 ring-accent/40" : "even:bg-base/60 hover:bg-surface0/70"} ${
                     cut.has(entry.path) ? "opacity-50" : ""
                   }`}
                 >
@@ -166,34 +169,36 @@ export function FileList(props: Props) {
                         )}
                       </AnimatePresence>
                     </button>
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className={`block truncate font-semibold ${entry.name.startsWith(".") ? "text-muted" : ""}`}>
                         {entry.name}
                       </span>
                       <span className="block truncate text-xs text-muted sm:hidden">
-                        {entry.isDir ? t("files.folder") : formatSize(entry.size)}, {formatTime(entry.mtime, lang)}
+                        {entry.isDir ? kindLabel(entry, t) : formatSize(entry.size)}, {formatDate(entry.mtime, lang, t)}
                       </span>
                     </span>
+                    {/* 快捷操作：窄屏常驻，宽屏悬停时才出现，不占列 */}
+                    <div
+                      className="flex shrink-0 gap-1 sm:hidden sm:group-hover:flex"
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                    >
+                      <IconButton tone="ghost" className="size-9" title={t("files.download")} onClick={() => props.onDownload(entry)}>
+                        <Download className="size-4" />
+                      </IconButton>
+                      <IconButton tone="ghost" className="size-9" title={t("files.rename")} onClick={() => props.onRename(entry)}>
+                        <Pencil className="size-4" />
+                      </IconButton>
+                      <IconButton tone="ghost" className="size-9 hover:!bg-red/15 hover:!text-red" title={t("files.delete")} onClick={() => props.onDelete(entry)}>
+                        <Trash2 className="size-4" />
+                      </IconButton>
+                    </div>
                   </div>
-                  <span className="hidden pr-3 text-right font-mono text-sm text-subtext0 sm:block">
-                    {entry.isDir ? "—" : formatSize(entry.size)}
+                  <span className="hidden truncate px-3 text-sm text-subtext0 tabular-nums sm:block">{formatDate(entry.mtime, lang, t)}</span>
+                  <span className="hidden px-3 text-right text-sm text-subtext0 tabular-nums sm:block">
+                    {entry.isDir ? "--" : formatSize(entry.size)}
                   </span>
-                  <span className="hidden px-3 font-mono text-sm text-subtext0 sm:block">{formatTime(entry.mtime, lang)}</span>
-                  <div
-                    className="flex w-[8.5rem] justify-end gap-1 transition-[opacity,transform] duration-200 sm:translate-x-2 sm:opacity-0 sm:group-hover:translate-x-0 sm:group-hover:opacity-100"
-                    onClick={(e) => e.stopPropagation()}
-                    onDoubleClick={(e) => e.stopPropagation()}
-                  >
-                    <IconButton tone="ghost" className="size-9" title={t("files.download")} onClick={() => props.onDownload(entry)}>
-                      <Download className="size-4" />
-                    </IconButton>
-                    <IconButton tone="ghost" className="size-9" title={t("files.rename")} onClick={() => props.onRename(entry)}>
-                      <Pencil className="size-4" />
-                    </IconButton>
-                    <IconButton tone="ghost" className="size-9 hover:!bg-red/15 hover:!text-red" title={t("files.delete")} onClick={() => props.onDelete(entry)}>
-                      <Trash2 className="size-4" />
-                    </IconButton>
-                  </div>
+                  <span className="hidden truncate px-3 text-sm text-subtext0 lg:block">{kindLabel(entry, t)}</span>
                 </motion.div>
               );
             })}

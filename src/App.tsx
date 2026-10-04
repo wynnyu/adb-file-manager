@@ -39,6 +39,7 @@ import { ContextMenu, type MenuItem, type MenuState } from "./components/Context
 import { DeviceSelect } from "./components/DeviceSelect.tsx";
 import { Dialog, type DialogState } from "./components/Dialog.tsx";
 import { FileList } from "./components/FileList.tsx";
+import { GalleryView } from "./components/GalleryView.tsx";
 import { IconGrid } from "./components/IconGrid.tsx";
 import { VIEWS, ViewSwitch } from "./components/ViewSwitch.tsx";
 import { NoDevice } from "./components/NoDevice.tsx";
@@ -673,6 +674,9 @@ export default function App() {
       } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         step(e.key === "ArrowDown" ? 1 : -1);
+      } else if (view === "gallery" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        step(e.key === "ArrowRight" ? 1 : -1);
       } else if (view === "columns" && e.key === "ArrowLeft") {
         e.preventDefault();
         if (path !== "/") navigate(parentPath(path), path);
@@ -869,6 +873,26 @@ export default function App() {
                     onRename={askRename}
                     onDelete={(e) => askDelete([e])}
                   />
+                ) : view === "gallery" && target ? (
+                  <GalleryView
+                    target={target}
+                    entries={visible}
+                    loading={loading}
+                    error={listError}
+                    selected={selected}
+                    cut={cutPaths}
+                    focused={anchor.current}
+                    onSelect={onSelect}
+                    onFocus={(entry) => {
+                      anchor.current = entry.path;
+                      setSelected(new Set([entry.path]));
+                    }}
+                    onOpen={open}
+                    onContextMenu={(e, entry) => openItemMenu(e, entry, path)}
+                    onDownload={(e) => download([e])}
+                    onRename={askRename}
+                    onDelete={(e) => askDelete([e])}
+                  />
                 ) : view === "icons" ? (
                   <IconGrid
                     dir={path}
@@ -934,7 +958,8 @@ export default function App() {
 
       {/* 多选操作条 */}
       <AnimatePresence>
-      {online && selectedEntries.length > 0 && (
+      {/* 画廊视图的信息面板里已经有单项操作，只选一项时不弹 */}
+      {online && selectedEntries.length > (view === "gallery" ? 1 : 0) && (
         <motion.div
           initial={{ opacity: 0, y: 40, scale: 0.9, x: "-50%" }}
           animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
