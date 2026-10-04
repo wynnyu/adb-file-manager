@@ -108,7 +108,7 @@ export async function devices(): Promise<Device[]> {
   return list;
 }
 
-const LINK_MARK = "__ADBFM_LINKDIRS__";
+export const LINK_MARK = "__ADBFM_LINKDIRS__";
 
 export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
   // 末尾加 / 让 find 跟随 /sdcard 这类符号链接目录
@@ -123,6 +123,11 @@ export async function ls(ctx: Ctx, dir: string): Promise<FileEntry[]> {
   if (out.includes("__ADBFM_NOPERM__")) {
     throw new AdbError(t(ctx.root ? "noReadRoot" : "noRead", { path: dir }), 403);
   }
+  return parseLs(out);
+}
+
+/** 解析 ls 的输出：每行 `类型|大小|mtime|atime|路径`，LINK_MARK 之后是指向目录的符号链接 */
+export function parseLs(out: string): FileEntry[] {
   const [statPart, linkPart = ""] = out.split(LINK_MARK);
   const linkDirs = new Set(
     linkPart

@@ -30,5 +30,6 @@
       "suspicious": { "noAssignInExpressions": "warn", "noArrayIndexKey": "warn" }
     }
   },
+  "overrides": [{ "includes": ["**", "!**/*.test.ts"], "linter": { "domains": { "test": "none" } } }],
   "assist": { "actions": { "source": { "organizeImports": "on" } } }
 }

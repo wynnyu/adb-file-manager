@@ -153,6 +153,7 @@ pnpm install
 pnpm dev      # 前端 http://127.0.0.1:5173，后端 3001 端口，均支持热更新
 pnpm build    # 构建到 dist/
 pnpm start    # 运行构建产物：http://127.0.0.1:3001
+pnpm test     # 运行单元测试
 ```
 
 技术栈：
@@ -165,7 +166,13 @@ pnpm start    # 运行构建产物：http://127.0.0.1:3001
 ```
 server/
   adb.ts        adb 命令封装：列目录、push / pull、root 检测、复制移动删除等
-  index.ts      HTTP API 和安全校验；构建后同时托管前端页面
+  app.ts        组装 HTTP 服务；构建后同时托管前端页面
+  files.ts      文件操作接口：列目录、新建、重命名、删除、复制、移动、预览
+  transfer.ts   上传和下载接口，经电脑临时目录中转
+  guard.ts      安全校验：仅限本机访问，受保护路径
+  request.ts    请求参数解析和 root 状态缓存
+  index.ts      启动入口
+  *.test.ts     单元测试（vitest）
   i18n.ts       后端错误信息的中英文文案
 shared/
   types.d.ts    前后端共用的接口数据类型

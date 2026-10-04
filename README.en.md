@@ -153,6 +153,7 @@ pnpm install
 pnpm dev      # frontend at http://127.0.0.1:5173, backend on port 3001, both with hot reload
 pnpm build    # build into dist/
 pnpm start    # run the build: http://127.0.0.1:3001
+pnpm test     # run unit tests
 ```
 
 Tech stack:
@@ -165,7 +166,13 @@ Project structure:
 ```
 server/
   adb.ts        adb wrapper: listing, push / pull, root detection, copy / move / delete
-  index.ts      HTTP API and security checks; serves the frontend after a build
+  app.ts        assembles the HTTP server; serves the frontend after a build
+  files.ts      file operation endpoints: list, create, rename, delete, copy, move, preview
+  transfer.ts   upload and download endpoints, staged through a temporary directory on the computer
+  guard.ts      security checks: local-only access, protected paths
+  request.ts    request parameter parsing and root status cache
+  index.ts      entry point
+  *.test.ts     unit tests (vitest)
   i18n.ts       English and Chinese strings for backend error messages
 shared/
   types.d.ts    API data types shared by the backend and frontend
