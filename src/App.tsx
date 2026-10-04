@@ -58,6 +58,15 @@ import type { Clip, Device, FileEntry, Listing, Transfer, TreeRow, ViewMode } fr
 
 const HOME = "/sdcard";
 
+/** 内部存储、SD 卡和 /data/local/tmp 里的内容普通 shell 用户就能删，root 模式下删除这些不额外警告 */
+const SHELL_WRITABLE = [
+  /^\/sdcard\/./,
+  /^\/mnt\/sdcard\/./,
+  /^\/storage\/(emulated\/\d+|self\/primary|[0-9A-F]{4}-[0-9A-F]{4})\/./i,
+  /^\/data\/local\/tmp\/./,
+];
+const needsRoot = (p: string) => !SHELL_WRITABLE.some((re) => re.test(p));
+
 export default function App() {
   const { t, rich } = useI18n();
   const [devices, setDevices] = useState<Device[]>([]);
@@ -408,48 +417,57 @@ export default function App() {
         refreshStorage();
         await afterChange(targets.map((t) => [t.path, null]));
       };
-      // root 模式：第二层确认，列出完整路径并倒计时
-      const finalStep: DialogState = {
-        kind: "confirm",
-        tone: "danger",
-        icon: <Skull className="size-7" />,
-        title: t("delete.final.title"),
-        countdown: 3,
-        confirm: t("delete.final.confirm"),
-        message: (
-          <div className="flex flex-col items-center gap-3">
-            <p>{rich("delete.final.message", { b: (s) => <b className="text-red">{s}</b> })}</p>
-            <ul className="flex w-full flex-col gap-1">
-              {targets.slice(0, 4).map((t) => (
-                <li key={t.path} className="truncate rounded-full bg-red/10 px-4 py-1.5 font-mono text-xs text-red">
-                  {t.path}
-                </li>
-              ))}
-              {targets.length > 4 && (
-                <li className="text-xs text-muted">{t("common.moreItems", { n: targets.length - 4 })}</li>
-              )}
-            </ul>
-          </div>
-        ),
-        onSubmit: doDelete,
-      };
+      const params = { name: targets[0].name, n: targets.length };
+      // 只有内部存储、SD 卡以外的路径才真正用到 root，这时才警告
+      const rooted = rootMode ? targets.filter((t) => needsRoot(t.path)) : [];
+      if (rooted.length && !loadPref("afm.rootDeleteNoWarn", false)) {
+        setDialog({
+          kind: "confirm",
+          tone: "danger",
+          icon: <Skull className="size-7" />,
+          title: t(single ? "delete.titleRoot" : "delete.titleRootMany", params),
+          countdown: 3,
+          confirm: t("delete.root.confirm"),
+          checkbox: t("delete.root.noWarn"),
+          message: (
+            <div className="flex flex-col items-center gap-3">
+              <p>{rich("delete.root.message", { b: (s) => <b className="text-red">{s}</b> })}</p>
+              <ul className="flex w-full flex-col gap-1">
+                {rooted.slice(0, 4).map((t) => (
+                  <li key={t.path} className="truncate rounded-full bg-red/10 px-4 py-1.5 font-mono text-xs text-red">
+                    {t.path}
+                  </li>
+                ))}
+                {rooted.length > 4 && (
+                  <li className="text-xs text-muted">{t("common.moreItems", { n: rooted.length - 4 })}</li>
+                )}
+              </ul>
+            </div>
+          ),
+          onSubmit: async (noWarn) => {
+            if (noWarn) savePref("afm.rootDeleteNoWarn", true);
+            await doDelete();
+          },
+        });
+        return;
+      }
       setDialog({
         kind: "confirm",
         tone: "danger",
         icon: <Trash2 className="size-7" />,
         title: t(
           single
-            ? rootMode
+            ? rooted.length
               ? "delete.titleRoot"
               : "delete.title"
-            : rootMode
+            : rooted.length
               ? "delete.titleRootMany"
               : "delete.titleMany",
-          { name: targets[0].name, n: targets.length },
+          params,
         ),
         message: t("delete.message"),
-        confirm: rootMode ? t("delete.continue") : t("common.delete"),
-        onSubmit: rootMode ? async () => setDialog(finalStep) : doDelete,
+        confirm: t("common.delete"),
+        onSubmit: doDelete,
       });
     },
     [target, rootMode, afterChange, refreshStorage, t, rich],
@@ -937,11 +955,7 @@ export default function App() {
         {/* 顶栏 */}
         <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              className={`grid size-12 shrink-0 place-items-center rounded-[50%] shadow-lg transition-[background-color,box-shadow] duration-500 ${
-                rootMode && online ? "bg-red text-crust shadow-red/30" : "bg-accent text-on-accent shadow-accent/20"
-              }`}
-            >
+            <span className="grid size-12 shrink-0 place-items-center rounded-[50%] bg-accent text-on-accent shadow-lg shadow-accent/20">
               <FolderUp className="size-6" strokeWidth={2.4} />
             </span>
             <div className="min-w-0">
@@ -954,7 +968,7 @@ export default function App() {
                       animate={{ scale: 1, rotate: 0 }}
                       exit={{ scale: 0, rotate: 20 }}
                       transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                      className="hidden shrink-0 rounded-full bg-red px-2.5 py-0.5 font-mono sm:inline text-xs font-semibold tracking-widest text-crust shadow-lg shadow-red/40"
+                      className="hidden shrink-0 rounded-full bg-accent px-2.5 py-0.5 font-mono sm:inline text-xs font-semibold tracking-widest text-on-accent shadow-lg shadow-accent/30"
                     >
                       ROOT
                     </motion.span>
@@ -972,13 +986,7 @@ export default function App() {
         </header>
 
         {/* 主面板 */}
-        <main
-          className={`relative rounded-[2.5rem] bg-mantle p-3 transition-[box-shadow] duration-500 sm:p-5 ${
-            rootMode && online
-              ? "shadow-[0_0_0_2px_var(--color-red),0_0_60px_-12px_var(--color-red)]"
-              : "shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-surface0)_60%,transparent)]"
-          }`}
-        >
+        <main className="relative rounded-[2.5rem] bg-mantle p-3 shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-surface0)_60%,transparent)] sm:p-5">
           <AnimatePresence mode="wait" initial={false}>
             {!online ? (
               <NoDevice key="none" devices={devices} adbError={adbError} />

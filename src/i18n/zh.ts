@@ -95,10 +95,10 @@ export const zh = {
   "delete.titleRoot": "以 root 权限删除“{name}”？",
   "delete.titleRootMany": "以 root 权限删除 {n} 项？",
   "delete.message": "将永久删除，无法恢复。",
-  "delete.continue": "继续",
-  "delete.final.title": "最后确认",
-  "delete.final.confirm": "确认删除",
-  "delete.final.message": "正在以 <b>root</b> 权限删除，系统文件和应用数据也会被删除，无法恢复。",
+  "delete.root.confirm": "确认删除",
+  "delete.root.message":
+    "以下路径不在内部存储或 SD 卡中，将以 <b>root</b> 权限删除，系统文件和应用数据也会被删除，无法恢复。",
+  "delete.root.noWarn": "不再提示",
 
   "root.enable.title": "开启 root 模式？",
   "root.enable.message":

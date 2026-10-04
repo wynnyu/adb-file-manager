@@ -101,11 +101,10 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "delete.titleRoot": "Delete “{name}” as root?",
   "delete.titleRootMany": "Delete {n} items as root?",
   "delete.message": "This action is permanent and cannot be undone.",
-  "delete.continue": "Continue",
-  "delete.final.title": "Final confirmation",
-  "delete.final.confirm": "Delete permanently",
-  "delete.final.message":
-    "Deleting with <b>root</b> privileges. System files and app data will be deleted too, and this cannot be undone.",
+  "delete.root.confirm": "Delete permanently",
+  "delete.root.message":
+    "The following paths are not in internal storage or on an SD card and will be deleted with <b>root</b> privileges. System files and app data will be deleted too, and this cannot be undone.",
+  "delete.root.noWarn": "Do not show again",
 
   "root.enable.title": "Enter root mode?",
   "root.enable.message":

@@ -114,8 +114,9 @@ When su is used, `adb push` / `adb pull` do not run with root privileges, so upl
 
 Safeguards against accidental operations:
 
-- A warning banner is displayed at the top of the page, the main panel has a red outline, and the tab title includes `⚠ ROOT`
-- Deletion requires two confirmations; the second lists the full paths and includes a 3-second countdown
+- A **ROOT** badge is displayed next to the title, and the tab title includes `⚠ ROOT`
+- Deleting items in internal storage or on an SD card requires a single confirmation, as in normal mode
+- Deleting items elsewhere (for example, `/data` or `/system`) shows a root warning that lists the full paths and includes a 3-second countdown; after "Do not show again" is selected, such deletions also require only a single confirmation
 - If root access is revoked during an operation, root mode is disabled automatically and the reason is displayed
 
 ## Configuration
