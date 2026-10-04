@@ -170,7 +170,9 @@ server/
 shared/
   types.d.ts    API data types shared by the backend and frontend
 src/
-  App.tsx       main screen and most of the interaction logic
+  App.tsx       main screen; composes the hooks and components
+  hooks/        state and interaction logic: devices, directories, selection, file operations, shortcuts
+  menus.tsx     context menu items
   components/   UI components
   i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
   index.css     Catppuccin palettes and theme variables

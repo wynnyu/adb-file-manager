@@ -170,7 +170,9 @@ server/
 shared/
   types.d.ts    前后端共用的接口数据类型
 src/
-  App.tsx       主界面和大部分交互逻辑
+  App.tsx       主界面，组装各 hook 和组件
+  hooks/        状态和交互逻辑：设备、目录、选择、文件操作、快捷键等
+  menus.tsx     右键菜单的菜单项
   components/   界面组件
   i18n/         前端中英文文案（zh.ts 是类型来源，en.ts 须与之保持一致）
   index.css     Catppuccin 配色和主题变量
