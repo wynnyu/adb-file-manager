@@ -179,7 +179,7 @@ function Column(p: ColumnProps) {
                 isSel ? "bg-accent text-on-accent" : onPath ? "bg-surface1" : "hover:bg-surface0/70"
               } ${p.cut.has(entry.path) ? "opacity-50" : ""}`}
             >
-              <FileIcon entry={entry} size="size-7" />
+              <FileIcon entry={entry} size="size-7" onAccent={isSel} />
               <span
                 className={`min-w-0 flex-1 truncate text-sm font-semibold ${!isSel && entry.name.startsWith(".") ? "text-muted" : ""}`}
               >

@@ -62,14 +62,19 @@ export function FileIcon({
   entry,
   size = "size-10",
   stroke = 2.2,
+  onAccent = false,
 }: {
   entry: FileEntry;
   size?: string;
   stroke?: number;
+  /** 放在强调色底上（分栏视图的选中行）：用反色，不然文件夹图标和底色一样看不见 */
+  onAccent?: boolean;
 }) {
   const { Icon, color } = classify(entry);
   return (
-    <span className={`grid ${size} shrink-0 place-items-center rounded-[50%] ${color}`}>
+    <span
+      className={`grid ${size} shrink-0 place-items-center rounded-[50%] ${onAccent ? "bg-on-accent/15 text-on-accent" : color}`}
+    >
       <Icon className="size-[45%]" strokeWidth={stroke} />
     </span>
   );
