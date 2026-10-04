@@ -401,7 +401,7 @@ app.listen(PORT, HOST, (err?: Error) => {
   if (err) {
     console.error(
       (err as NodeJS.ErrnoException).code === "EADDRINUSE"
-        ? `端口 ${PORT} 已被占用，可以用 PORT=<端口> 换一个`
+        ? `端口 ${PORT} 已被占用，可通过 PORT=<端口> 指定其他端口`
         : err.message,
     );
     process.exit(1);

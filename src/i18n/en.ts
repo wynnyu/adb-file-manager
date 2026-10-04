@@ -6,7 +6,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "app.rootTitle": "⚠ ROOT - {name}",
 
   "common.cancel": "Cancel",
-  "common.processing": "Working…",
+  "common.processing": "Processing…",
   "common.confirm": "OK",
   "common.delete": "Delete",
   "common.close": "Close",
@@ -34,8 +34,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "tip.title": "Tips",
   "tip.rightClick": "Right-click an item or empty space for more actions",
-  "tip.drop": "Drop files or folders anywhere in the window to upload them here",
-  "tip.dismiss": "Got it, don't show again",
+  "tip.drop": "Drop files or folders into the window to upload them to the current folder",
+  "tip.dismiss": "Do not show again",
 
   "selection.selected": "Selected",
   "selection.unit": "",
@@ -80,17 +80,17 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
     "Go to Settings → About phone, tap “Build number” 7 times, then enable “USB debugging” in “Developer options”.",
   "nodevice.step2.title": "Connect with a USB cable",
   "nodevice.step2.text": "The USB mode can be set to “Charging only”; adb does not rely on MTP file transfer.",
-  "nodevice.step3.title": "Authorize debugging on the phone",
+  "nodevice.step3.title": "Authorize USB debugging on the device",
   "nodevice.step3.text":
-    "When the debugging authorization prompt appears, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
-  "nodevice.unauthorized": "Allow USB debugging on your phone",
+    "When the USB debugging authorization prompt appears on the device, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
+  "nodevice.unauthorized": "Allow USB debugging on the device",
   "nodevice.connect": "Connect a device",
   "nodevice.waiting": "Waiting for a device…",
   "nodevice.adbError": "adb error: {error}",
 
   "transfer.uploading": "Uploading to computer",
-  "transfer.pushing": "adb push → phone",
-  "transfer.pulling": "adb pull ← phone",
+  "transfer.pushing": "adb push → device",
+  "transfer.pulling": "adb pull ← device",
   "transfer.copying": "Copying…",
   "transfer.moving": "Moving…",
   "transfer.done": "Done",
@@ -100,19 +100,19 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "delete.titleMany": "Delete {n} items?",
   "delete.titleRoot": "Delete “{name}” as root?",
   "delete.titleRootMany": "Delete {n} items as root?",
-  "delete.message": "This will be permanently deleted and cannot be undone.",
+  "delete.message": "This action is permanent and cannot be undone.",
   "delete.continue": "Continue",
   "delete.final.title": "Final confirmation",
-  "delete.final.confirm": "Delete for good",
+  "delete.final.confirm": "Delete permanently",
   "delete.final.message":
     "Deleting with <b>root</b> privileges. System files and app data will be deleted too, and this cannot be undone.",
 
   "root.enable.title": "Enter root mode?",
   "root.enable.message":
-    "From now on every operation runs as root via <code>su</code>, with read/write access to system partitions and app data. A wrong delete or edit can break apps or even stop the phone from booting.",
+    "Once enabled, all operations run as root via <code>su</code>, with read/write access to system partitions and app data. Accidental deletions or changes may cause apps to malfunction or prevent the device from booting.",
   "root.enable.remember": "Remember my choice and enable automatically next time",
   "root.enable.confirm": "Enable",
-  "root.exited": "Left root mode: {reason}",
+  "root.exited": "Exited root mode: {reason}",
 
   "rename.title": "Rename",
   "mkdir.title": "New folder",
@@ -160,7 +160,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "clip.cut": "Cut {n} items. Right-click a folder to paste",
   "clip.cut_one": "Cut 1 item. Right-click a folder to paste",
   "clip.pathCopied": "Path copied",
-  "clip.failed": "Couldn't write to the clipboard",
+  "clip.failed": "Failed to write to the clipboard",
 
   "preview.kind": "Kind",
   "preview.size": "Size",

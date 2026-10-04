@@ -2,33 +2,33 @@
 
 English | [中文](README.md)
 
-Manage the files on your Android phone from a browser.
+A browser-based file manager for Android devices.
 
-Everything goes through adb (`adb push` / `adb pull` / `adb shell`) rather than MTP, so it works even when the phone's USB mode is set to "charging only", and you avoid the usual MTP trouble: dropped connections, stalled large transfers and hidden directories you can't see. On a rooted phone you can also turn on root mode to reach system directories such as `/data`.
+All operations are performed through adb (`adb push` / `adb pull` / `adb shell`) instead of MTP. As a result, it works even when the device's USB mode is set to "charging only", and avoids common MTP issues such as dropped connections, stalled large transfers and invisible hidden directories. On rooted devices, root mode provides access to system directories such as `/data`.
 
 ## Quick start
 
-You need:
+Requirements:
 
 - Node.js 20 or later
-- adb (Android SDK Platform-Tools), either on your `PATH` or pointed to with `ADB_PATH`
+- adb (Android SDK Platform-Tools), available on `PATH` or specified with `ADB_PATH`
 
-  If you don't have them yet, see [Installing Node.js and adb](#installing-nodejs-and-adb) below
-- USB debugging enabled on the phone: go to Settings → About phone, tap "Build number" 7 times to unlock developer mode, then turn on "USB debugging" under "Developer options"
+  See [Installing Node.js and adb](#installing-nodejs-and-adb) below for installation instructions
+- USB debugging enabled on the device: in Settings → About phone, tap "Build number" 7 times to enable Developer options, then enable "USB debugging" under "Developer options"
 
-Then run:
+Run the following command:
 
 ```bash
 npx adb-file-manager
 ```
 
-Open <http://127.0.0.1:3001> in your browser, connect the phone with a USB cable, and tap **Allow** when the phone asks you to authorize debugging.
+Open <http://127.0.0.1:3001> in a browser, connect the device via USB, and tap **Allow** in the USB debugging authorization prompt on the device.
 
 ### Installing Node.js and adb
 
 **Node.js**
 
-Download the LTS installer from [nodejs.org](https://nodejs.org/), or use a package manager:
+Download the LTS installer from [nodejs.org](https://nodejs.org/), or install it with a package manager:
 
 ```bash
 # macOS (Homebrew)
@@ -37,11 +37,11 @@ brew install node
 winget install OpenJS.NodeJS.LTS
 ```
 
-The Node.js shipped by Linux distributions may be older than 20; it's better to install it with a version manager such as nvm, following the [nodejs.org download page](https://nodejs.org/en/download). Afterwards, run `node -v` and check that the version is 20 or later.
+Some Linux distributions ship a Node.js version older than 20. In that case, install it with a version manager such as nvm, as described on the [nodejs.org download page](https://nodejs.org/en/download). Then run `node -v` to verify that the version is 20 or later.
 
 **adb (Android SDK Platform-Tools)**
 
-You only need Platform-Tools, not Android Studio or the full Android SDK. Install it with a package manager:
+Only Platform-Tools is required; Android Studio and the full Android SDK are not needed. It can be installed with a package manager:
 
 ```bash
 # macOS (Homebrew)
@@ -56,35 +56,35 @@ sudo pacman -S android-tools
 sudo dnf install android-tools
 ```
 
-Or download the official zip from the [Android developers site](https://developer.android.com/tools/releases/platform-tools) ([Windows](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) / [macOS](https://dl.google.com/android/repository/platform-tools-latest-darwin.zip) / [Linux](https://dl.google.com/android/repository/platform-tools-latest-linux.zip)), unzip it, and either add the `platform-tools` folder to your `PATH` or point `ADB_PATH` at the `adb` inside it (`adb.exe` on Windows).
+Alternatively, download the official archive from the [Android developers site](https://developer.android.com/tools/releases/platform-tools) ([Windows](https://dl.google.com/android/repository/platform-tools-latest-windows.zip) / [macOS](https://dl.google.com/android/repository/platform-tools-latest-darwin.zip) / [Linux](https://dl.google.com/android/repository/platform-tools-latest-linux.zip)), extract it, and either add the `platform-tools` directory to `PATH` or set `ADB_PATH` to the `adb` executable inside it (`adb.exe` on Windows).
 
-Run `adb version` to check that adb can be found. With the phone connected, run `adb devices`: if the phone is listed with the state `device`, the connection works. If it doesn't show up on Windows, you may need a USB driver: the [Google USB Driver](https://developer.android.com/studio/run/win-usb) for Pixel phones, or the manufacturer's driver for other brands.
+Run `adb version` to verify that adb is available. With the device connected, run `adb devices`; a working connection is indicated by the device being listed with the state `device`. If the device is not detected on Windows, a USB driver may be required: the [Google USB Driver](https://developer.android.com/studio/run/win-usb) for Pixel devices, or the manufacturer's driver for other brands.
 
 ## Features
 
 **Browsing**
 
-- Four Finder-style views: icons, list, columns and gallery. The list view has Finder's columns (Name, Date Modified, Size, Kind), and the triangle next to a folder expands it in place. The column view expands from the root one column at a time: a click only selects, a selected folder shows its contents in the next column and `→` or a double-click moves into it, a selected file shows its details, with thumbnails for images. The gallery view shows a large preview, a strip of thumbnails and an info panel
-- Breadcrumbs (double-click to type a path) and one-click links to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
-- Filter, sort by name / size / modified time, and show or hide dotfiles
-- Used and total internal storage shown in the toolbar
+- Four views modeled on Finder: icons, list, columns and gallery. The list view uses Finder's columns (Name, Date Modified, Size, Kind), and the disclosure triangle next to a folder expands it in place. The column view expands from the root one level at a time: a single click selects an item; a selected folder lists its contents in the next column, and `→` or a double-click opens it; a selected file shows its details, including a thumbnail for images. The gallery view shows a large preview above a thumbnail strip, with an info panel on the right
+- Breadcrumb navigation (double-click to enter a path directly) and one-click access to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
+- Filtering, sorting by name / size / modified time, and an option to show or hide dotfiles
+- Internal storage usage (used and total) displayed in the toolbar
 
 **Transfers**
 
-- Upload with the buttons or by dragging files and folders into the window; folder structure is preserved
-- A single file downloads as is; folders and multiple selections download as a zip
-- A transfer queue shows the progress and result of each job
+- Upload via the button or by dragging files and folders into the window, with directory structure preserved
+- Single files are downloaded as is; folders and multiple selections are downloaded as a zip archive
+- A transfer queue displays the progress and result of each task
 
 **Organizing**
 
-- Right-click menu: open, download, cut / copy / paste, copy path, rename, delete. Right-click empty space to create a folder, upload to the current folder or switch views
-- Copies never overwrite: name clashes get a number (`photo 2.jpg`, `photo 3.jpg`, …). Renames and moves onto an existing name fail with an error
-- A folder can't be moved or copied into itself
+- Context menu: open, download, cut / copy / paste, copy path, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
+- Copying never overwrites existing files: on a name conflict, a number is appended (`photo 2.jpg`, `photo 3.jpg`, …). Renaming or moving onto an existing name results in an error
+- A folder cannot be moved or copied into itself
 
 **Devices and UI**
 
-- Switch between several connected devices, with automatic detection when they are plugged in or removed; devices are shown by their marketing name
-- English and Chinese UI, following your browser language by default
+- Switching between multiple connected devices, with automatic detection of connection and disconnection; devices are identified by their marketing names
+- English and Chinese interface, following the browser language by default
 - [Catppuccin](https://catppuccin.com) theme with four flavors (Latte / Frappé / Macchiato / Mocha) and five accent colors, following the system light / dark setting by default
 
 ### Keyboard shortcuts
@@ -103,30 +103,30 @@ Run `adb version` to check that adb can be found. With the phone connected, run 
 
 ## Root mode
 
-Turn it on with the shield button in the toolbar. It is off by default and asks for confirmation first; tick "remember my choice" to have it turn on automatically next time.
+Root mode is enabled with the shield button in the toolbar. It is disabled by default and requires confirmation before it is enabled; selecting "Remember my choice and enable automatically next time" enables it automatically on subsequent visits.
 
-When you turn it on, the tool first checks how the device provides root:
+When root mode is enabled, the tool first detects how the device provides root access:
 
-- If adbd itself runs as root (for example on engineering builds or emulators after `adb root`), it uses that directly
-- Otherwise it escalates with `su -c`, which works with Magisk, KernelSU and APatch. The first time, your root manager will show a prompt on the phone; grant root to **Shell**
+- If adbd runs as root (for example, on engineering builds or emulators after `adb root`), it is used directly
+- Otherwise, privileges are escalated with `su -c`, which is supported by Magisk, KernelSU and APatch. On first use, the root manager on the device displays an authorization prompt; grant root access to **Shell**
 
-When running through su, `adb push` / `adb pull` have no root privileges of their own, so uploads and downloads are staged through a temporary directory under `/data/local/tmp`, which is cleaned up afterwards.
+When su is used, `adb push` / `adb pull` do not run with root privileges, so uploads and downloads are staged through a temporary directory under `/data/local/tmp`, which is removed upon completion.
 
-To guard against mistakes:
+Safeguards against accidental operations:
 
-- A warning banner appears at the top, the main panel gets a red outline, and the tab title shows `⚠ ROOT`
-- Deleting takes two confirmations; the second one lists the full paths and has a 3-second countdown
-- If root access is revoked during an operation, root mode turns itself off and tells you why
+- A warning banner is displayed at the top of the page, the main panel has a red outline, and the tab title includes `⚠ ROOT`
+- Deletion requires two confirmations; the second lists the full paths and includes a 3-second countdown
+- If root access is revoked during an operation, root mode is disabled automatically and the reason is displayed
 
 ## Configuration
 
-Set these environment variables:
+Configuration is done through environment variables:
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3001` | Port to listen on |
 | `ADB_PATH` | `adb` | Path to the adb executable |
-| `ADBFM_SU` | `su -c` | Privilege-escalation prefix used in root mode. Change it if your su takes different arguments, e.g. `ADBFM_SU="su 0 sh -c"` |
+| `ADBFM_SU` | `su -c` | Privilege-escalation prefix used in root mode. Adjust it if su on the device expects different arguments, e.g. `ADBFM_SU="su 0 sh -c"` |
 
 ```bash
 PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
@@ -134,15 +134,15 @@ PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
 
 ## Security
 
-This tool can read and write any file on the phone, including system partitions and app data in root mode, so the backend only serves the local machine:
+This tool can read and write any file on the device, including system partitions and app data in root mode. The backend therefore serves only the local machine:
 
-- It listens on `127.0.0.1` only, so other devices on your network can't reach it
-- It rejects requests whose `Host` isn't localhost (DNS rebinding protection)
-- It checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
-- Before deleting, renaming or moving, it resolves symlinks and refuses to touch the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
-- Previews are limited to common image formats, and SVGs are shown in a sandbox so their scripts don't run
+- Listens only on `127.0.0.1`, so it is not reachable from other devices on the network
+- Rejects requests whose `Host` header is not localhost (DNS rebinding protection)
+- Checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
+- Resolves symlinks before deleting, renaming or moving, and refuses to operate on the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
+- Previews are limited to common image formats, and SVGs are rendered in a sandbox so that embedded scripts do not run
 
-Do not expose it to your network or the internet through a reverse proxy or similar.
+Do not expose it to a local network or the internet through a reverse proxy or any other means.
 
 ## Development
 
@@ -153,12 +153,12 @@ pnpm build    # build into dist/
 pnpm start    # run the build: http://127.0.0.1:3001
 ```
 
-Stack:
+Tech stack:
 
-- Backend: Node.js + Express 5. adb is called through `execFile`, and paths in device-side commands are single-quote-escaped
-- Frontend: React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion. Fonts (MiSans, Maple Mono) are bundled locally, so no network access is needed
+- Backend: Node.js + Express 5. adb is invoked through `execFile`, and paths in device-side commands are single-quote-escaped
+- Frontend: React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion. Fonts (MiSans, Maple Mono) are bundled locally, so no network access is required
 
-Layout:
+Project structure:
 
 ```
 server/
@@ -173,13 +173,13 @@ src/
   theme.ts      theme switching
 ```
 
-Build output: `dist/web/` is the frontend and `dist/server/` is the compiled backend, which is also the npm package's `bin` entry.
+Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend, which also serves as the npm package's `bin` entry.
 
 ## License
 
 The code is released under the [MIT](LICENSE) license.
 
-The fonts bundled into the frontend have their own licenses:
+The fonts bundled into the frontend are subject to their own licenses:
 
 - [MiSans](https://hyperos.mi.com/font/): Xiaomi's MiSans Font IP License Agreement
 - [Maple Mono](https://github.com/subframe7536/maple-font): SIL Open Font License 1.1
