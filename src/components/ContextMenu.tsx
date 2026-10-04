@@ -1,9 +1,19 @@
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
-import { type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 export type MenuItem =
   | {
+      /** label 可能重复时（如同名书签）用它做 key */
+      id?: string;
       label: string;
       icon?: ReactNode;
       /** 右侧的快捷键提示 */
@@ -13,6 +23,8 @@ export type MenuItem =
       /** 单选 / 开关项：true 显示对勾 */
       checked?: boolean;
       onSelect: () => void;
+      /** 右键该项，如在“更多”菜单里右键书签打开书签菜单 */
+      onContextMenu?: (e: MouseEvent) => void;
     }
   | "sep";
 
@@ -106,7 +118,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
           <div key={`sep-${i}`} className="mx-3 my-1 h-px shrink-0 bg-surface0" />
         ) : (
           <button
-            key={item.label}
+            key={item.id ?? item.label}
             type="button"
             role={item.checked !== undefined ? "menuitemcheckbox" : "menuitem"}
             aria-checked={item.checked}
@@ -115,6 +127,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
               onClose();
               item.onSelect();
             }}
+            onContextMenu={item.onContextMenu}
             className={`flex h-9 shrink-0 items-center gap-3 rounded-full pr-4 pl-3 text-left text-sm font-semibold outline-none transition-colors disabled:pointer-events-none disabled:opacity-40 ${
               item.danger
                 ? "text-red hover:bg-red/15 focus-visible:bg-red/15"

@@ -33,6 +33,18 @@ import {
   useState,
 } from "react";
 import { api, onRootLost, type Target } from "./api.ts";
+import {
+  type Bookmark,
+  bookmarkName,
+  loadBookmarks,
+  newBookmarkId,
+  nextBookmarkColor,
+  normalizePath,
+  PRESETS,
+  presetFields,
+  saveBookmarks,
+  storedName,
+} from "./bookmarks.ts";
 import { Breadcrumbs } from "./components/Breadcrumbs.tsx";
 import { ColumnView } from "./components/ColumnView.tsx";
 import { ContextMenu, type MenuItem, type MenuState } from "./components/ContextMenu.tsx";
@@ -101,6 +113,7 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string; tone: "error" | "info" } | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [clip, setClip] = useState<Clip | null>(null);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(loadBookmarks);
   const [rootMode, setRootMode] = useState(() => loadPref("afm.rootRemember", false));
   const rootVerified = useRef<string | null>(null);
   const [storage, setStorage] = useState<{ total: number; free: number } | null>(null);
@@ -189,6 +202,7 @@ export default function App() {
   }, [online, refreshStorage]);
 
   useEffect(() => savePref("afm.path", path), [path]);
+  useEffect(() => saveBookmarks(bookmarks), [bookmarks]);
   useEffect(() => savePref("afm.sort", sort), [sort]);
   useEffect(() => savePref("afm.hidden", showHidden), [showHidden]);
   useEffect(() => savePref("afm.view", view), [view]);
@@ -560,6 +574,45 @@ export default function App() {
     [target, path, reload, t],
   );
 
+  /** 不传 existing 时新建书签，名称和路径取当前目录 */
+  const askBookmark = useCallback(
+    (existing?: Bookmark) => {
+      const name = path === "/" ? t("crumbs.root") : path.slice(path.lastIndexOf("/") + 1);
+      const order = (b: { preset?: string }) => PRESETS.findIndex((p) => p.preset === b.preset);
+      setDialog({
+        kind: "bookmark",
+        title: existing ? t("bookmark.edit") : t("bookmark.new"),
+        initial: existing
+          ? {
+              name: bookmarkName(existing, t),
+              path: existing.path,
+              icon: existing.icon,
+              color: existing.color,
+              preset: existing.preset,
+            }
+          : { name, path, icon: "bookmark", color: nextBookmarkColor(bookmarks) },
+        templates: existing
+          ? undefined
+          : PRESETS.filter((p) => !bookmarks.some((b) => b.preset === p.preset)).map(presetFields),
+        confirm: existing ? t("bookmark.save") : t("bookmark.create"),
+        onSubmit: async (v) => {
+          const p = normalizePath(v.path);
+          if (!p) throw new Error(t("bookmark.badPath"));
+          const next = { ...v, path: p, name: storedName(v, t) };
+          setBookmarks((list) => {
+            if (existing) return list.map((b) => (b.id === existing.id ? { ...b, ...next } : b));
+            const item = { id: newBookmarkId(), ...next };
+            if (!next.preset) return [...list, item];
+            // 内置书签放回原来的位置：排在顺序靠前的内置书签之后
+            const i = list.findLastIndex((b) => b.preset && order(b) < order(next));
+            return list.toSpliced(i + 1, 0, item);
+          });
+        },
+      });
+    },
+    [path, bookmarks, t],
+  );
+
   const open = useCallback(
     (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : void download([entry])),
     [navigate, download],
@@ -767,6 +820,40 @@ export default function App() {
       onSelect: () => askDelete(targets),
     });
     setMenu({ x: e.clientX, y: e.clientY, items });
+  };
+
+  const openBookmarkMenu = (e: MouseEvent, b: Bookmark) => {
+    e.preventDefault();
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: t("menu.open"), icon: <FolderOpen className="size-4" />, onSelect: () => navigate(b.path) },
+        { label: t("menu.copyPath"), icon: <Link className="size-4" />, onSelect: () => copyText(b.path) },
+        "sep",
+        { label: t("bookmark.edit"), icon: <Pencil className="size-4" />, onSelect: () => askBookmark(b) },
+        {
+          label: t("bookmark.delete"),
+          icon: <Trash2 className="size-4" />,
+          danger: true,
+          onSelect: () =>
+            setDialog({
+              kind: "confirm",
+              tone: "danger",
+              icon: <Trash2 className="size-7" />,
+              title: t("bookmark.deleteTitle", { name: bookmarkName(b, t) }),
+              message: (
+                <>
+                  <p>{t(b.preset ? "bookmark.deletePresetMessage" : "bookmark.deleteMessage")}</p>
+                  <p className="mt-2 font-mono text-xs text-muted">{b.path}</p>
+                </>
+              ),
+              confirm: t("common.delete"),
+              onSubmit: async () => setBookmarks((list) => list.filter((x) => x.id !== b.id)),
+            }),
+        },
+      ],
+    });
   };
 
   /** 右键空白处：dir 是这块空白所属的目录（分栏视图里可能是上层某一栏） */
@@ -1068,7 +1155,14 @@ export default function App() {
                   </PillButton>
                 </div>
 
-                <QuickLinks path={path} onNavigate={navigate} />
+                <QuickLinks
+                  path={path}
+                  bookmarks={bookmarks}
+                  onNavigate={navigate}
+                  onAddBookmark={() => askBookmark()}
+                  onBookmarkMenu={openBookmarkMenu}
+                  onMenu={setMenu}
+                />
 
                 {/* 点空白处取消选择，右键空白处是当前目录的菜单 */}
                 <div

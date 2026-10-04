@@ -1,7 +1,9 @@
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { BookmarkFields } from "../bookmarks.ts";
 import { useT } from "../i18n/index.tsx";
+import { BookmarkForm, BookmarkPreview } from "./BookmarkForm.tsx";
 import { PillButton, spring } from "./ui.tsx";
 
 export type DialogState =
@@ -25,6 +27,15 @@ export type DialogState =
       /** 确认按钮倒计时若干秒后才可点击 */
       countdown?: number;
       onSubmit: (checked: boolean) => Promise<void>;
+    }
+  | {
+      kind: "bookmark";
+      title: string;
+      initial: BookmarkFields;
+      /** 可添加回来的内置书签 */
+      templates?: BookmarkFields[];
+      confirm: string;
+      onSubmit: (v: BookmarkFields) => Promise<void>;
     };
 
 const toneStyles = {
@@ -39,6 +50,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [bookmark, setBookmark] = useState(state.kind === "bookmark" ? state.initial : null);
   const [left, setLeft] = useState(state.kind === "confirm" ? (state.countdown ?? 0) : 0);
   const input = useRef<HTMLInputElement>(null);
   const cancelBtn = useRef<HTMLButtonElement>(null);
@@ -58,10 +70,10 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
     const el = input.current;
     if (!el) return;
     el.focus();
-    // 重命名时只选中文件名主体，不选扩展名
-    const dot = el.value.lastIndexOf(".");
+    // 重命名时只选中文件名主体，不选扩展名；书签名称整体选中
+    const dot = state.kind === "prompt" ? el.value.lastIndexOf(".") : -1;
     el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
-  }, []);
+  }, [state.kind]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -71,12 +83,15 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
 
   async function submit() {
     if (state.kind === "prompt" && !value.trim()) return;
+    if (bookmark && !(bookmark.name.trim() && bookmark.path.trim())) return;
     if (left > 0) return;
     setBusy(true);
     setError(null);
     try {
       if (state.kind === "prompt") await state.onSubmit(value.trim());
-      else await state.onSubmit(checked);
+      else if (state.kind === "bookmark" && bookmark)
+        await state.onSubmit({ ...bookmark, name: bookmark.name.trim(), path: bookmark.path.trim() });
+      else if (state.kind === "confirm") await state.onSubmit(checked);
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -106,9 +121,15 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
           e.preventDefault();
           void submit();
         }}
-        className={`flex w-full max-w-md flex-col items-center gap-5 rounded-[2.5rem] bg-mantle px-6 pt-8 pb-6 text-center shadow-2xl ring-1 ${styles.ring}`}
+        className={`flex w-full max-h-[calc(100dvh-2rem)] max-w-md flex-col overflow-y-auto items-center gap-5 rounded-[2.5rem] bg-mantle px-6 pt-8 pb-6 text-center shadow-2xl ring-1 ${styles.ring}`}
       >
-        <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>{state.icon}</span>
+        {bookmark ? (
+          <BookmarkPreview value={bookmark} />
+        ) : (
+          state.kind !== "bookmark" && (
+            <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>{state.icon}</span>
+          )
+        )}
         <h2 className="w-full text-lg font-extrabold wrap-anywhere">{state.title}</h2>
         {state.kind === "prompt" ? (
           <input
@@ -118,8 +139,16 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             spellCheck={false}
             className="h-12 w-full rounded-full bg-base px-5 text-center font-mono text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-accent"
           />
+        ) : state.kind === "bookmark" && bookmark ? (
+          <BookmarkForm
+            value={bookmark}
+            onChange={setBookmark}
+            templates={state.templates}
+            nameInput={input}
+            onError={setError}
+          />
         ) : (
-          <div className="w-full text-sm text-subtext1 wrap-anywhere">{state.message}</div>
+          state.kind === "confirm" && <div className="w-full text-sm text-subtext1 wrap-anywhere">{state.message}</div>
         )}
         {state.kind === "confirm" && state.checkbox && (
           <button
