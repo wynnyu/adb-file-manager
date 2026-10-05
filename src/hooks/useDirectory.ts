@@ -84,7 +84,8 @@ export function useDirectory({
 
   /**
    * 增删改之后更新这台设备上的缓存：gone（改名、移走或删掉的路径）和它们下面的目录已经不在了，直接丢掉；
-   * 其余的全部过期，正在显示的重新加载。skip 由调用方自己加载
+   * 其余的全部过期，正在显示的重新加载。skip 由调用方按 target 当前的 root 模式自己加载，
+   * 另一种模式下的 skip 照样过期：长时间的传输期间可能切换了 root 模式，这时界面上显示的正是那一份
    */
   const invalidate = useCallback(
     (gone: string[], skip: string) => {
@@ -95,7 +96,10 @@ export function useDirectory({
         queryKey,
         predicate: (q) => gone.some((g) => dir(q) === g || dir(q).startsWith(g + "/")),
       });
-      void queryClient.invalidateQueries({ queryKey, predicate: (q) => dir(q) !== skip });
+      void queryClient.invalidateQueries({
+        queryKey,
+        predicate: (q) => !(dir(q) === skip && q.queryKey[2] === target.root),
+      });
     },
     [target, queryClient],
   );

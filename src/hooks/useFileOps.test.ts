@@ -85,12 +85,13 @@ describe("useFileOps", () => {
       );
     });
 
-    it("失败时把错误记在传输任务上", async () => {
+    it("失败时把错误记在传输任务上并刷新（可能已推送一部分）", async () => {
       vi.mocked(api.upload).mockRejectedValue(new Error("空间不足"));
-      const { result, patchTransfer, reload } = setup();
-      await act(() => result.current.upload([upItem("a.txt")]));
+      const { result, patchTransfer, reload, refreshStorage } = setup();
+      await act(() => result.current.upload([upItem("a.txt"), upItem("b.txt")]));
       expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "空间不足" });
-      expect(reload).not.toHaveBeenCalled();
+      expect(refreshStorage).toHaveBeenCalled();
+      expect(reload).toHaveBeenCalledWith(true);
     });
 
     it("设备离线或没有文件时不上传", async () => {
@@ -176,6 +177,16 @@ describe("useFileOps", () => {
       expect(api.remove).toHaveBeenCalledWith(target, [a.path]);
       expect(refreshStorage).toHaveBeenCalled();
       expect(afterChange).toHaveBeenCalledWith([[a.path, null]]);
+    });
+
+    it("失败时刷新（可能已删掉一部分），错误交给对话框显示", async () => {
+      vi.mocked(api.remove).mockRejectedValue(new Error("权限不足"));
+      const { result, dialog, afterChange, reload, refreshStorage } = setup();
+      act(() => result.current.askDelete([a, b]));
+      await expect(dialog<ConfirmDialog>().onSubmit(false)).rejects.toThrow("权限不足");
+      expect(refreshStorage).toHaveBeenCalled();
+      expect(reload).toHaveBeenCalledWith(true);
+      expect(afterChange).not.toHaveBeenCalled();
     });
 
     it("多项时标题写明数量", () => {

@@ -66,6 +66,9 @@ export function useFileOps({
         void reload(true);
       } catch (e) {
         patchTransfer(id, { status: "error", error: (e as Error).message });
+        // 多项时可能已经推送了一部分
+        refreshStorage();
+        void reload(true);
       }
     },
     [target, online, path, reload, startTransfer, patchTransfer, refreshStorage, t],
@@ -127,10 +130,17 @@ export function useFileOps({
       if (!target || !targets.length) return;
       const single = targets.length === 1;
       const doDelete = async () => {
-        await api.remove(
-          target,
-          targets.map((x) => x.path),
-        );
+        try {
+          await api.remove(
+            target,
+            targets.map((x) => x.path),
+          );
+        } catch (e) {
+          // rm 一次删多项，其中一项失败时其余的可能已经删掉了
+          refreshStorage();
+          void reload(true);
+          throw e;
+        }
         refreshStorage();
         await afterChange(targets.map((x) => [x.path, null]));
       };
@@ -173,7 +183,7 @@ export function useFileOps({
         onSubmit: doDelete,
       });
     },
-    [target, rootMode, afterChange, refreshStorage, openDialog, t],
+    [target, rootMode, afterChange, reload, refreshStorage, openDialog, t],
   );
 
   const askRename = useCallback(

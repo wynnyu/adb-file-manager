@@ -158,6 +158,28 @@ describe("useDirectory", () => {
       await act(() => result.current.dir.reload());
       expect(cached(client, "/sdcard/DCIM")?.isInvalidated).toBe(true);
     });
+
+    it("另一种 root 模式下的当前目录也过期", async () => {
+      const { result, client } = setup();
+      await waitFor(() => expect(result.current.dir.ready).toBe(true));
+      const rooted = { serial: "A", root: true };
+      client.setQueryData(lsQuery(rooted, "/sdcard").queryKey, fs["/sdcard"]);
+      await act(() => result.current.dir.reload());
+      expect(cached(client, "/sdcard", rooted)?.isInvalidated).toBe(true);
+    });
+
+    it("传输期间切换了 root 模式：完成后用旧的 reload 刷新，新模式下的列表也重新加载", async () => {
+      const { result, rerender } = setup();
+      await waitFor(() => expect(result.current.dir.ready).toBe(true));
+      const staleReload = result.current.dir.reload;
+      const rooted = { serial: "A", root: true };
+      rerender({ target: rooted, online: true });
+      await waitFor(() => expect(api.ls).toHaveBeenLastCalledWith(rooted, "/sdcard"));
+
+      fs["/sdcard"] = [...fs["/sdcard"], file("/sdcard/new.txt")];
+      await act(() => staleReload(true));
+      await waitFor(() => expect(result.current.dir.entries).toHaveLength(4));
+    });
   });
 
   describe("afterChange", () => {
