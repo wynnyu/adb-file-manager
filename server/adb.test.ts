@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { AdbError, assertAbs, catCmd, LINK_MARK, parseLs, q } from "./adb.ts";
+import { execFileSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AdbError, assertAbs, type ByteRange, catCmd, LINK_MARK, parseLs, q } from "./adb.ts";
 
 describe("assertAbs", () => {
   it("规范化路径", () => {
@@ -30,6 +34,56 @@ describe("catCmd", () => {
       "dd if='/sdcard/a.mp4' bs=65536 skip=100 count=100 iflag=skip_bytes,count_bytes 2>/dev/null || " +
         "tail -c +101 '/sdcard/a.mp4' 2>/dev/null | head -c 100",
     );
+  });
+});
+
+// 在本机 sh 中执行 catCmd 生成的命令，检查读出的字节。设备上是 toybox，这里只能验证命令本身的写法
+describe.skipIf(process.platform === "win32")("catCmd 在 shell 中执行", () => {
+  const SIZE = 200_000;
+  /** 每个字节都不同于相邻位置，读错偏移时能看出来 */
+  const data = Buffer.from(Array.from({ length: SIZE }, (_, i) => (i * 31 + (i >> 8)) & 0xff));
+  let dir: string;
+  let file: string;
+  /** 只放了一个总是失败的 dd，模拟不支持 skip_bytes 的旧版 toybox */
+  let oldDdBin: string;
+
+  beforeAll(() => {
+    dir = mkdtempSync(path.join(tmpdir(), "adbfm-cat-"));
+    // 文件名带空格和单引号，同时检查 q() 的转义
+    file = path.join(dir, "a b'c.bin");
+    writeFileSync(file, data);
+    oldDdBin = path.join(dir, "bin");
+    mkdirSync(oldDdBin);
+    const dd = path.join(oldDdBin, "dd");
+    writeFileSync(dd, '#!/bin/sh\necho "dd: unknown iflag" >&2\nexit 1\n');
+    chmodSync(dd, 0o755);
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  const run = (cmd: string, oldDd: boolean) =>
+    execFileSync("sh", ["-c", cmd], {
+      maxBuffer: SIZE * 2,
+      env: { ...process.env, PATH: oldDd ? `${oldDdBin}:${process.env.PATH}` : process.env.PATH },
+    });
+
+  const ranges: [string, ByteRange][] = [
+    ["开头", { start: 0, end: 9 }],
+    ["单个字节", { start: 12_345, end: 12_345 }],
+    ["跨越多个 dd 块", { start: 70_000, end: 150_000 }],
+    ["到文件末尾", { start: SIZE - 10, end: SIZE - 1 }],
+  ];
+
+  it.each(ranges)("dd 不支持 skip_bytes 时退回 tail 和 head：%s", (_, range) => {
+    expect(run(catCmd(file, range), true).equals(data.subarray(range.start, range.end + 1))).toBe(true);
+  });
+
+  it.each(ranges)("使用本机的 dd：%s", (_, range) => {
+    expect(run(catCmd(file, range), false).equals(data.subarray(range.start, range.end + 1))).toBe(true);
+  });
+
+  it("不分段时读出整个文件", () => {
+    expect(run(catCmd(file), false).equals(data)).toBe(true);
   });
 });
 
