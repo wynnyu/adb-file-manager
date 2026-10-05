@@ -8,6 +8,7 @@ import { FileList } from "./components/FileList.tsx";
 import { GalleryView } from "./components/GalleryView.tsx";
 import { Header } from "./components/Header.tsx";
 import { IconGrid } from "./components/IconGrid.tsx";
+import { backgroundMenu, bookmarkMenu, itemMenu } from "./components/menus.tsx";
 import { NoDevice } from "./components/NoDevice.tsx";
 import { QuickLinks } from "./components/QuickLinks.tsx";
 import { SelectionBar } from "./components/SelectionBar.tsx";
@@ -35,7 +36,6 @@ import type { Target } from "./lib/api.ts";
 import type { Bookmark } from "./lib/bookmarks.ts";
 import type { Sort, SortKey } from "./lib/entries.ts";
 import { parentPath } from "./lib/format.ts";
-import { backgroundMenu, bookmarkMenu, itemMenu } from "./lib/menus.tsx";
 import { usePref } from "./lib/prefs.ts";
 import type { FileEntry, ViewMode } from "./types.ts";
 
