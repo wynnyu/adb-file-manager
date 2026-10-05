@@ -149,47 +149,50 @@ function Column(p: ColumnProps) {
         e.stopPropagation();
         p.onContextMenu(e, null);
       }}
-      className="flex w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-surface0 p-1.5"
+      className="flex w-60 shrink-0 flex-col border-r border-surface0 py-2"
     >
-      {p.error ? (
-        <p className="m-2 rounded-2xl bg-red/15 px-3 py-2 text-xs text-red wrap-anywhere">{p.error}</p>
-      ) : p.loading ? (
-        <div className="flex justify-center py-10 text-muted">
-          <Loader2 className="size-5 animate-spin" />
-        </div>
-      ) : p.entries.length === 0 ? (
-        <p className="px-3 py-10 text-center text-xs text-muted">{p.emptyText}</p>
-      ) : (
-        p.entries.map((entry) => {
-          const onPath = entry.path === p.activePath;
-          const isSel = p.current && p.selected.has(entry.path);
-          return (
-            <div
-              key={entry.path}
-              ref={onPath ? activeRow : undefined}
-              data-entry={entry.path}
-              title={entry.name}
-              onClick={(e) => p.onRowClick(entry, e)}
-              onDoubleClick={() => p.onRowDoubleClick(entry)}
-              onContextMenu={(e) => {
-                e.stopPropagation();
-                p.onContextMenu(e, entry);
-              }}
-              className={`flex h-9 shrink-0 cursor-default items-center gap-2 rounded-full pr-2 pl-1 transition-colors select-none ${
-                isSel ? "bg-accent text-on-accent" : onPath ? "bg-surface1" : "hover:bg-surface0/70"
-              } ${p.cut.has(entry.path) ? "opacity-50" : ""}`}
-            >
-              <FileIcon entry={entry} size="size-7" onAccent={isSel} />
-              <span
-                className={`min-w-0 flex-1 truncate text-sm font-semibold ${!isSel && entry.name.startsWith(".") ? "text-muted" : ""}`}
+      {/* 滚动区上下内缩，滚出去的行被直线截断而不是进入外框圆角；左右内边距让行与圆角同心 */}
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
+        {p.error ? (
+          <p className="m-2 rounded-2xl bg-red/15 px-3 py-2 text-xs text-red wrap-anywhere">{p.error}</p>
+        ) : p.loading ? (
+          <div className="flex justify-center py-10 text-muted">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+        ) : p.entries.length === 0 ? (
+          <p className="px-3 py-10 text-center text-xs text-muted">{p.emptyText}</p>
+        ) : (
+          p.entries.map((entry) => {
+            const onPath = entry.path === p.activePath;
+            const isSel = p.current && p.selected.has(entry.path);
+            return (
+              <div
+                key={entry.path}
+                ref={onPath ? activeRow : undefined}
+                data-entry={entry.path}
+                title={entry.name}
+                onClick={(e) => p.onRowClick(entry, e)}
+                onDoubleClick={() => p.onRowDoubleClick(entry)}
+                onContextMenu={(e) => {
+                  e.stopPropagation();
+                  p.onContextMenu(e, entry);
+                }}
+                className={`flex h-9 shrink-0 cursor-default items-center gap-2 rounded-full pr-2 pl-1 transition-colors select-none ${
+                  isSel ? "bg-accent text-on-accent" : onPath ? "bg-surface1" : "hover:bg-surface0/70"
+                } ${p.cut.has(entry.path) ? "opacity-50" : ""}`}
               >
-                {entry.name}
-              </span>
-              {entry.isDir && <ChevronRight className={`size-3.5 shrink-0 ${isSel ? "" : "text-overlay1"}`} />}
-            </div>
-          );
-        })
-      )}
+                <FileIcon entry={entry} size="size-7" onAccent={isSel} />
+                <span
+                  className={`min-w-0 flex-1 truncate text-sm font-semibold ${!isSel && entry.name.startsWith(".") ? "text-muted" : ""}`}
+                >
+                  {entry.name}
+                </span>
+                {entry.isDir && <ChevronRight className={`size-3.5 shrink-0 ${isSel ? "" : "text-overlay1"}`} />}
+              </div>
+            );
+          })
+        )}
+      </div>
     </motion.div>
   );
 }
