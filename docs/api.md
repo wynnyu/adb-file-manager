@@ -31,7 +31,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 ### 响应与错误
 
-成功时返回 JSON（预览和下载接口除外），无返回数据时为 `OkResult`。失败时返回 `ErrorResponse`：
+成功时返回 JSON（`/api/preview` 和下载接口除外），无返回数据时为 `OkResult`。失败时返回 `ErrorResponse`：
 
 ```json
 { "error": "目标已存在" }
@@ -58,6 +58,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 | 403 | 非本机访问；设备上没有读取权限；无法获取 root |
 | 404 | 目录或文件不存在；下载 token 已过期 |
 | 415 | 预览不支持该文件类型 |
+| 416 | 预览请求的范围超出文件大小 |
 | 500 | adb 执行失败，例如未找到 adb、设备断开或未授权 |
 
 ### 数据类型
@@ -127,6 +128,9 @@ interface PullResult {
   token: string;
   name: string;
 }
+
+/** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
+type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
 ```
 
 ## 接口一览
@@ -142,7 +146,7 @@ interface PullResult {
 | POST | `/api/delete` | 删除 | `api.remove(target, paths)` |
 | POST | `/api/copy` | 复制到目录 | `api.copy(target, paths, dest)` |
 | POST | `/api/move` | 移动到目录 | `api.move(target, paths, dest)` |
-| GET | `/api/preview` | 图片预览 | `api.previewUrl(target, path)` |
+| GET | `/api/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
 | POST | `/api/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
 | POST | `/api/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
 | GET | `/api/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
@@ -287,9 +291,11 @@ interface PullResult {
 
 `/data` 本身受保护，`/data` 下的内容不受此限制。
 
+## 查看文件
+
 ### GET /api/preview
 
-以字节流返回设备上的图片（`adb exec-out cat`），供分栏视图和画廊视图显示预览。
+以字节流返回设备上的图片、视频或音频（`adb exec-out`），供分栏视图、画廊视图的缩略图和页面内查看器使用。
 
 | 查询参数 | 必填 |
 | --- | --- |
@@ -297,7 +303,7 @@ interface PullResult {
 | `path` | 是 |
 | `root` | 否 |
 
-仅支持以下扩展名，其余返回 `415`：
+仅支持以下扩展名，其余返回 `415`。`Content-Type` 为文件的真实类型，浏览器能否解码取决于浏览器本身，例如 `.mkv`、`.amr` 在多数浏览器中无法播放：
 
 | 扩展名 | Content-Type |
 | --- | --- |
@@ -308,8 +314,52 @@ interface PullResult {
 | `.avif` | `image/avif` |
 | `.bmp` | `image/bmp` |
 | `.svg` | `image/svg+xml` |
+| `.mp4` `.m4v` | `video/mp4` |
+| `.webm` | `video/webm` |
+| `.mov` | `video/quicktime` |
+| `.mkv` | `video/x-matroska` |
+| `.3gp` | `video/3gpp` |
+| `.mp3` | `audio/mpeg` |
+| `.m4a` | `audio/mp4` |
+| `.aac` | `audio/aac` |
+| `.flac` | `audio/flac` |
+| `.wav` | `audio/wav` |
+| `.ogg` `.opus` | `audio/ogg` |
+| `.amr` | `audio/amr` |
 
-响应头包含 `X-Content-Type-Options: nosniff`、`Cache-Control: no-store` 和 `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`，SVG 中的脚本不会执行。客户端断开时终止 adb 进程。
+先读取文件大小（符号链接取目标的大小），文件不存在时返回 `404`，无读取权限时返回 `403`。之后按 `Range` 请求头响应：
+
+| 请求 | 响应 |
+| --- | --- |
+| 无 `Range`，或格式不合法、包含多段 | `200`，完整内容，带 `Content-Length` |
+| 单段 `bytes=a-b`、`bytes=a-` 或 `bytes=-n` | `206`，带 `Content-Range: bytes 起点-终点/大小` 和 `Content-Length`；终点超出文件时截到文件末尾 |
+| 起点不小于文件大小，或 `bytes=-0` | `416`，带 `Content-Range: bytes */大小`，响应体为 `ErrorResponse` |
+
+分段读取在设备上执行 `tail -c +起点 | head -c 长度`。视频和音频的进度条依赖 `206` 响应才能拖动。
+
+响应头始终包含 `Accept-Ranges: bytes`；成功时另有 `X-Content-Type-Options: nosniff`、`Cache-Control: no-store` 和 `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`，SVG 中的脚本不会执行。客户端断开时终止 adb 进程。
+
+### GET /api/text
+
+读取文件开头作为文本，供查看器显示图片、视频、音频以外的文件。
+
+| 查询参数 | 必填 |
+| --- | --- |
+| `serial` | 是 |
+| `path` | 是 |
+| `root` | 否 |
+
+响应：`TextPreview`
+
+```json
+{ "kind": "text", "text": "ro.build.type=user\n", "truncated": false, "limit": 1048576 }
+```
+
+- 最多读取前 1 MB（`limit`，单位字节）；文件更大时 `truncated` 为 `true`，末尾被截断的不完整字符会被去掉
+- 开头的 UTF-8 BOM 会被去掉
+- 前 8 KB 中含 NUL 字节，或内容不是合法的 UTF-8 时，返回 `{ "kind": "binary" }`。GBK、UTF-16 等编码的文本同样按二进制处理
+
+错误：文件不存在时 `404`；无读取权限时 `403`。
 
 ## 传输
 

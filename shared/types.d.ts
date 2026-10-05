@@ -57,3 +57,6 @@ export interface PullResult {
   token: string;
   name: string;
 }
+
+/** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
+export type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };

@@ -7,6 +7,7 @@ import * as adb from "./adb.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
 import { langMiddleware } from "./i18n.ts";
+import { previewRoutes } from "./preview.ts";
 import { rootFor, serialOf, wrap } from "./request.ts";
 import { transferRoutes } from "./transfer.ts";
 
@@ -39,6 +40,7 @@ export function createApp() {
   );
 
   app.use(fileRoutes());
+  app.use(previewRoutes());
   app.use(transferRoutes());
 
   // 编译后位于 dist/server/，前端产物在 dist/web/；开发时（tsx）该目录不存在，由 vite 提供页面

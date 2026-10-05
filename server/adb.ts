@@ -29,6 +29,16 @@ function run(args: string[], timeout = 0): Promise<string> {
   });
 }
 
+/** 同 run，但以 Buffer 返回 stdout，用于读取文件内容 */
+function runBuffer(args: string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    execFile(ADB, args, { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) reject(new AdbError(cleanError((stderr.toString() || err.message).trim())));
+      else resolve(stdout);
+    });
+  });
+}
+
 function cleanError(msg: string) {
   const line = msg.split("\n").find((l) => /error|denied|no such|not found|failed/i.test(l));
   return (line ?? msg).replace(/^adb: (error: )?/, "").trim() || t("adbFailed");
@@ -232,12 +242,42 @@ export function copyInto(ctx: Ctx, src: string, destDir: string) {
   );
 }
 
-/** 以字节流读取设备上的文件（adb exec-out，不经过电脑临时目录） */
-export function cat(ctx: Ctx, p: string) {
-  const cmd = `cat ${q(p)}`;
-  return spawn(ADB, ["-s", ctx.serial, "exec-out", ctx.root === "su" ? `${SU} ${q(cmd)}` : cmd], {
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+/** exec-out 的参数：su 模式下包上提权前缀；exec-out 不经过 pty，二进制内容不会被改写 */
+const execOut = (ctx: Ctx, cmd: string) => ["-s", ctx.serial, "exec-out", ctx.root === "su" ? `${SU} ${q(cmd)}` : cmd];
+
+/** 文件中的一段字节，start 和 end 都包含在内 */
+export interface ByteRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * 以字节流读取设备上的文件（adb exec-out，不经过电脑临时目录）。
+ * 给出 range 时只读这一段；数字来自 parseRange，保证是非负整数
+ */
+export function cat(ctx: Ctx, p: string, range?: ByteRange) {
+  // exec-out 会把设备端的 stderr 混进输出，错误信息不能当成文件内容
+  const cmd = range
+    ? `tail -c +${range.start + 1} ${q(p)} 2>/dev/null | head -c ${range.end - range.start + 1}`
+    : `cat ${q(p)} 2>/dev/null`;
+  return spawn(ADB, execOut(ctx, cmd), { stdio: ["ignore", "pipe", "ignore"] });
+}
+
+/** 读取文件开头的 n 个字节 */
+export const head = (ctx: Ctx, p: string, n: number) => runBuffer(execOut(ctx, `head -c ${n} ${q(p)} 2>/dev/null`));
+
+/** 文件大小，符号链接取目标的大小；不存在或不可读时抛出 404 / 403 */
+export async function fileSize(ctx: Ctx, p: string) {
+  const out = await shell(
+    ctx,
+    `if [ ! -e ${q(p)} ]; then echo __ADBFM_NOFILE__; elif [ ! -r ${q(p)} ]; then echo __ADBFM_NOPERM__; ` +
+      `else stat -L -c %s ${q(p)}; fi`,
+  );
+  if (out.includes("__ADBFM_NOFILE__")) throw new AdbError(t("noFile", { path: p }), 404);
+  if (out.includes("__ADBFM_NOPERM__")) throw new AdbError(t(ctx.root ? "noReadRoot" : "noRead", { path: p }), 403);
+  const size = Number(out.trim());
+  if (!Number.isSafeInteger(size) || size < 0) throw new AdbError(cleanError(out.trim()));
+  return size;
 }
 
 export async function storage(ctx: Ctx): Promise<StorageInfo> {

@@ -3,22 +3,9 @@ import { Router } from "express";
 import type { OkResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { assertNotInside, assertSafeTargets } from "./guard.ts";
-import { msg } from "./i18n.ts";
 import { ctxOf, pathsOf, wrap } from "./request.ts";
 
-/** 分栏视图预览：只放行浏览器能直接显示的图片 */
-const PREVIEW_TYPES: Record<string, string> = {
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".avif": "image/avif",
-  ".bmp": "image/bmp",
-  ".svg": "image/svg+xml",
-};
-
-/** 设备上的文件操作：列目录、新建、重命名、删除、复制、移动、预览 */
+/** 设备上的文件操作：列目录、新建、重命名、删除、复制、移动 */
 export function fileRoutes() {
   const router = Router();
 
@@ -87,23 +74,6 @@ export function fileRoutes() {
         if (posix.dirname(p) !== dest) await adb.rename(ctx, p, posix.join(dest, posix.basename(p)));
       }
       res.json({ ok: true } satisfies OkResult);
-    }),
-  );
-
-  router.get(
-    "/api/preview",
-    wrap(async (req, res) => {
-      const p = adb.assertAbs(req.query.path);
-      const type = PREVIEW_TYPES[posix.extname(p).toLowerCase()];
-      if (!type) throw new adb.AdbError(msg("notPreviewable"), 415);
-      const child = adb.cat(await ctxOf(req), p);
-      res.on("close", () => child.kill());
-      res.setHeader("Content-Type", type);
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      // SVG 里的脚本不许跑
-      res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'");
-      res.setHeader("Cache-Control", "no-store");
-      child.stdout.pipe(res);
     }),
   );
 
