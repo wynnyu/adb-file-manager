@@ -64,7 +64,8 @@ function handleKey(e: KeyboardEvent, c: ShortcutContext) {
     if (!c.canPaste) return;
     e.preventDefault();
     void c.paste(path);
-  } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+  } else if (!e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+    // ⌥↑ 留给下面的“返回上一级”
     e.preventDefault();
     c.step(e.key === "ArrowDown" ? 1 : -1);
   } else if (view === "gallery" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
