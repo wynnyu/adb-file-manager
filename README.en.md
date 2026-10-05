@@ -156,6 +156,8 @@ pnpm start    # run the build: http://127.0.0.1:3001
 pnpm test     # run unit tests
 ```
 
+The [architecture overview](docs/architecture.md) covers the overall structure, main flows and module dependency graphs, and the [API reference](docs/api.md) describes the backend endpoints and the frontend client. Both documents are written in Chinese.
+
 Tech stack:
 
 - Backend: Node.js + Express 5. adb is invoked through `execFile`, and paths in device-side commands are single-quote-escaped
@@ -190,6 +192,9 @@ src/
   test/         setup and shared helpers for frontend tests
   *.test.ts(x)  unit tests for hooks and components, next to the modules under test (vitest + jsdom)
   index.css     Catppuccin palettes and theme variables
+docs/
+  architecture.md  architecture overview and module dependency graphs
+  api.md           backend endpoints and the frontend API client
 ```
 
 Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend, which also serves as the npm package's `bin` entry.

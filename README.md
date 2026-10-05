@@ -156,6 +156,8 @@ pnpm start    # 运行构建产物：http://127.0.0.1:3001
 pnpm test     # 运行单元测试
 ```
 
+整体架构、主要流程和模块依赖图见[架构说明](docs/architecture.md)，前后端接口见 [API 文档](docs/api.md)。
+
 技术栈：
 
 - 后端：Node.js + Express 5，通过 `execFile` 调用 adb，拼接设备端命令时对路径做单引号转义
@@ -190,6 +192,9 @@ src/
   test/         前端测试的环境配置和共用工具
   *.test.ts(x)  hooks 和组件的单元测试，与被测模块放在同一目录（vitest + jsdom）
   index.css     Catppuccin 配色和主题变量
+docs/
+  architecture.md  架构说明和模块依赖图
+  api.md           前后端接口说明
 ```
 
 构建产物：`dist/web/` 为前端，`dist/server/` 为编译后的后端，同时也是 npm 包的 `bin` 入口。
