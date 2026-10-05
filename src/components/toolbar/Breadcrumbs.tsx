@@ -1,8 +1,8 @@
 import { ChevronRight, HardDrive } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
-import { spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import { spring } from "../ui.tsx";
 
 export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p: string) => void }) {
   const t = useT();

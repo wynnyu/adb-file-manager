@@ -1,11 +1,11 @@
 import { Check, type LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
-import type { BookmarkFields } from "../lib/bookmarks.ts";
-import { BookmarkForm, BookmarkPreview } from "./BookmarkForm.tsx";
+import { useT } from "../../i18n/index.tsx";
+import type { BookmarkFields } from "../../lib/bookmarks.ts";
+import { BookmarkForm, BookmarkPreview } from "../bookmarks/BookmarkForm.tsx";
+import { PillButton, spring } from "../ui.tsx";
 import { type DialogMessage, DialogMessageBody } from "./DialogMessage.tsx";
-import { PillButton, spring } from "./ui.tsx";
 
 export type DialogState =
   | {

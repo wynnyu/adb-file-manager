@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n/index.tsx";
+import { useI18n } from "../../i18n/index.tsx";
 
 /** 确认对话框的正文：字符串原样显示，其余按 kind 排版 */
 export type DialogMessage =

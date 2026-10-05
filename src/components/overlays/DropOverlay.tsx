@@ -1,7 +1,7 @@
 import { Upload } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useI18n } from "../i18n/index.tsx";
-import { spring } from "./ui.tsx";
+import { useI18n } from "../../i18n/index.tsx";
+import { spring } from "../ui.tsx";
 
 /** 拖着文件经过窗口时盖在主面板上的提示，标明会上传到哪个目录 */
 export function DropOverlay({ show, path }: { show: boolean; path: string }) {

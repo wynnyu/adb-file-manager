@@ -1,9 +1,9 @@
 import { Lightbulb, MousePointerClick, Upload, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { useT } from "../i18n/index.tsx";
-import { loadPref, savePref } from "../lib/prefs.ts";
-import { spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import { loadPref, savePref } from "../../lib/prefs.ts";
+import { spring } from "../ui.tsx";
 
 const KEY = "afm.tipDismissed";
 

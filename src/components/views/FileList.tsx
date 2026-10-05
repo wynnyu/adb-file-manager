@@ -12,13 +12,13 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
-import { useI18n } from "../i18n/index.tsx";
-import type { Sort, SortKey } from "../lib/entries.ts";
-import { formatDate, formatSize } from "../lib/format.ts";
-import { kindLabel } from "../lib/kinds.ts";
-import type { FileEntry, TreeRow } from "../types.ts";
+import { useI18n } from "../../i18n/index.tsx";
+import type { Sort, SortKey } from "../../lib/entries.ts";
+import { formatDate, formatSize } from "../../lib/format.ts";
+import { kindLabel } from "../../lib/kinds.ts";
+import type { FileEntry, TreeRow } from "../../types.ts";
+import { IconButton, spring } from "../ui.tsx";
 import { FileIcon } from "./FileIcon.tsx";
-import { IconButton, spring } from "./ui.tsx";
 
 /** 列的顺序同访达：名称、修改日期、大小、种类；窄屏只留名称 */
 const cols =

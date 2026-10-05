@@ -1,10 +1,10 @@
 import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, FolderInput, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useT } from "../i18n/index.tsx";
-import type { MessageKey } from "../i18n/zh.ts";
-import type { Transfer } from "../types.ts";
-import { spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import type { MessageKey } from "../../i18n/zh.ts";
+import type { Transfer } from "../../types.ts";
+import { spring } from "../ui.tsx";
 
 const kindIcon = { upload: ArrowUpFromLine, download: ArrowDownToLine, copy: Copy, move: FolderInput };
 /** 写全类名，Tailwind 才扫得到 */

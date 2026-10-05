@@ -11,7 +11,7 @@ import {
   Link2,
   Package,
 } from "lucide-react";
-import type { FileEntry } from "../types.ts";
+import type { FileEntry } from "../../types.ts";
 
 export type FileKind =
   | "folder"

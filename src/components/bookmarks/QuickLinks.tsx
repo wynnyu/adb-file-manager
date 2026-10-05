@@ -1,10 +1,10 @@
 import { Ellipsis, type LucideIcon, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { type MouseEvent, type ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
-import { type Bookmark, bookmarkName } from "../lib/bookmarks.ts";
+import { useT } from "../../i18n/index.tsx";
+import { type Bookmark, bookmarkName } from "../../lib/bookmarks.ts";
+import type { MenuState } from "../overlays/ContextMenu.tsx";
 import { BookmarkGlyph } from "./BookmarkIcon.tsx";
-import type { MenuState } from "./ContextMenu.tsx";
 
 /** 和 gap-2 一致 */
 const GAP = 8;

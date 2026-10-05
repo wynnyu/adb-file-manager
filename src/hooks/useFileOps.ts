@@ -1,6 +1,6 @@
 import { FolderPlus, Pencil, Skull, Trash2 } from "lucide-react";
 import { useCallback } from "react";
-import type { DialogState } from "../components/Dialog.tsx";
+import type { DialogState } from "../components/overlays/Dialog.tsx";
 import { useT } from "../i18n/index.tsx";
 import type { T } from "../i18n/translate.ts";
 import { api, type Target } from "../lib/api.ts";

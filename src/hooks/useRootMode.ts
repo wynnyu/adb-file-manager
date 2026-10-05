@@ -1,6 +1,6 @@
 import { ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DialogState } from "../components/Dialog.tsx";
+import type { DialogState } from "../components/overlays/Dialog.tsx";
 import { useT } from "../i18n/index.tsx";
 import { api, onRootLost } from "../lib/api.ts";
 import { loadPref, savePref } from "../lib/prefs.ts";

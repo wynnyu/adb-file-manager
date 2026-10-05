@@ -1,9 +1,9 @@
 import { ChevronDown, Columns3, GalleryThumbnails, LayoutGrid, List } from "lucide-react";
 import { motion } from "motion/react";
-import { useT } from "../i18n/index.tsx";
-import type { ViewMode } from "../types.ts";
-import type { MenuState } from "./ContextMenu.tsx";
-import { press, spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import type { ViewMode } from "../../types.ts";
+import type { MenuState } from "../overlays/ContextMenu.tsx";
+import { press, spring } from "../ui.tsx";
 
 export const VIEWS: { id: ViewMode; Icon: typeof List }[] = [
   { id: "icons", Icon: LayoutGrid },

@@ -179,11 +179,15 @@ shared/
 src/
   App.tsx       main screen; composes the hooks and components
   hooks/        state and interaction logic: devices, directories, selection, file operations, shortcuts
-  menus.tsx     context menu items
-  components/   UI components
+  lib/          frontend helpers: API requests, bookmarks, sorting, formatting, preferences, theme switching
+  components/   UI components; ui.tsx holds the shared building blocks
+    views/      the icon, list, column and gallery views
+    header/     the header with the device, language and theme pickers
+    toolbar/    toolbar, breadcrumbs, selection bar, status bar
+    bookmarks/  quick links and the bookmark editor
+    overlays/   dialogs, context menus, toasts, drop hint, transfer queue
   i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
   index.css     Catppuccin palettes and theme variables
-  theme.ts      theme switching
 ```
 
 Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend, which also serves as the npm package's `bin` entry.

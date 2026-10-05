@@ -179,11 +179,15 @@ shared/
 src/
   App.tsx       主界面，组装各 hook 和组件
   hooks/        状态和交互逻辑：设备、目录、选择、文件操作、快捷键等
-  menus.tsx     右键菜单的菜单项
-  components/   界面组件
+  lib/          前端工具模块：接口请求、书签、排序、格式化、偏好设置、主题切换等
+  components/   界面组件，ui.tsx 为共用的基础组件
+    views/      图标、列表、分栏、画廊四种视图
+    header/     顶栏及设备、语言、主题选择
+    toolbar/    工具栏、路径、选择栏、状态栏
+    bookmarks/  快捷入口和书签编辑
+    overlays/   对话框、右键菜单、通知、拖放提示、传输队列等浮层
   i18n/         前端中英文文案（zh.ts 是类型来源，en.ts 须与之保持一致）
   index.css     Catppuccin 配色和主题变量
-  theme.ts      主题切换
 ```
 
 构建产物：`dist/web/` 为前端，`dist/server/` 为编译后的后端，同时也是 npm 包的 `bin` 入口。

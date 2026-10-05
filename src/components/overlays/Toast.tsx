@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { ToastState } from "../hooks/useToast.ts";
-import { spring } from "./ui.tsx";
+import type { ToastState } from "../../hooks/useToast.ts";
+import { spring } from "../ui.tsx";
 
 /** 顶部居中的短暂提示，错误为红色 */
 export function Toast({ toast }: { toast: ToastState | null }) {

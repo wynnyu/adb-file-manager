@@ -1,14 +1,14 @@
 import { ChevronRight, Download, Loader2, Pencil, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { type MouseEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useI18n } from "../i18n/index.tsx";
-import { api, type Target } from "../lib/api.ts";
-import { arrange, type Sort } from "../lib/entries.ts";
-import { formatDate, formatSize } from "../lib/format.ts";
-import { kindLabel } from "../lib/kinds.ts";
-import type { FileEntry, Listing } from "../types.ts";
+import { useI18n } from "../../i18n/index.tsx";
+import { api, type Target } from "../../lib/api.ts";
+import { arrange, type Sort } from "../../lib/entries.ts";
+import { formatDate, formatSize } from "../../lib/format.ts";
+import { kindLabel } from "../../lib/kinds.ts";
+import type { FileEntry, Listing } from "../../types.ts";
+import { IconButton } from "../ui.tsx";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
-import { IconButton } from "./ui.tsx";
 
 interface Props {
   target: Target;

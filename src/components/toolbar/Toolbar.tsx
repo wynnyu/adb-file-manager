@@ -1,12 +1,12 @@
 import { ArrowUp, ChevronDown, FolderPlus, FolderUp, RotateCw, Search, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useT } from "../i18n/index.tsx";
-import { parentPath } from "../lib/format.ts";
-import type { ViewMode } from "../types.ts";
+import { useT } from "../../i18n/index.tsx";
+import { parentPath } from "../../lib/format.ts";
+import type { ViewMode } from "../../types.ts";
+import type { MenuState } from "../overlays/ContextMenu.tsx";
+import { IconButton, spring } from "../ui.tsx";
+import { ViewSwitch } from "../views/ViewSwitch.tsx";
 import { Breadcrumbs } from "./Breadcrumbs.tsx";
-import type { MenuState } from "./ContextMenu.tsx";
-import { IconButton, spring } from "./ui.tsx";
-import { ViewSwitch } from "./ViewSwitch.tsx";
 
 /** 文件区上方的工具行：上一级、刷新、路径、筛选、显示方式、新建文件夹和上传 */
 export function Toolbar({

@@ -1,10 +1,10 @@
 import { ChevronDown, Smartphone } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
-import type { MessageKey } from "../i18n/zh.ts";
-import type { Device } from "../types.ts";
-import { spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import type { MessageKey } from "../../i18n/zh.ts";
+import type { Device } from "../../types.ts";
+import { spring } from "../ui.tsx";
 
 const stateStyle: Record<string, [MessageKey, string]> = {
   device: ["device.device", "bg-green"],

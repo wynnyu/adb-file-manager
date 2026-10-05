@@ -1,7 +1,7 @@
 import { Check, Palette } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
+import { useT } from "../../i18n/index.tsx";
 import {
   ACCENTS,
   currentTheme,
@@ -11,8 +11,8 @@ import {
   storedFlavor,
   switchTheme,
   type Theme,
-} from "../lib/theme.ts";
-import { spring } from "./ui.tsx";
+} from "../../lib/theme.ts";
+import { spring } from "../ui.tsx";
 
 /** 扩散起点：鼠标点击取指针位置，键盘触发（detail 为 0）取按钮中心 */
 function origin(e: MouseEvent<HTMLElement>) {

@@ -1,12 +1,12 @@
 import { FolderUp, Shield, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useT } from "../i18n/index.tsx";
-import { formatSize } from "../lib/format.ts";
-import type { Device, StorageInfo } from "../types.ts";
+import { useT } from "../../i18n/index.tsx";
+import { formatSize } from "../../lib/format.ts";
+import type { Device, StorageInfo } from "../../types.ts";
+import { spring } from "../ui.tsx";
 import { DeviceSelect } from "./DeviceSelect.tsx";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
-import { spring } from "./ui.tsx";
 
 /** 顶栏：应用名和 ROOT 标记、存储用量，右侧是 root 开关、设备、语言和主题 */
 export function Header({

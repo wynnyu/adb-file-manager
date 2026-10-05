@@ -1,7 +1,7 @@
 import { Check, Palette, Upload } from "lucide-react";
 import { motion } from "motion/react";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
-import { useT } from "../i18n/index.tsx";
+import { useT } from "../../i18n/index.tsx";
 import {
   BOOKMARK_COLORS,
   type BookmarkColor,
@@ -9,7 +9,7 @@ import {
   bookmarkName,
   imageToIcon,
   isImageIcon,
-} from "../lib/bookmarks.ts";
+} from "../../lib/bookmarks.ts";
 import { BookmarkGlyph, colorVar, ICON_LIBRARY } from "./BookmarkIcon.tsx";
 
 const field =

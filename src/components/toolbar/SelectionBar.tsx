@@ -1,7 +1,7 @@
 import { Download, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useT } from "../i18n/index.tsx";
-import { IconButton, PillButton, spring } from "./ui.tsx";
+import { useT } from "../../i18n/index.tsx";
+import { IconButton, PillButton, spring } from "../ui.tsx";
 
 /** 底部居中的多选操作条：已选数量、下载、删除和取消选择 */
 export function SelectionBar({

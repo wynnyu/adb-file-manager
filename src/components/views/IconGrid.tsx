@@ -1,13 +1,13 @@
 import { FolderOpen, Loader2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent } from "react";
-import { useI18n } from "../i18n/index.tsx";
-import { formatDate, formatSize } from "../lib/format.ts";
-import { kindLabel } from "../lib/kinds.ts";
-import type { FileEntry } from "../types.ts";
+import { useI18n } from "../../i18n/index.tsx";
+import { formatDate, formatSize } from "../../lib/format.ts";
+import { kindLabel } from "../../lib/kinds.ts";
+import type { FileEntry } from "../../types.ts";
+import { spring } from "../ui.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 import { Placeholder } from "./FileList.tsx";
-import { spring } from "./ui.tsx";
 
 interface Props {
   dir: string;
