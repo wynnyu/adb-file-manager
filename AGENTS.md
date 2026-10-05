@@ -24,6 +24,108 @@ README 和 CHANGELOG 使用书面语，避免口语化表达：
 - 中文不使用“你”“您”称呼用户；英文尽量避免 you / your，不使用缩写
 - 中英文含义一致，同一概念在全部文案中使用同一术语
 
+## 技术栈与命令
+
+pnpm + Node.js 20 以上。前端 React 19、Vite 8、TailwindCSS 4、TanStack Query 5、Motion、lucide-react；后端 Express 5、multer、archiver；TypeScript 7 严格模式；Biome 2 负责格式化和 lint；Vitest 5 + Testing Library + jsdom 负责测试。整体结构见 `docs/architecture.md`，接口见 `docs/api.md`。
+
+- `pnpm dev`：Vite（5173）和 `tsx watch server/index.ts`（3001）同时启动，`/api` 由 Vite 代理
+- `pnpm check` / `pnpm fix`：Biome 检查 / 自动修复（格式、lint、import 排序）
+- `pnpm typecheck`：`tsc -b`
+- `pnpm test`：Vitest，分 `server` 和 `web` 两个项目
+- `pnpm build`：前端输出到 `dist/web/`，后端输出到 `dist/server/`
+
+CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少保证 `pnpm check`、`pnpm typecheck` 和测试通过。不要引入 ESLint、Prettier 或其他与现有工具重复的依赖。
+
+## 编码规范
+
+### 通用
+
+- 格式以 Biome 为准：2 空格缩进、双引号、分号、尾随逗号、行宽 120。不要手动调整格式，运行 `pnpm fix`
+- 全部使用 ES Module。相对导入写明扩展名（`./adb.ts`、`./App.tsx`），后端编译依赖 `rewriteRelativeImportExtensions`；不使用路径别名
+- 开启了 `verbatimModuleSyntax`：只用作类型的导入必须写 `import type` 或 `import { type X }`
+- 不使用 `any`、`enum`。取值有限的字段用字面量联合类型，按取值映射用 `Record<联合类型, ...>` 常量；对象结构一般用 `interface`，联合类型用 `type`
+- 用 `satisfies` 检查对象字面量的类型，例如 `res.json({ method } satisfies RootCheckResult)`
+- 使用具名导出；仅 `App.tsx` 默认导出
+- 命名：变量、函数 camelCase；组件、类型 PascalCase；模块级常量 UPPER_SNAKE_CASE（如 `PREVIEW_TYPES`）；hook 以 `use` 开头；回调 prop 以 `on` 开头
+- 文件名：组件 PascalCase（`StatusBar.tsx`），hook 与 hook 同名（`useToast.ts`），其余 kebab-case 或单个小写词（`queries.ts`）
+- 注释用中文，说明原因和约束，不复述代码；导出的函数、类型和不直观的字段写一行 `/** */`。注释同样遵守上面的“标点”规则
+
+### 共享类型
+
+- 前后端共用的接口数据结构只放在 `shared/types.d.ts`，只写类型。新增或修改接口的请求、响应结构时先改这里
+- 后端从 `../shared/types.d.ts` 导入；前端统一从 `src/types.ts` 导入（该文件重新导出共享类型，并定义前端自用类型）
+
+### 前端结构
+
+- `App.tsx` 只负责组装；状态和交互逻辑放 `src/hooks/`，界面放 `src/components/`，与 React 状态无关的工具函数放 `src/lib/`
+- hook 中不写 JSX；hooks 与 components 之间只允许 `import type`
+- `src/lib/` 不依赖 `hooks/` 和 `components/`
+- 组件按区域放入 `components/` 下的子目录（`header/`、`toolbar/`、`views/`、`bookmarks/`、`overlays/`），通用按钮等放 `components/ui.tsx`
+- 调整模块依赖或新增 hook、持久化项后，同步更新 `docs/architecture.md` 中的图和表
+
+### React
+
+- 只写函数组件。Props 直接在参数里解构，类型写在参数处，不直观的 prop 逐个加 `/** */`；需要继承原生属性时用 `interface Props extends ...`。不使用 `React.FC`
+- 所有后端请求经 `src/lib/api.ts` 的 `api` 对象发出，组件和 hook 中不直接调用 `fetch`
+- 目录列表等服务端数据通过 TanStack Query 缓存，查询定义（`queryOptions`、查询键）集中在 `src/lib/queries.ts`；全局默认不重试、切回窗口不刷新，增删改后由 `useDirectory` 的 `afterChange` / `reload` 让缓存失效
+- 需要持久化的界面状态使用 `src/lib/prefs.ts` 的 `usePref` / `loadPref` / `savePref`，键名以 `afm.` 开头；不直接读写 `localStorage`
+- `useEffect` 依赖数组保持完整（Biome 的 `useExhaustiveDependencies` 会提示）；hook 返回给外部的回调用 `useCallback` 保持稳定
+- 列表 `key` 使用路径等稳定值，不用数组下标
+- 按钮写明 `type="button"`；仅有图标的按钮必须有 `title` 和 `aria-label`（`IconButton` 已处理）；开关类按钮使用 `aria-pressed`
+- 图标使用 `lucide-react`，尺寸用 `size-*` 类
+- 动画使用 `motion/react`，弹簧参数复用 `ui.tsx` 中的 `spring` / `press`
+
+### 界面文案
+
+- 所有界面文字通过 `useT()` 返回的 `t("分组.键名", params)` 获取，组件中不写死中英文字符串；需要内嵌标记时用 `rich`
+- 新文案先加到 `src/i18n/zh.ts`（类型来源），再在 `en.ts` 中补齐，类型检查会要求两边键一致
+- 占位符写作 `{name}`；数量为 1 时需要单数形式的英文文案，另加 `键名_one`
+- 后端返回给用户的错误信息通过 `server/i18n.ts` 的 `msg()` 获取，同样提供中英文
+- 文案措辞遵守上面的“文风”规则
+
+### TailwindCSS
+
+- 使用 Tailwind 4，配置写在 `src/index.css` 的 `@theme static` 中，没有 `tailwind.config.*`
+- 颜色只用主题中的 Catppuccin 变量：`text`、`subtext0`、`muted`、`base`、`mantle`、`crust`、`surface0`～`surface2`、`accent`、`on-accent`、`red`、`peach` 等，透明度用 `/15` 这样的写法。不使用 Tailwind 默认色板（`gray-500` 等）和十六进制任意值，主题色需随 `data-flavor`、`data-accent` 切换
+- 新增设计变量加到 `@theme static` 并为每种 flavor 补齐取值
+- 不使用 `!important`（`!` 前缀）覆盖样式。按钮的不同外观通过 `ui.tsx` 中的 `tone` 实现，需要新外观时扩展 `tones`
+- 条件类名用模板字符串拼接完整类名，不拼接类名片段（如 `` `bg-${color}` ``），否则 Tailwind 扫描不到
+- 除主题和少量全局规则外不写自定义 CSS
+
+### Express
+
+- `app.ts` 的 `createApp()` 只组装应用不监听端口，`index.ts` 负责启动；测试和其他入口复用 `createApp()`
+- 同一类接口用返回 `Router` 的函数组织（`fileRoutes()`、`transferRoutes()`），在 `createApp()` 中挂载
+- 每个异步处理函数都用 `request.ts` 的 `wrap` 包装，异常由它交给 `rootGuard` 和统一的错误处理中间件，不在路由里自行 `res.status(500)`
+- 请求参数通过 `serialOf`、`ctxOf`、`pathsOf`、`adb.assertAbs` 取出和校验，不直接信任 `req.query` / `req.body`
+- 出错时抛出 `AdbError(msg("..."), status, code?)`；错误响应格式固定为 `{ error, code? }`，`code` 仅在前端需要识别时提供（如 `root_lost`）
+- 无返回数据的成功响应为 `{ ok: true }`，有数据时直接返回共享类型中定义的结构
+- adb 命令封装在 `adb.ts`，其他模块不直接调用 `child_process`
+- 新增或修改接口后同步更新 `docs/api.md`
+
+### 安全
+
+- 后端只监听 `127.0.0.1`，所有请求经过 `guard.ts` 的 `localOnly`，不要放宽 Host、Origin、Sec-Fetch-Site 校验
+- 在电脑上调用 adb 一律用 `execFile` / `spawn` 并传参数数组，不经过本机 shell
+- 拼接进设备端 shell 命令的路径和参数必须经过 `adb.ts` 的 `q()` 转义
+- 删除、重命名、移动前调用 `assertSafeTargets`；复制、移动前调用 `assertNotInside`。新增破坏性操作时同样接入 `guard.ts` 的检查
+- 上传、下载经过的临时文件在请求结束或出错后都要删除
+- root 相关请求必须携带 `root` 参数，由后端按设备缓存的 root 方式执行，前端不自行拼接 `su`
+
+### 测试
+
+- 测试文件与被测模块放在同一目录，命名 `*.test.ts` / `*.test.tsx`；`describe` 用模块或函数名，`it` 用中文描述期望行为
+- 前端测试使用 `src/test/utils.tsx` 中的工具：`providers` 包裹语言和查询缓存，`tz` 从中文词典取期望文案（不在测试里写死文案），`file` / `folder` 构造条目，`deferred` 控制异步完成时机，`newQueryClient` 为每个测试创建独立的 `QueryClient`
+- 与后端的交互用 `vi.spyOn(api, "...")` 替换；需要验证 `root_lost` 等底层行为时替换 `fetch`
+- 按角色和可访问名称查找元素（`getByRole("button", { name: tz("...") })`），不依赖类名和 DOM 结构
+- 后端测试针对纯函数和输出解析（如 `guard.ts`、`adb.ts`），不依赖真实设备；多组输入用 `it.each`
+- 修复缺陷时补充能复现该缺陷的测试
+
+### Git
+
+- 提交信息使用英文祈使句，首字母大写，不加类型前缀，结尾不加句号，例如 `Refresh directory listings after failed deletes and uploads`
+- 每个提交只做一件事；面向用户的改动记入 `CHANGELOG.md`
+
 ## Context Sniper
 
 本仓库已接入 `context-sniper` MCP 服务器。按“是否已经知道代码在哪”选工具：
