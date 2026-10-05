@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { T } from "../../i18n/translate.ts";
 import type { Bookmark } from "../../lib/bookmarks.ts";
-import { MOD } from "../../lib/entries.ts";
+import { IS_MAC } from "../../lib/entries.ts";
 import type { Clip, FileEntry, ViewMode } from "../../types.ts";
 import { VIEWS } from "../views/ViewSwitch.tsx";
 import type { MenuItem } from "./ContextMenu.tsx";
@@ -58,7 +58,7 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
     items.push({
       label: t("menu.open"),
       icon: <FolderOpen className="size-4" />,
-      shortcut: "↵",
+      shortcut: ["enter"],
       onSelect: () => a.navigate(single.path),
     });
     if (a.canPaste) {
@@ -73,20 +73,20 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
     {
       label: n > 1 ? t("menu.downloadMany", { n }) : t("menu.download"),
       icon: <Download className="size-4" />,
-      shortcut: single && !single.isDir ? "↵" : undefined,
+      shortcut: single && !single.isDir ? ["enter"] : undefined,
       onSelect: () => void a.download(targets),
     },
     "sep",
     {
       label: t("menu.cut"),
       icon: <Scissors className="size-4" />,
-      shortcut: `${MOD}X`,
+      shortcut: ["mod", "X"],
       onSelect: () => a.toClip("cut", targets),
     },
     {
       label: t("menu.copy"),
       icon: <Copy className="size-4" />,
-      shortcut: `${MOD}C`,
+      shortcut: ["mod", "C"],
       onSelect: () => a.toClip("copy", targets),
     },
     {
@@ -100,13 +100,13 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
     items.push({
       label: t("menu.rename"),
       icon: <Pencil className="size-4" />,
-      shortcut: "F2",
+      shortcut: ["F2"],
       onSelect: () => a.askRename(single),
     });
   items.push({
     label: n > 1 ? t("menu.deleteMany", { n }) : t("menu.delete"),
     icon: <Trash2 className="size-4" />,
-    shortcut: MOD === "⌘" ? "⌘⌫" : "Del",
+    shortcut: IS_MAC ? ["mod", "backspace"] : ["Del"],
     danger: true,
     onSelect: () => a.askDelete(targets),
   });
@@ -129,7 +129,7 @@ export function backgroundMenu(dir: string, a: MenuActions): MenuItem[] {
     {
       label: a.canPaste && n > 1 ? t("menu.pasteN", { n }) : t("menu.paste"),
       icon: <ClipboardPaste className="size-4" />,
-      shortcut: `${MOD}V`,
+      shortcut: ["mod", "V"],
       disabled: !a.canPaste,
       onSelect: () => void a.paste(dir),
     },
@@ -140,7 +140,7 @@ export function backgroundMenu(dir: string, a: MenuActions): MenuItem[] {
     items.push({
       label: t("menu.selectAll"),
       icon: <CheckCheck className="size-4" />,
-      shortcut: `${MOD}A`,
+      shortcut: ["mod", "A"],
       disabled: !a.selectable.length,
       onSelect: a.selectAll,
     });
@@ -150,7 +150,7 @@ export function backgroundMenu(dir: string, a: MenuActions): MenuItem[] {
     {
       label: t("menu.showHidden"),
       icon: <Eye className="size-4" />,
-      shortcut: `${MOD}⇧.`,
+      shortcut: ["mod", "shift", "."],
       checked: a.showHidden,
       onSelect: a.toggleHidden,
     },

@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { ArrowBigUp, Check, Command, CornerDownLeft, Delete } from "lucide-react";
 import { motion } from "motion/react";
 import {
   type KeyboardEvent,
@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { IS_MAC } from "../../lib/entries.ts";
 
 export type MenuItem =
   | {
@@ -16,8 +17,8 @@ export type MenuItem =
       id?: string;
       label: string;
       icon?: ReactNode;
-      /** 右侧的快捷键提示 */
-      shortcut?: string;
+      /** 右侧的快捷键提示，按顺序列出各个键 */
+      shortcut?: Key[];
       danger?: boolean;
       disabled?: boolean;
       /** 单选 / 开关项：true 显示对勾 */
@@ -27,6 +28,32 @@ export type MenuItem =
       onContextMenu?: (e: MouseEvent) => void;
     }
   | "sep";
+
+/** 特殊键用图标显示，其余按原样显示文字，如 "X"、"F2" */
+export type Key = "mod" | "shift" | "enter" | "backspace" | (string & {});
+
+const KEY_ICONS: Partial<Record<Key, ReactNode>> = {
+  enter: <CornerDownLeft className="size-3.5" />,
+  backspace: <Delete className="size-3.5" />,
+  ...(IS_MAC && {
+    mod: <Command className="size-3.5" />,
+    shift: <ArrowBigUp className="size-3.5" />,
+  }),
+};
+
+const KEY_TEXT: Partial<Record<Key, string>> = { mod: "Ctrl+", shift: "Shift+" };
+
+function Shortcut({ keys }: { keys: Key[] }) {
+  return (
+    <span className="flex shrink-0 items-center gap-0.5 pl-4 text-xs font-medium text-muted">
+      {keys.map((k) => (
+        <span key={k} className="grid min-w-3.5 place-items-center">
+          {KEY_ICONS[k] ?? KEY_TEXT[k] ?? k}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export interface MenuState {
   x: number;
@@ -145,7 +172,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
               {item.icon}
             </span>
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            {item.shortcut && <span className="shrink-0 pl-4 font-mono text-xs text-muted">{item.shortcut}</span>}
+            {item.shortcut && <Shortcut keys={item.shortcut} />}
           </button>
         ),
       )}
