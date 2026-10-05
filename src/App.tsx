@@ -23,6 +23,7 @@ import { useBookmarks } from "./hooks/useBookmarks.ts";
 import { useClipboard } from "./hooks/useClipboard.ts";
 import { useDevices, useStorage } from "./hooks/useDevices.ts";
 import { useDirectory, useListings } from "./hooks/useDirectory.ts";
+import { useDropUpload } from "./hooks/useDropUpload.ts";
 import { useFileOps } from "./hooks/useFileOps.ts";
 import { useRootMode } from "./hooks/useRootMode.ts";
 import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
@@ -30,7 +31,7 @@ import { useShortcuts } from "./hooks/useShortcuts.ts";
 import { useToast } from "./hooks/useToast.ts";
 import { useTransfers } from "./hooks/useTransfers.ts";
 import { useTree } from "./hooks/useTree.ts";
-import { useDropUpload, useUploadPicker } from "./hooks/useUploadSources.ts";
+import { useUploadPicker } from "./hooks/useUploadPicker.ts";
 import { useT } from "./i18n/index.tsx";
 import type { Target } from "./lib/api.ts";
 import type { Bookmark } from "./lib/bookmarks.ts";
@@ -114,7 +115,8 @@ export default function App() {
   );
 
   const picker = useUploadPicker(upload);
-  const drop = useDropUpload(online, upload, (err) => flash(t("drop.readFailed", { error: err.message })));
+  const onDropError = useCallback((err: Error) => flash(t("drop.readFailed", { error: err.message })), [flash, t]);
+  const drop = useDropUpload(online, upload, onDropError);
 
   // ---------- 快捷键和右键菜单 ----------
   const actions = {

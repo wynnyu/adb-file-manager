@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { ChangeEvent, DragEvent } from "react";
+import type { DragEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useDropUpload, useUploadPicker } from "./useUploadSources.ts";
+import { useDropUpload } from "./useDropUpload.ts";
 
 const txt = new File(["x"], "a.txt");
 
@@ -11,44 +11,6 @@ const dragEvent = (dataTransfer: Partial<DataTransfer>) =>
     preventDefault: vi.fn(),
     dataTransfer: { types: ["Files"], items: [], files: [], ...dataTransfer },
   }) as unknown as DragEvent & { preventDefault: ReturnType<typeof vi.fn> };
-
-describe("useUploadPicker", () => {
-  function setup() {
-    const upload = vi.fn(async () => {});
-    const hook = renderHook(() => useUploadPicker(upload));
-    const files = document.createElement("input");
-    const folder = document.createElement("input");
-    const clicks = { files: vi.spyOn(files, "click"), folder: vi.spyOn(folder, "click") };
-    hook.result.current.inputs.filesRef.current = files;
-    hook.result.current.inputs.folderRef.current = folder;
-    const change = (list: File[]) => {
-      const target = { files: list, value: "C:\\fakepath\\a.txt" };
-      act(() => hook.result.current.inputs.onChange({ target } as unknown as ChangeEvent<HTMLInputElement>));
-      return target;
-    };
-    return { ...hook, upload, clicks, change };
-  }
-
-  it("pick 打开对应的选择框", () => {
-    const { result, clicks } = setup();
-    result.current.pick("folder", null);
-    expect(clicks.folder).toHaveBeenCalled();
-    result.current.pick("files", null);
-    expect(clicks.files).toHaveBeenCalled();
-  });
-
-  it("选好文件后上传到指定目录，然后清空选择框，下次默认上传到当前目录", () => {
-    const { result, upload, change } = setup();
-    result.current.pick("files", "/sdcard/Download");
-    const target = change([txt]);
-    expect(upload).toHaveBeenLastCalledWith([{ file: txt, path: "a.txt" }], "/sdcard/Download");
-    expect(target.value).toBe("");
-
-    result.current.pick("files", null);
-    change([txt]);
-    expect(upload).toHaveBeenLastCalledWith([{ file: txt, path: "a.txt" }], undefined);
-  });
-});
 
 describe("useDropUpload", () => {
   function setup(enabled = true) {
@@ -62,6 +24,13 @@ describe("useDropUpload", () => {
   it("禁用时不接收拖放", () => {
     const { result } = setup(false);
     expect(result.current.dragProps).toEqual({});
+  });
+
+  it.each([true, false])("enabled 为 %s 时重新渲染后 dragProps 保持不变", (enabled) => {
+    const { result, rerender } = setup(enabled);
+    const before = result.current.dragProps;
+    rerender();
+    expect(result.current.dragProps).toBe(before);
   });
 
   it("拖入文件时显示提示，经过子元素不闪烁，完全离开后隐藏", () => {

@@ -185,7 +185,8 @@ flowchart LR
     useTransfers
     useToast
     useShortcuts
-    useUploadSources
+    useUploadPicker
+    useDropUpload
   end
 
   subgraph lib["lib/"]
@@ -228,7 +229,8 @@ flowchart LR
   useShortcuts --> useSelection
   useShortcuts --> entries
   useShortcuts --> format
-  useUploadSources --> drop
+  useUploadPicker --> drop
+  useDropUpload --> drop
 
   queries --> api
   api --> translate
