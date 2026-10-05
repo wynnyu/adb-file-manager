@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useMediaPlayer } from "../../hooks/useMediaPlayer.ts";
 import { api } from "../../lib/api.ts";
 import { file, newQueryClient, providers, tz } from "../../test/utils.tsx";
@@ -177,6 +177,48 @@ describe("VideoPlayer", () => {
     expect(video?.controls).toBe(false);
     fireEvent.error(video as HTMLVideoElement);
     expect(screen.getByText(tz("viewer.cannotPlay"))).toBeTruthy();
+  });
+
+  it("空格播放或暂停", () => {
+    // jsdom 没有实现播放
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    show({ entry: file("/sdcard/a.mp4") });
+    fireEvent.keyDown(document.body, { key: " " });
+    expect(play).toHaveBeenCalledOnce();
+  });
+
+  describe("F 切换全屏", () => {
+    // jsdom 没有实现全屏接口
+    let request: ReturnType<typeof vi.fn<() => Promise<void>>>;
+    beforeEach(() => {
+      request = vi.fn(async () => {});
+      Element.prototype.requestFullscreen = request;
+    });
+    afterEach(() => {
+      delete (Element.prototype as Partial<Element>).requestFullscreen;
+    });
+
+    it("按 F 或 Shift+F 让视频区域进入全屏", () => {
+      show({ entry: file("/sdcard/a.mp4") });
+      expect(fireEvent.keyDown(document.body, { key: "f" })).toBe(false);
+      fireEvent.keyDown(document.body, { key: "F", shiftKey: true });
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(request.mock.contexts[0]).toBe(document.querySelector("video")?.parentElement);
+    });
+
+    it("带 Cmd 或 Ctrl 时留给浏览器，长按不重复触发", () => {
+      show({ entry: file("/sdcard/a.mp4") });
+      expect(fireEvent.keyDown(document.body, { key: "f", metaKey: true })).toBe(true);
+      fireEvent.keyDown(document.body, { key: "f", ctrlKey: true });
+      fireEvent.keyDown(document.body, { key: "f", repeat: true });
+      expect(request).not.toHaveBeenCalled();
+    });
+
+    it("音频和文本不响应 F", () => {
+      show({ entry: file("/sdcard/a.flac") });
+      fireEvent.keyDown(document.body, { key: "f" });
+      expect(request).not.toHaveBeenCalled();
+    });
   });
 });
 

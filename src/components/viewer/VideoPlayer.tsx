@@ -50,6 +50,18 @@ export function VideoPlayer({
     else void box.current?.requestFullscreen();
   }, []);
 
+  // F 切换全屏；带修饰键时留给浏览器（如 Cmd+F 查找），在输入框里打字时不响应
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "f" || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement).closest("textarea, input:not([type=range])")) return;
+      e.preventDefault();
+      toggleFullscreen();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleFullscreen]);
+
   if (player.error) return <Unsupported entry={entry} text={t("viewer.cannotPlay")} onDownload={onDownload} />;
 
   const hidden = idle && player.playing;

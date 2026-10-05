@@ -73,7 +73,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 - Double-clicking a file, pressing `Enter` or choosing **Open** in the context menu opens the file in an in-page viewer. Left / Right Arrow moves to the previous / next file in the same folder, and `Esc` closes the viewer
 - Images: initially scaled to fit the window; holding `Ctrl` while scrolling, or pinching on a trackpad, zooms in and out. A zoomed image can be dragged, and a double-click toggles between fit to window and actual size
-- Video and audio: built-in playback controls, autoplay 1 second after opening, a draggable progress bar, and volume and mute settings that persist across files; videos can be played in full screen. Playback depends on the formats supported by the browser
+- Video and audio: built-in playback controls, autoplay 1 second after opening, a draggable progress bar, and volume and mute settings that persist across files; videos can be played in full screen. `Space` plays or pauses, and `F` toggles full screen. Playback depends on the formats supported by the browser
 - Other files are shown as plain text. Only UTF-8 is supported, and only the first 1 MB of larger files is shown
 - Binary files and formats the browser cannot decode (such as HEIC images or MKV videos) show a notice with a download button
 
@@ -109,6 +109,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 | Left / Right Arrow | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view; previous / next file in the viewer |
 | `Cmd/Ctrl Shift .` | Show or hide dotfiles |
 | `Space` | Play or pause video and audio in the viewer |
+| `F` | Toggle full screen for video in the viewer |
 | `Esc` | Clear the selection; close the viewer |
 
 ## Root mode
