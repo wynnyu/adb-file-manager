@@ -14,7 +14,7 @@ Requirements:
 - adb (Android SDK Platform-Tools), available on `PATH` or specified with `ADB_PATH`
 
   See [Installing Node.js and adb](#installing-nodejs-and-adb) below for installation instructions
-- USB debugging enabled on the device: in Settings → About phone, tap "Build number" 7 times to enable Developer options, then enable "USB debugging" under "Developer options"
+- USB debugging enabled on the device: under Settings, open About phone and tap "Build number" 7 times to enable Developer options, then enable "USB debugging" under "Developer options"
 
 Run the following command:
 
@@ -64,7 +64,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 **Browsing**
 
-- Four views modeled on Finder: icons, list, columns and gallery. The list view uses Finder's columns (Name, Date Modified, Size, Kind), and the disclosure triangle next to a folder expands it in place. The column view expands from the root one level at a time: a single click selects an item; a selected folder lists its contents in the next column, and `→` or a double-click opens it; a selected file shows its details, including a thumbnail for images. The gallery view shows a large preview above a thumbnail strip, with an info panel on the right
+- Four views modeled on Finder: icons, list, columns and gallery. The list view uses Finder's columns (Name, Date Modified, Size, Kind), and the disclosure triangle next to a folder expands it in place. The column view expands from the root one level at a time: a single click selects an item; a selected folder lists its contents in the next column, and the Right Arrow key or a double-click opens it; a selected file shows its details, including a thumbnail for images. The gallery view shows a large preview above a thumbnail strip, with an info panel on the right
 - Breadcrumb navigation (double-click to enter a path directly) and one-click access to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
 - Filtering, sorting by name / size / modified time, and an option to show or hide dotfiles
 - Internal storage usage (used and total) displayed in the toolbar
@@ -93,13 +93,13 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 | --- | --- |
 | `Enter` | Open |
 | `F2` | Rename |
-| `Delete` / `⌘ Backspace` | Delete |
-| `Backspace` / `Alt ↑` | Up one level |
-| `⌘/Ctrl A` | Select all |
-| `⌘/Ctrl C` / `X` / `V` | Copy / cut / paste |
-| `↑` `↓` | Move the selection |
-| `←` `→` | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view |
-| `⌘/Ctrl Shift .` | Show or hide dotfiles |
+| `Delete` / `Cmd Backspace` | Delete |
+| `Backspace` / `Alt` + Up Arrow | Up one level |
+| `Cmd/Ctrl A` | Select all |
+| `Cmd/Ctrl C` / `X` / `V` | Copy / cut / paste |
+| Up / Down Arrow | Move the selection |
+| Left / Right Arrow | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view |
+| `Cmd/Ctrl Shift .` | Show or hide dotfiles |
 | `Esc` | Clear the selection |
 
 ## Root mode

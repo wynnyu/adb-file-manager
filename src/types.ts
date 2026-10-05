@@ -20,7 +20,7 @@ export interface Transfer {
   kind: "upload" | "download" | "copy" | "move";
   label: string;
   status: TransferStatus;
-  /** 0 到 1，仅浏览器 → 电脑上传阶段可知 */
+  /** 0 到 1，仅浏览器传到电脑的阶段可知 */
   progress?: number;
   error?: string;
 }

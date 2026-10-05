@@ -26,7 +26,7 @@ flowchart LR
     direction TB
     Adbd["adbd"]
     Shell["shell 用户<br/>或 su 提权"]
-    FS[("文件系统<br/>/sdcard、/data …")]
+    FS[("文件系统<br/>/sdcard、/data 等")]
     Adbd --> Shell --> FS
   end
 
@@ -65,11 +65,11 @@ flowchart LR
 ```mermaid
 flowchart TB
   index["index.ts<br/>启动入口，监听端口"] --> app["app.ts<br/>组装中间件和路由"]
-  app --> mw["中间件链<br/>express.json → langMiddleware → localOnly"]
+  app --> mw["中间件链<br/>express.json、langMiddleware、localOnly"]
   app --> devRoutes["/api/devices<br/>/api/root-check<br/>/api/storage"]
   app --> files["files.ts<br/>文件操作路由"]
   app --> transfer["transfer.ts<br/>上传、下载路由"]
-  app --> errh["错误处理<br/>AdbError → { error, code }"]
+  app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
   files & transfer & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files --> guard["guard.ts<br/>受保护路径、源与目标关系"]
   request & guard & files & transfer --> adb["adb.ts<br/>adb 命令封装"]
@@ -144,7 +144,7 @@ flowchart TB
 | `useStorage` | 当前设备的存储空间 | 无 |
 | `useRootMode` | root 模式开关、已验证的设备 | `afm.rootRemember` |
 | `useSelection` | 选中的路径、连选起点 | 无 |
-| `useSelectionActions` | 单击、Shift 连选、⌘ 多选、全选、方向键 | 无 |
+| `useSelectionActions` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
 | `useDirectory` | 当前路径、筛选、目录内容和加载状态 | `afm.path` |
 | `useListings` | 当前目录以外需要显示的目录（分栏视图的各栏、列表视图展开的文件夹） | 无 |
 | `useTree` | 列表视图中展开的文件夹及展开后的行 | 无 |

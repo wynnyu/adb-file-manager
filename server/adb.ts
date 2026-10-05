@@ -218,7 +218,7 @@ export const rename = (ctx: Ctx, from: string, to: string) =>
   checked(ctx, `[ ! -e ${q(to)} ] || { echo __ADBFM_EXISTS__; exit 1; }; mv ${q(from)} ${q(to)}`);
 export const remove = (ctx: Ctx, paths: string[]) => checked(ctx, `rm -rf ${paths.map(q).join(" ")}`);
 
-/** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”…，从不覆盖 */
+/** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……，从不覆盖 */
 export function copyInto(ctx: Ctx, src: string, destDir: string) {
   const name = path.basename(src);
   const dot = name.lastIndexOf(".");

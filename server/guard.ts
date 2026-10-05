@@ -40,7 +40,7 @@ export function localOnly(req: Request, res: Response, next: NextFunction) {
  * /data 本身属于一级目录受保护，/data 下面的内容不做限制
  */
 const PROTECTED: RegExp[] = [
-  /^\/[^/]*$/, // 根目录和一级目录：/system、/data、/sdcard、/storage …
+  /^\/[^/]*$/, // 根目录和一级目录：/system、/data、/sdcard、/storage 等
   /^\/storage\/[^/]+$/, // /storage/emulated、/storage/self、SD 卡根目录
   /^\/storage\/(emulated|self)\/[^/]+$/, // 各用户的内部存储根目录
 ];

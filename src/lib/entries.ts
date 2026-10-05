@@ -32,4 +32,4 @@ export function arrange(entries: FileEntry[], sort: Sort, showHidden: boolean, f
 export const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 
 /** 快捷键提示里的修饰键 */
-export const MOD = IS_MAC ? "⌘" : "Ctrl+";
+export const MOD = IS_MAC ? "Cmd+" : "Ctrl+";

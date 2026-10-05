@@ -54,8 +54,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "files.empty": "Empty folder",
   "files.select": "Select",
   "files.folder": "Folder",
-  "files.expand": "Expand (→)",
-  "files.collapse": "Collapse (←)",
+  "files.expand": "Expand (Right Arrow)",
+  "files.collapse": "Collapse (Left Arrow)",
   "files.download": "Download to computer",
   "files.rename": "Rename",
   "files.delete": "Delete",
@@ -101,7 +101,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "nodevice.step1.title": "Enable USB debugging",
   "nodevice.step1.text":
-    "Go to Settings → About phone, tap “Build number” 7 times, then enable “USB debugging” in “Developer options”.",
+    "Open “About phone” in Settings, tap “Build number” 7 times, then enable “USB debugging” in “Developer options”.",
   "nodevice.step2.title": "Connect with a USB cable",
   "nodevice.step2.text": "The USB mode can be set to “Charging only”; adb does not rely on MTP file transfer.",
   "nodevice.step3.title": "Authorize USB debugging on the device",
@@ -113,8 +113,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "nodevice.adbError": "adb error: {error}",
 
   "transfer.uploading": "Uploading to computer",
-  "transfer.pushing": "adb push → device",
-  "transfer.pulling": "adb pull ← device",
+  "transfer.pushing": "adb push to device",
+  "transfer.pulling": "adb pull from device",
   "transfer.copying": "Copying…",
   "transfer.moving": "Moving…",
   "transfer.done": "Done",

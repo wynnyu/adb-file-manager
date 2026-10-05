@@ -48,7 +48,7 @@ function handleKey(e: KeyboardEvent, c: ShortcutContext) {
   const mod = e.metaKey || e.ctrlKey;
   const one = selectedEntries.length === 1 ? selectedEntries[0] : null;
   if (e.key === "Escape") c.clear();
-  // 同访达的 ⌘⇧. ，按 code 判断，Shift 下 key 是 ">"
+  // 同访达的 Cmd+Shift+.，按 code 判断，Shift 下 key 是 ">"
   else if (mod && e.shiftKey && e.code === "Period") {
     e.preventDefault();
     c.toggleHidden();
@@ -65,7 +65,7 @@ function handleKey(e: KeyboardEvent, c: ShortcutContext) {
     e.preventDefault();
     void c.paste(path);
   } else if (!e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-    // ⌥↑ 留给下面的“返回上一级”
+    // Alt+上方向键留给下面的“返回上一级”
     e.preventDefault();
     c.step(e.key === "ArrowDown" ? 1 : -1);
   } else if (view === "gallery" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {

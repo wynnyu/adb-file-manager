@@ -73,7 +73,7 @@ export const api = {
     a.remove();
   },
 
-  /** 上传：浏览器 → 电脑（有进度），然后电脑 adb push → 手机 */
+  /** 上传：先从浏览器传到电脑（有进度），再由电脑 adb push 到手机 */
   upload(t: Target, dest: string, files: { file: File; path: string }[], onProgress: (p: number) => void) {
     return new Promise<void>((resolve, reject) => {
       const form = new FormData();

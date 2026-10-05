@@ -36,7 +36,7 @@ export function StatusBar({
           <button
             type="button"
             aria-pressed={showHidden}
-            title={`${MOD}⇧.`}
+            title={`${MOD}Shift+.`}
             onClick={onToggleHidden}
             className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 font-semibold transition-colors ${
               showHidden ? "bg-accent/15 text-accent hover:bg-accent/25" : "hover:bg-surface0 hover:text-text"

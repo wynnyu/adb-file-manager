@@ -70,7 +70,7 @@ describe("useShortcuts", () => {
     input.remove();
   });
 
-  it("⌘A 全选，⌘⇧. 切换隐藏文件", () => {
+  it("Cmd+A 全选，Cmd+Shift+. 切换隐藏文件", () => {
     const { ctx } = setup();
     expect(press({ key: "a", metaKey: true })).toBe(false);
     expect(ctx.selectAll).toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe("useShortcuts", () => {
     expect(ctx.toggleHidden).toHaveBeenCalled();
   });
 
-  it("⌘C / ⌘X 把选中的条目放进剪贴板，没有选择时交给浏览器", () => {
+  it("Cmd+C / Cmd+X 把选中的条目放进剪贴板，没有选择时交给浏览器", () => {
     const { ctx, rerender } = setup();
     expect(press({ key: "c", ctrlKey: true })).toBe(true);
     expect(ctx.toClip).not.toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe("useShortcuts", () => {
     expect(ctx.toClip).toHaveBeenLastCalledWith("cut", [txt]);
   });
 
-  it("⌘V 在可以粘贴时粘贴到当前目录", () => {
+  it("Cmd+V 在可以粘贴时粘贴到当前目录", () => {
     const { ctx, rerender } = setup();
     press({ key: "v", metaKey: true });
     expect(ctx.paste).not.toHaveBeenCalled();
@@ -114,19 +114,19 @@ describe("useShortcuts", () => {
   });
 
   describe("列表视图的左右方向键", () => {
-    it("→ 展开选中的文件夹", () => {
+    it("右方向键展开选中的文件夹", () => {
       const { ctx } = setup({ selectedEntries: [dir] });
       press({ key: "ArrowRight" });
       expect(ctx.toggleExpand).toHaveBeenCalledWith(dir, true);
     });
 
-    it("← 收起已展开的文件夹", () => {
+    it("左方向键收起已展开的文件夹", () => {
       const { ctx } = setup({ selectedEntries: [dir], expanded: new Set([dir.path]) });
       press({ key: "ArrowLeft" });
       expect(ctx.toggleExpand).toHaveBeenCalledWith(dir, false);
     });
 
-    it("← 在展开出来的子项上时跳回所在的文件夹", () => {
+    it("左方向键在展开出来的子项上时跳回所在的文件夹", () => {
       const child = file("/sdcard/DCIM/x.jpg");
       const { ctx } = setup({ selectedEntries: [child], expanded: new Set([dir.path]) });
       press({ key: "ArrowLeft" });
@@ -141,19 +141,19 @@ describe("useShortcuts", () => {
   });
 
   describe("分栏视图的左右方向键", () => {
-    it("← 回到上一栏并选中当前目录", () => {
+    it("左方向键回到上一栏并选中当前目录", () => {
       const { ctx } = setup({ view: "columns", path: "/sdcard/DCIM" });
       press({ key: "ArrowLeft" });
       expect(ctx.navigate).toHaveBeenCalledWith("/sdcard", "/sdcard/DCIM");
     });
 
-    it("← 在根目录时不动", () => {
+    it("左方向键在根目录时不动", () => {
       const { ctx } = setup({ view: "columns", path: "/" });
       press({ key: "ArrowLeft" });
       expect(ctx.navigate).not.toHaveBeenCalled();
     });
 
-    it("→ 进入选中的文件夹并选中第一项", () => {
+    it("右方向键进入选中的文件夹并选中第一项", () => {
       const { ctx } = setup({ view: "columns", selectedEntries: [dir] });
       press({ key: "ArrowRight" });
       expect(ctx.navigate).toHaveBeenCalledWith(dir.path, true);
@@ -163,20 +163,20 @@ describe("useShortcuts", () => {
       ["空文件夹", { entries: [] }],
       ["只有隐藏文件", { entries: [file("/sdcard/DCIM/.nomedia")] }],
       ["打不开的文件夹", { error: "无读取权限" }],
-    ])("→ 进不去%s", (_, listing) => {
+    ])("右方向键进不去%s", (_, listing) => {
       const { ctx } = setup({ view: "columns", selectedEntries: [dir], dirs: new Map([[dir.path, listing]]) });
       press({ key: "ArrowRight" });
       expect(ctx.navigate).not.toHaveBeenCalled();
     });
 
-    it("→ 选中的是文件时不动", () => {
+    it("选中的是文件时按右方向键不动", () => {
       const { ctx } = setup({ view: "columns", selectedEntries: [txt] });
       press({ key: "ArrowRight" });
       expect(ctx.navigate).not.toHaveBeenCalled();
     });
   });
 
-  it("Delete 和 ⌘⌫ 删除选中的条目", () => {
+  it("Delete 和 Cmd+Backspace 删除选中的条目", () => {
     const sel: FileEntry[] = [dir, txt];
     const { ctx } = setup({ selectedEntries: sel });
     press({ key: "Delete" });
@@ -197,7 +197,7 @@ describe("useShortcuts", () => {
     expect(ctx.open).toHaveBeenCalledTimes(1);
   });
 
-  it("⌫ 和 ⌥↑ 回到上一级，用的是最新的路径", () => {
+  it("Backspace 和 Alt+上方向键回到上一级，用的是最新的路径", () => {
     const { ctx, rerender } = setup();
     press({ key: "Backspace" });
     expect(ctx.navigate).toHaveBeenLastCalledWith("/");
@@ -207,7 +207,7 @@ describe("useShortcuts", () => {
     expect(ctx.step).not.toHaveBeenCalled();
   });
 
-  it("在根目录按 ⌫ 不动", () => {
+  it("在根目录按 Backspace 不动", () => {
     const { ctx } = setup({ path: "/" });
     press({ key: "Backspace" });
     expect(ctx.navigate).not.toHaveBeenCalled();

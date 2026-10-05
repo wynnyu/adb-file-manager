@@ -13,5 +13,5 @@ createApp().listen(PORT, HOST, (err?: Error) => {
     );
     process.exit(1);
   }
-  console.log(`ADB 文件管理器 → http://${HOST}:${PORT}`);
+  console.log(`ADB 文件管理器已启动：http://${HOST}:${PORT}`);
 });

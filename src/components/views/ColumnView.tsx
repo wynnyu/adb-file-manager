@@ -37,7 +37,7 @@ interface Props {
 /**
  * 分栏视图：从根目录到当前目录一栏一栏排开，行为照着访达：
  * 单击只是选中，选中文件夹时右边多一栏列出它的内容，选中文件时显示详情；
- * 点别的栏里的条目就把选择移到那一栏，它右边的栏跟着换掉；→ 进入选中的文件夹，← 回到上一栏
+ * 点别的栏里的条目就把选择移到那一栏，它右边的栏跟着换掉；右方向键进入选中的文件夹，左方向键回到上一栏
  */
 export function ColumnView(props: Props) {
   const { target, path, entries, dirs, loading, error, selected, cut, sort, showHidden } = props;
@@ -52,12 +52,12 @@ export function ColumnView(props: Props) {
   /** 选中的是文件夹时，右边再排一栏列出它的内容；选中文件才显示详情 */
   const child = preview?.isDir ? preview.path : null;
 
-  /** 点某一栏里的条目：当前栏照常选择（支持 ⌘ / ⇧ 多选），别的栏把选择移过去 */
+  /** 点某一栏里的条目：当前栏照常选择（支持 Cmd / Ctrl 和 Shift 多选），别的栏把选择移过去 */
   const pick = (dir: string, entry: FileEntry, e: MouseEvent) => {
     if (dir === path) props.onSelect(entry, e);
     else props.onNavigate(dir, entry.path);
   };
-  /** 双击文件夹进入它并选中第一项，同 →；双击文件打开 */
+  /** 双击文件夹进入它并选中第一项，同右方向键；双击文件打开 */
   const open = (entry: FileEntry) => (entry.isDir ? props.onNavigate(entry.path, true) : props.onOpen(entry));
 
   // 新的一栏出现时滚到最右边

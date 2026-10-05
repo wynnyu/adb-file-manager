@@ -254,7 +254,7 @@ interface PullResult {
 
 ### POST /api/copy
 
-把 `paths` 中的每一项复制到目录 `dest` 下。重名时依次命名为“名称 2.扩展名”“名称 3.扩展名”…，不会覆盖已有内容；目录名中的点不视为扩展名。
+把 `paths` 中的每一项复制到目录 `dest` 下。重名时依次命名为“名称 2.扩展名”“名称 3.扩展名”……，不会覆盖已有内容；目录名中的点不视为扩展名。
 
 ```json
 { "serial": "R5CT1234", "root": false, "paths": ["/sdcard/a.txt"], "dest": "/sdcard/Backup" }

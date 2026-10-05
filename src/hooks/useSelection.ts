@@ -28,7 +28,7 @@ export function useSelection() {
 
 export type Selection = ReturnType<typeof useSelection>;
 
-/** 依赖可选条目的选择操作：点击、Shift 连选、⌘ 多选、全选和方向键 */
+/** 依赖可选条目的选择操作：点击、Shift 连选、Cmd / Ctrl 多选、全选和方向键 */
 export function useSelectionActions(
   { selected, setSelected, anchor, selectOnly }: Selection,
   /** 能选中、能用方向键走到的条目，按显示顺序 */

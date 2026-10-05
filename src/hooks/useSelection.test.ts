@@ -48,7 +48,7 @@ describe("useSelectionActions", () => {
     expect(paths(result.current.selected)).toEqual(["/d/d"]);
   });
 
-  it("⌘ / Ctrl 单击切换这一项", () => {
+  it("Cmd / Ctrl 单击切换这一项", () => {
     const { result } = setup();
     act(() => result.current.onSelect(list[1], click()));
     act(() => result.current.onSelect(list[3], click({ metaKey: true })));
