@@ -336,7 +336,7 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 | 单段 `bytes=a-b`、`bytes=a-` 或 `bytes=-n` | `206`，带 `Content-Range: bytes 起点-终点/大小` 和 `Content-Length`；终点超出文件时截到文件末尾 |
 | 起点不小于文件大小，或 `bytes=-0` | `416`，带 `Content-Range: bytes */大小`，响应体为 `ErrorResponse` |
 
-分段读取在设备上执行 `tail -c +起点 | head -c 长度`。视频和音频的进度条依赖 `206` 响应才能拖动。
+分段读取在设备上执行 `dd`（`iflag=skip_bytes,count_bytes`），直接跳到起点读取；Android 10 之前的设备若不支持这两个参数，退回 `tail -c +起点 | head -c 长度`。视频和音频的进度条依赖 `206` 响应才能拖动。
 
 响应头始终包含 `Accept-Ranges: bytes`；成功时另有 `X-Content-Type-Options: nosniff`、`Cache-Control: no-store` 和 `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`，SVG 中的脚本不会执行。客户端断开时终止 adb 进程。
 

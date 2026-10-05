@@ -252,15 +252,23 @@ export interface ByteRange {
 }
 
 /**
- * 以字节流读取设备上的文件（adb exec-out，不经过电脑临时目录）。
- * 给出 range 时只读这一段；数字来自 parseRange，保证是非负整数
+ * 读取文件的设备端命令。给出 range 时只读这一段，数字来自 parseRange，保证是非负整数。
+ * 分段读取用 dd 直接跳到起点，不必像 tail 那样从头读到起点；
+ * Android 10 之前的 toybox dd 不认识 skip_bytes，会立即失败且没有输出，这时退回 tail 和 head
  */
-export function cat(ctx: Ctx, p: string, range?: ByteRange) {
+export function catCmd(p: string, range?: ByteRange) {
   // exec-out 会把设备端的 stderr 混进输出，错误信息不能当成文件内容
-  const cmd = range
-    ? `tail -c +${range.start + 1} ${q(p)} 2>/dev/null | head -c ${range.end - range.start + 1}`
-    : `cat ${q(p)} 2>/dev/null`;
-  return spawn(ADB, execOut(ctx, cmd), { stdio: ["ignore", "pipe", "ignore"] });
+  if (!range) return `cat ${q(p)} 2>/dev/null`;
+  const len = range.end - range.start + 1;
+  return (
+    `dd if=${q(p)} bs=65536 skip=${range.start} count=${len} iflag=skip_bytes,count_bytes 2>/dev/null || ` +
+    `tail -c +${range.start + 1} ${q(p)} 2>/dev/null | head -c ${len}`
+  );
+}
+
+/** 以字节流读取设备上的文件（adb exec-out，不经过电脑临时目录） */
+export function cat(ctx: Ctx, p: string, range?: ByteRange) {
+  return spawn(ADB, execOut(ctx, catCmd(p, range)), { stdio: ["ignore", "pipe", "ignore"] });
 }
 
 /** 读取文件开头的 n 个字节 */

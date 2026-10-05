@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AdbError, assertAbs, LINK_MARK, parseLs, q } from "./adb.ts";
+import { AdbError, assertAbs, catCmd, LINK_MARK, parseLs, q } from "./adb.ts";
 
 describe("assertAbs", () => {
   it("规范化路径", () => {
@@ -17,6 +17,19 @@ describe("q", () => {
     expect(q("a b")).toBe("'a b'");
     expect(q("it's")).toBe(`'it'\\''s'`);
     expect(q("$(rm -rf /)")).toBe("'$(rm -rf /)'");
+  });
+});
+
+describe("catCmd", () => {
+  it("不分段时整个读取", () => {
+    expect(catCmd("/sdcard/a b.mp4")).toBe("cat '/sdcard/a b.mp4' 2>/dev/null");
+  });
+
+  it("分段时用 dd 按字节跳到起点，不支持时退回 tail 和 head", () => {
+    expect(catCmd("/sdcard/a.mp4", { start: 100, end: 199 })).toBe(
+      "dd if='/sdcard/a.mp4' bs=65536 skip=100 count=100 iflag=skip_bytes,count_bytes 2>/dev/null || " +
+        "tail -c +101 '/sdcard/a.mp4' 2>/dev/null | head -c 100",
+    );
   });
 });
 
