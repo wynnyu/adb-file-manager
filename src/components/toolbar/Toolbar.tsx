@@ -58,6 +58,8 @@ export function Toolbar({
         {filter && (
           <button
             type="button"
+            title={t("toolbar.clearFilter")}
+            aria-label={t("toolbar.clearFilter")}
             onClick={() => onFilterChange("")}
             className="grid size-5 place-items-center rounded-[50%] hover:bg-surface0"
           >

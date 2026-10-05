@@ -15,6 +15,7 @@ export const zh = {
   "toolbar.up": "上一级 (Backspace)",
   "toolbar.refresh": "刷新",
   "toolbar.filter": "筛选",
+  "toolbar.clearFilter": "清除筛选",
   "toolbar.hideHidden": "隐藏点开头的文件",
   "toolbar.showHidden": "显示隐藏文件",
   "toolbar.showHiddenCount": "显示隐藏文件（{n}）",

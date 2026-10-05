@@ -17,6 +17,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "toolbar.up": "Up (Backspace)",
   "toolbar.refresh": "Refresh",
   "toolbar.filter": "Filter",
+  "toolbar.clearFilter": "Clear filter",
   "toolbar.hideHidden": "Hide dotfiles",
   "toolbar.showHidden": "Show hidden files",
   "toolbar.showHiddenCount": "Show hidden files ({n})",
