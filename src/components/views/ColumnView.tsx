@@ -127,13 +127,34 @@ interface ColumnProps {
   onContextMenu: (e: MouseEvent, entry: FileEntry | null) => void;
 }
 
+/** 栏两端渐隐的最大长度（px），略大于外框圆角半径，滚到圆角处的行已经淡出 */
+const FADE = 32;
+
+/** 按两端还能滚动的距离设置渐隐长度：滚到头的一端不渐隐，开始滚动时逐渐出现 */
+function fadeEdges(el: HTMLElement) {
+  const below = el.scrollHeight - el.clientHeight - el.scrollTop;
+  el.style.setProperty("--fade-t", `${Math.min(Math.max(el.scrollTop, 0), FADE)}px`);
+  el.style.setProperty("--fade-b", `${Math.min(Math.max(below, 0), FADE)}px`);
+}
+
 function Column(p: ColumnProps) {
   const activeRow = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: activePath 和 loading 是触发条件，变了就要滚动
   useEffect(() => {
     activeRow.current?.scrollIntoView({ block: "nearest" });
   }, [p.activePath, p.loading]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 内容变化后能否滚动随之变化，需要重新计算渐隐
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const update = () => fadeEdges(el);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [p.entries, p.loading, p.error]);
 
   return (
     <motion.div
@@ -149,10 +170,14 @@ function Column(p: ColumnProps) {
         e.stopPropagation();
         p.onContextMenu(e, null);
       }}
-      className="flex w-60 shrink-0 flex-col border-r border-surface0 py-2"
+      className="flex w-60 shrink-0 flex-col border-r border-surface0"
     >
-      {/* 滚动区上下内缩，滚出去的行被直线截断而不是进入外框圆角；左右内边距让行与圆角同心 */}
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2">
+      {/* 行滚到外框圆角处之前沿渐隐淡出；左右内边距让行与圆角同心；scroll-py 让键盘选中的行停在渐隐区之外 */}
+      <div
+        ref={list}
+        onScroll={(e) => fadeEdges(e.currentTarget)}
+        className="flex min-h-0 flex-1 scroll-py-8 flex-col gap-0.5 overflow-y-auto p-2 [mask-image:linear-gradient(to_bottom,transparent,black_var(--fade-t,0px),black_calc(100%-var(--fade-b,0px)),transparent)]"
+      >
         {p.error ? (
           <p className="m-2 rounded-2xl bg-red/15 px-3 py-2 text-xs text-red wrap-anywhere">{p.error}</p>
         ) : p.loading ? (
