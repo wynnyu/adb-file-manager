@@ -4,7 +4,8 @@
 
 README、CHANGELOG、界面文案（`src/i18n/`、组件里拼出来的文字）和代码注释里都不要用下面这些符号：
 
-- 破折号 `——` 和 `—`：改用逗号、冒号、句号，或者拆成两句。英文里也一样，日期等场合用普通连字符 `-`
+- 破折号 `——`、`—` 和连接号 `–`：改用逗号、冒号、句号，或者拆成两句。英文里也一样，日期等场合用普通连字符 `-`
+- 表示范围时不用 `–` 和 `～`：中文写“到”，例如“4.5 到 6.6”；英文和代码中用普通连字符 `-`
 - 间隔号 `·`：做分隔符时改用 `|`；界面上把要并列的信息分行显示，或者去掉重复的那一项
 - 直角引号 `「」`、`『』`：中文改用 `“”`；按钮、菜单项这类界面名称在 README 里可以用加粗
 
@@ -86,7 +87,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 ### TailwindCSS
 
 - 使用 Tailwind 4，配置写在 `src/index.css` 的 `@theme static` 中，没有 `tailwind.config.*`
-- 颜色只用主题中的 Catppuccin 变量：`text`、`subtext0`、`muted`、`base`、`mantle`、`crust`、`surface0`～`surface2`、`accent`、`on-accent`、`red`、`peach` 等，透明度用 `/15` 这样的写法。不使用 Tailwind 默认色板（`gray-500` 等）和十六进制任意值，主题色需随 `data-flavor`、`data-accent` 切换
+- 颜色只用主题中的 Catppuccin 变量：`text`、`subtext0`、`muted`、`base`、`mantle`、`crust`、`surface0` 到 `surface2`、`accent`、`on-accent`、`red`、`peach` 等，透明度用 `/15` 这样的写法。不使用 Tailwind 默认色板（`gray-500` 等）和十六进制任意值，主题色需随 `data-flavor`、`data-accent` 切换
 - 新增设计变量加到 `@theme static` 并为每种 flavor 补齐取值
 - 不使用 `!important`（`!` 前缀）覆盖样式。按钮的不同外观通过 `ui.tsx` 中的 `tone` 实现，需要新外观时扩展 `tones`
 - 条件类名用模板字符串拼接完整类名，不拼接类名片段（如 `` `bg-${color}` ``），否则 Tailwind 扫描不到

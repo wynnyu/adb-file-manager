@@ -37,7 +37,7 @@
   --color-accent-hover: color-mix(in oklab, var(--color-accent) 80%, var(--color-text));
   /* 主色底上的文字/图标 */
   --color-on-accent: var(--color-crust);
-  /* 次要小字（提示、列标题、序列号）。Overlay 0/1 在深色口味里对 Mantle 只有 3.6–4.1:1，取 Overlay 2 保证 ≥ 4.5 */
+  /* 次要小字（提示、列标题、序列号）。Overlay 0/1 在深色口味里对 Mantle 只有 3.6:1 到 4.1:1，取 Overlay 2 保证 ≥ 4.5 */
   --color-muted: var(--color-overlay2);
 
   --font-sans: "MiSans VF", "MiSans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -199,7 +199,7 @@
   --color-sky: #067bab; /* #04a5e5 */
   --color-sapphire: #057e91; /* #209fb5 */
   --color-lavender: #5869dc; /* #7287fd */
-  /* 灰阶：Text 对 Mantle 只有 6.6:1，三级次要文字只能挤在 4.5–6.6 之间，按 6.0 / 5.4 / 4.6 排开保持层级 */
+  /* 灰阶：Text 对 Mantle 只有 6.6:1，三级次要文字只能挤在 4.5 到 6.6 之间，按 6.0 / 5.4 / 4.6 排开保持层级 */
   --color-subtext1: #535568; /* #5c5f77 */
   --color-subtext0: #595c6f; /* #6c6f85 */
   --color-muted: #64677a;
