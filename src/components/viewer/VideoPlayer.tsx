@@ -59,7 +59,7 @@ export function VideoPlayer({
       onMouseMove={wake}
       onPointerDown={wake}
       onKeyDown={wake}
-      className={`relative grid size-full place-items-center overflow-hidden rounded-[1.75rem] bg-crust ${hidden ? "cursor-none" : ""}`}
+      className={`relative size-full overflow-hidden rounded-[1.75rem] bg-crust ${hidden ? "cursor-none" : ""}`}
     >
       {/* biome-ignore lint/a11y/useMediaCaption: 设备上的视频没有字幕文件 */}
       <video
@@ -68,7 +68,8 @@ export function VideoPlayer({
         playsInline
         onClick={player.toggle}
         onDoubleClick={toggleFullscreen}
-        className="max-h-full max-w-full"
+        // 铺满容器再等比缩放：grid 里的 max-h-full 参照的是被视频撑大的行高，竖屏录屏会按原始尺寸显示并被裁切
+        className="absolute inset-0 size-full object-contain"
       />
       {player.loading && <Spinner />}
       <AnimatePresence>
