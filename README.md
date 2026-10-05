@@ -187,6 +187,8 @@ src/
     bookmarks/  快捷入口和书签编辑
     overlays/   对话框、右键菜单、通知、拖放提示、传输队列等浮层
   i18n/         前端中英文文案（zh.ts 是类型来源，en.ts 须与之保持一致）
+  test/         前端测试的环境配置和共用工具
+  *.test.ts(x)  hooks 和组件的单元测试，与被测模块放在同一目录（vitest + jsdom）
   index.css     Catppuccin 配色和主题变量
 ```
 

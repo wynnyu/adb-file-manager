@@ -187,6 +187,8 @@ src/
     bookmarks/  quick links and the bookmark editor
     overlays/   dialogs, context menus, toasts, drop hint, transfer queue
   i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
+  test/         setup and shared helpers for frontend tests
+  *.test.ts(x)  unit tests for hooks and components, next to the modules under test (vitest + jsdom)
   index.css     Catppuccin palettes and theme variables
 ```
 
