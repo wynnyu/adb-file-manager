@@ -2,7 +2,10 @@ import type { FileEntry } from "../shared/types.d.ts";
 
 export type {
   Device,
+  ErrorCode,
+  ErrorResponse,
   FileEntry,
+  OkResult,
   PullResult,
   RootCheckResult,
   RootMethod,

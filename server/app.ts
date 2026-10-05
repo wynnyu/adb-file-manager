@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
-import type { RootCheckResult } from "../shared/types.d.ts";
+import type { ErrorResponse, RootCheckResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
@@ -56,7 +56,7 @@ export function createApp() {
       return;
     }
     const code = err instanceof adb.AdbError ? err.code : undefined;
-    res.status(status).json({ error: message, code });
+    res.status(status).json({ error: message, code } satisfies ErrorResponse);
   });
 
   return app;

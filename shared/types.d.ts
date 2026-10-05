@@ -32,9 +32,22 @@ export interface RootCheckResult {
   method: RootMethod;
 }
 
-/** POST /api/upload 的响应；count 为收到的文件数 */
-export interface UploadResult {
+/** 无返回数据时的成功响应 */
+export interface OkResult {
   ok: true;
+}
+
+/** 供前端识别的错误类型：no_root 为设备无法获取 root，root_lost 为 root 请求失败后复查发现 root 已失效 */
+export type ErrorCode = "no_root" | "root_lost";
+
+/** 所有接口出错时的响应；error 可直接显示给用户 */
+export interface ErrorResponse {
+  error: string;
+  code?: ErrorCode;
+}
+
+/** POST /api/upload 的响应；count 为收到的文件数 */
+export interface UploadResult extends OkResult {
   count: number;
 }
 

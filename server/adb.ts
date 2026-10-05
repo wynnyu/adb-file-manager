@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
-import type { Device, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
+import type { Device, ErrorCode, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
@@ -12,7 +12,7 @@ export class AdbError extends Error {
     message: string,
     public status = 500,
     /** 给前端识别的错误类型，例如 root_lost */
-    public code?: string,
+    public code?: ErrorCode,
   ) {
     super(message);
   }

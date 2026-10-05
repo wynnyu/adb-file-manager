@@ -31,7 +31,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 ### 响应与错误
 
-成功时返回 JSON（预览和下载接口除外）。失败时返回：
+成功时返回 JSON（预览和下载接口除外），无返回数据时为 `OkResult`。失败时返回 `ErrorResponse`：
 
 ```json
 { "error": "目标已存在" }
@@ -103,9 +103,22 @@ interface RootCheckResult {
   method: RootMethod;
 }
 
-/** POST /api/upload 的响应；count 为收到的文件数 */
-interface UploadResult {
+/** 无返回数据时的成功响应 */
+interface OkResult {
   ok: true;
+}
+
+/** 供前端识别的错误类型，见“响应与错误” */
+type ErrorCode = "no_root" | "root_lost";
+
+/** 所有接口出错时的响应；error 可直接显示给用户 */
+interface ErrorResponse {
+  error: string;
+  code?: ErrorCode;
+}
+
+/** POST /api/upload 的响应；count 为收到的文件数 */
+interface UploadResult extends OkResult {
   count: number;
 }
 
@@ -376,11 +389,11 @@ interface Target {
 | `rootCheck(serial)` | `Promise<{ method: RootMethod }>` | |
 | `storage(serial)` | `Promise<StorageInfo>` | |
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
-| `mkdir(target, path)` | `Promise<unknown>` | |
-| `rename(target, from, to)` | `Promise<unknown>` | |
-| `remove(target, paths)` | `Promise<unknown>` | 对应 `/api/delete` |
-| `copy(target, paths, dest)` | `Promise<unknown>` | |
-| `move(target, paths, dest)` | `Promise<unknown>` | |
+| `mkdir(target, path)` | `Promise<OkResult>` | |
+| `rename(target, from, to)` | `Promise<OkResult>` | |
+| `remove(target, paths)` | `Promise<OkResult>` | 对应 `/api/delete` |
+| `copy(target, paths, dest)` | `Promise<OkResult>` | |
+| `move(target, paths, dest)` | `Promise<OkResult>` | |
 | `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img src>` 使用 |
 | `download(target, paths)` | `Promise<void>` | 调用 `/api/pull` 后创建临时 `<a download>` 指向 `/api/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |

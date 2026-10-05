@@ -1,5 +1,6 @@
 import posix from "node:path/posix";
 import { Router } from "express";
+import type { OkResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { assertNotInside, assertSafeTargets } from "./guard.ts";
 import { msg } from "./i18n.ts";
@@ -33,7 +34,7 @@ export function fileRoutes() {
     "/api/mkdir",
     wrap(async (req, res) => {
       await adb.mkdir(await ctxOf(req), adb.assertAbs(req.body.path));
-      res.json({ ok: true });
+      res.json({ ok: true } satisfies OkResult);
     }),
   );
 
@@ -45,7 +46,7 @@ export function fileRoutes() {
       const ctx = await ctxOf(req);
       await assertSafeTargets(ctx, [from]);
       await adb.rename(ctx, from, to);
-      res.json({ ok: true });
+      res.json({ ok: true } satisfies OkResult);
     }),
   );
 
@@ -56,7 +57,7 @@ export function fileRoutes() {
       const ctx = await ctxOf(req);
       await assertSafeTargets(ctx, paths);
       await adb.remove(ctx, paths);
-      res.json({ ok: true });
+      res.json({ ok: true } satisfies OkResult);
     }),
   );
 
@@ -69,7 +70,7 @@ export function fileRoutes() {
       const ctx = await ctxOf(req);
       await assertNotInside(ctx, paths, dest);
       for (const p of paths) await adb.copyInto(ctx, p, dest);
-      res.json({ ok: true });
+      res.json({ ok: true } satisfies OkResult);
     }),
   );
 
@@ -85,7 +86,7 @@ export function fileRoutes() {
         // 已经在目标目录里的跳过
         if (posix.dirname(p) !== dest) await adb.rename(ctx, p, posix.join(dest, posix.basename(p)));
       }
-      res.json({ ok: true });
+      res.json({ ok: true } satisfies OkResult);
     }),
   );
 

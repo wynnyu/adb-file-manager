@@ -1,5 +1,5 @@
 import { getLang, tr } from "../i18n/translate.ts";
-import type { Device, FileEntry, PullResult, RootCheckResult, StorageInfo } from "../types.ts";
+import type { Device, ErrorResponse, FileEntry, OkResult, PullResult, RootCheckResult, StorageInfo } from "../types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
 export interface Target {
@@ -14,7 +14,8 @@ export function onRootLost(fn: (message: string) => void) {
   rootLostListener = fn;
 }
 
-function fail(data: { error?: string; code?: string }, status: number) {
+/** 响应可能不是后端生成的 JSON（例如代理返回的错误页），字段都按可缺省处理 */
+function fail(data: Partial<ErrorResponse>, status: number) {
   const message = data.error ?? `HTTP ${status}`;
   if (data.code === "root_lost") rootLostListener?.(message);
   return new Error(message);
@@ -25,7 +26,7 @@ const langHeaders = (extra?: HeadersInit) => ({ ...(extra as Record<string, stri
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: langHeaders(init?.headers) });
-  const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+  const data = await res.json().catch((): ErrorResponse => ({ error: `HTTP ${res.status}` }));
   if (!res.ok) throw fail(data, res.status);
   return data as T;
 }
@@ -49,15 +50,15 @@ export const api = {
 
   ls: (t: Target, path: string) => request<FileEntry[]>(`/api/ls?${qs(t, { path })}`),
 
-  mkdir: (t: Target, path: string) => post("/api/mkdir", { ...t, path }),
+  mkdir: (t: Target, path: string) => post<OkResult>("/api/mkdir", { ...t, path }),
 
-  rename: (t: Target, from: string, to: string) => post("/api/rename", { ...t, from, to }),
+  rename: (t: Target, from: string, to: string) => post<OkResult>("/api/rename", { ...t, from, to }),
 
-  remove: (t: Target, paths: string[]) => post("/api/delete", { ...t, paths }),
+  remove: (t: Target, paths: string[]) => post<OkResult>("/api/delete", { ...t, paths }),
 
-  copy: (t: Target, paths: string[], dest: string) => post("/api/copy", { ...t, paths, dest }),
+  copy: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/copy", { ...t, paths, dest }),
 
-  move: (t: Target, paths: string[], dest: string) => post("/api/move", { ...t, paths, dest }),
+  move: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/move", { ...t, paths, dest }),
 
   previewUrl: (t: Target, path: string) => `/api/preview?${qs(t, { path })}`,
 
@@ -84,7 +85,7 @@ export const api = {
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
       xhr.onload = () => {
         if (xhr.status < 300) return resolve();
-        let data = {};
+        let data: Partial<ErrorResponse> = {};
         try {
           data = JSON.parse(xhr.responseText);
         } catch {
