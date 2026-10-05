@@ -160,6 +160,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
         {state.kind === "confirm" && state.checkbox && (
           <button
             type="button"
+            aria-pressed={checked}
             onClick={() => setChecked((c) => !c)}
             className="flex items-center gap-3 rounded-full bg-base py-1.5 pr-5 pl-1.5 text-sm font-semibold text-subtext1 transition-colors hover:bg-surface0"
           >

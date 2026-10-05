@@ -56,7 +56,9 @@ export function DeviceSelect({
         whileTap={{ scale: 0.96 }}
         transition={spring}
         onClick={() => setOpen((o) => !o)}
-        title={current?.name}
+        // 窄屏只显示图标，名称要靠 title 和 aria-label 提供
+        title={current?.name ?? t("device.none")}
+        aria-label={current?.name ?? t("device.none")}
         className="flex h-12 items-center gap-2 rounded-full bg-surface0 py-1 pr-3 pl-1 transition-colors hover:bg-surface1 sm:gap-3 sm:pr-4"
       >
         <span className="relative grid size-10 place-items-center rounded-[50%] bg-accent/20 text-accent">

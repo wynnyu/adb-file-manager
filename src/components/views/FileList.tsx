@@ -229,6 +229,7 @@ export function FileList(props: Props) {
                       <button
                         type="button"
                         title={t(open ? "files.collapse" : "files.expand")}
+                        aria-label={t(open ? "files.collapse" : "files.expand")}
                         aria-expanded={open}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -257,6 +258,7 @@ export function FileList(props: Props) {
                       }}
                       className="relative shrink-0"
                       title={t("files.select")}
+                      aria-label={t("files.select")}
                     >
                       <FileIcon entry={entry} />
                       {!isSel && (

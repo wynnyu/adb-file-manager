@@ -55,6 +55,7 @@ export function Breadcrumbs({ path, onNavigate }: { path: string; onNavigate: (p
         onClick={() => onNavigate("/")}
         className="grid size-8 shrink-0 place-items-center rounded-[50%] text-subtext0 transition-colors hover:bg-surface0 hover:text-text"
         title={t("crumbs.root")}
+        aria-label={t("crumbs.root")}
       >
         <HardDrive className="size-4" />
       </button>

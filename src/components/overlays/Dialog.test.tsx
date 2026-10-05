@@ -108,7 +108,9 @@ describe("Dialog", () => {
     it("可勾选项的结果传给 onSubmit", async () => {
       const state = confirm({ checkbox: "不再提示" });
       show(state);
+      expect(button("不再提示").getAttribute("aria-pressed")).toBe("false");
       fireEvent.click(button("不再提示"));
+      expect(button("不再提示").getAttribute("aria-pressed")).toBe("true");
       await act(async () => fireEvent.click(button("删除")));
       expect(state.onSubmit).toHaveBeenCalledWith(true);
     });

@@ -111,6 +111,7 @@ export function TransferQueue({
                   onClick={() => onDismiss(item.id)}
                   className="grid size-8 shrink-0 place-items-center rounded-[50%] text-muted hover:bg-surface1 hover:text-text"
                   title={t("common.close")}
+                  aria-label={t("common.close")}
                 >
                   <X className="size-4" />
                 </button>

@@ -63,14 +63,14 @@ describe("FileList", () => {
 
   it("点图标切换选中，不影响其他已选项", () => {
     const p = show();
-    fireEvent.click(within(row("a.txt")).getByTitle(tz("files.select")));
+    fireEvent.click(within(row("a.txt")).getByRole("button", { name: tz("files.select") }));
     expect(p.onToggle).toHaveBeenCalledWith(txt);
     expect(p.onSelect).not.toHaveBeenCalled();
   });
 
   it("展开三角只展开收起，不改变选择", () => {
     const p = show({ expanded: new Set([dcim.path]) });
-    const toggle = within(row("DCIM")).getByTitle(tz("files.collapse"));
+    const toggle = within(row("DCIM")).getByRole("button", { name: tz("files.collapse") });
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(toggle);
     fireEvent.doubleClick(toggle);
@@ -78,7 +78,7 @@ describe("FileList", () => {
     expect(p.onSelect).not.toHaveBeenCalled();
     expect(p.onOpen).not.toHaveBeenCalled();
     // 文件没有展开三角
-    expect(within(row("a.txt")).queryByTitle(tz("files.expand"))).toBeNull();
+    expect(within(row("a.txt")).queryByRole("button", { name: tz("files.expand") })).toBeNull();
   });
 
   it("行内快捷操作作用于这一行，不触发选择", () => {

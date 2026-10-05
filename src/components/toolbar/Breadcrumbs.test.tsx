@@ -18,7 +18,7 @@ describe("Breadcrumbs", () => {
     expect(crumbs).toEqual(["", "sdcard", "DCIM", "Camera"]);
     fireEvent.click(screen.getByRole("button", { name: "DCIM" }));
     expect(onNavigate).toHaveBeenLastCalledWith("/sdcard/DCIM");
-    fireEvent.click(screen.getByTitle(tz("crumbs.root")));
+    fireEvent.click(screen.getByRole("button", { name: tz("crumbs.root") }));
     expect(onNavigate).toHaveBeenLastCalledWith("/");
   });
 
