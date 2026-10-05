@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DialogState } from "../components/overlays/Dialog.tsx";
 import { useT } from "../i18n/index.tsx";
 import { api, onRootLost } from "../lib/api.ts";
+import { setRootFavicon } from "../lib/favicon.ts";
 import { loadPref, savePref } from "../lib/prefs.ts";
 import type { Flash } from "./useToast.ts";
 
@@ -76,6 +77,7 @@ export function useRootMode({
   useEffect(() => {
     const name = t("app.name");
     document.title = rootMode ? t("app.rootTitle", { name }) : name;
+    setRootFavicon(rootMode);
   }, [rootMode, t]);
 
   return { rootMode, askEnableRoot, disableRoot };

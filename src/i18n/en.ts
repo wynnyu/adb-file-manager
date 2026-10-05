@@ -3,7 +3,7 @@ import type { MessageKey } from "./zh.ts";
 /** `<key>_one` 是 n === 1 时的单数形式，可选 */
 export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`, string>> = {
   "app.name": "ADB File Manager",
-  "app.rootTitle": "⚠ ROOT - {name}",
+  "app.rootTitle": "ROOT - {name}",
 
   "common.cancel": "Cancel",
   "common.processing": "Processing…",

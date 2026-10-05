@@ -1,5 +1,9 @@
 # Changelog
 
+## 未发布 / Unreleased
+
+- root 模式下标签页图标变为红色，标签页标题改为纯文字的 ROOT 标记
+
 ## 0.1.0 - 2026-10-03
 
 首个公开版本 / First public release.

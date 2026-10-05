@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { DialogState } from "../components/overlays/Dialog.tsx";
 import { api } from "../lib/api.ts";
+import { ROOT_ICON } from "../lib/favicon.ts";
 import { loadPref } from "../lib/prefs.ts";
 import { providers, tz } from "../test/utils.tsx";
 import { useRootMode } from "./useRootMode.ts";
@@ -85,6 +86,24 @@ describe("useRootMode", () => {
     const check = vi.spyOn(api, "rootCheck");
     setup({ online: false });
     expect(check).not.toHaveBeenCalled();
+  });
+
+  it("root 模式下标签页图标换成红色，退出后恢复默认图标", async () => {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.setAttribute("href", "data:image/svg+xml,default");
+    document.head.append(link);
+    try {
+      vi.spyOn(api, "rootCheck").mockResolvedValue({ method: "su" });
+      const { result, dialog } = setup();
+      act(() => result.current.askEnableRoot());
+      await act(() => dialog().onSubmit(false));
+      expect(link.getAttribute("href")).toBe(ROOT_ICON);
+      act(() => result.current.disableRoot());
+      expect(link.getAttribute("href")).toBe("data:image/svg+xml,default");
+    } finally {
+      link.remove();
+    }
   });
 
   it("disableRoot 关闭并清除“记住选择”", async () => {

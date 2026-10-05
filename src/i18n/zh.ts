@@ -1,7 +1,7 @@
 /** 中文是类型来源：新增文案先加在这里，en.ts 会被类型检查要求补齐 */
 export const zh = {
   "app.name": "ADB 文件管理器",
-  "app.rootTitle": "⚠ ROOT - {name}",
+  "app.rootTitle": "ROOT - {name}",
 
   "common.cancel": "取消",
   "common.processing": "处理中……",

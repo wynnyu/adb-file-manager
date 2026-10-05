@@ -142,7 +142,7 @@ flowchart TB
 | --- | --- | --- |
 | `useDevices` | 设备列表、当前设备、adb 错误；每 2 秒轮询 | 无 |
 | `useStorage` | 当前设备的存储空间 | 无 |
-| `useRootMode` | root 模式开关、已验证的设备 | `afm.rootRemember` |
+| `useRootMode` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
 | `useSelection` | 选中的路径、连选起点 | 无 |
 | `useSelectionActions` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
 | `useDirectory` | 当前路径、筛选、目录内容和加载状态 | `afm.path` |
@@ -199,6 +199,7 @@ flowchart LR
     bookmarks["bookmarks.ts"]
     drop["drop.ts"]
     theme["theme.ts"]
+    favicon["favicon.ts"]
   end
 
   translate["i18n/translate.ts"]
@@ -207,6 +208,7 @@ flowchart LR
   useDevices --> api
   useRootMode --> api
   useRootMode --> prefs
+  useRootMode --> favicon
   useRootMode -.-> useToast
   useRootMode -.-> Dialog
   useDirectory --> queries
