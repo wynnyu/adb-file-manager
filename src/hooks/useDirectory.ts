@@ -1,15 +1,19 @@
+import { type UseQueryResult, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, type Target } from "../lib/api.ts";
+import type { Target } from "../lib/api.ts";
 import { arrange, type Sort } from "../lib/entries.ts";
 import { parentPath } from "../lib/format.ts";
 import { usePref } from "../lib/prefs.ts";
+import { lsDeviceKey, lsQuery } from "../lib/queries.ts";
 import type { FileEntry, Listing } from "../types.ts";
 import type { Selection } from "./useSelection.ts";
 
 const HOME = "/sdcard";
+const NONE: FileEntry[] = [];
 
 /**
- * 当前目录：路径、内容、加载状态和筛选，以及当前目录以外还要显示的目录的缓存。
+ * 当前目录：路径、内容、加载状态和筛选。目录内容和其他各栏、展开的文件夹共用一份查询缓存，
+ * 进入缓存里有的目录时先拿缓存顶上，界面不用等 ls 回来。
  * 进入目录和加载完成时会按需改动选择（选中指定项，或刷新后保留原有选择）
  */
 export function useDirectory({
@@ -26,94 +30,75 @@ export function useDirectory({
   selection: Pick<Selection, "selectOnly" | "clear">;
 }) {
   const { selectOnly, clear } = selection;
+  const queryClient = useQueryClient();
   const [path, setPath] = usePref("afm.path", HOME);
   /** 异步操作完成时用它取最新的目录，闭包里的 path 可能已经过时 */
   const pathRef = useRef(path);
   pathRef.current = path;
-  const [entries, setEntries] = useState<FileEntry[]>([]);
-  /** entries 属于哪个目录；切换目录、还没加载完时为 null */
-  const [entriesDir, setEntriesDir] = useState<string | null>(null);
-  /** 刷新序号：每次刷新或增删改后 +1，分栏视图的上层各栏据此重新加载 */
-  const [rev, setRev] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  /** 进入目录后要选中的条目（分栏视图里点上层栏的文件）；true 表示选中第一项 */
-  const pendingFocus = useRef<string | true | null>(null);
-  /** 进入目录时先用缓存显示了这个目录，加载完别清掉期间的选择 */
-  const seeded = useRef<string | null>(null);
   /** load 里算“第一项”要用当前的排序和隐藏文件设置，又不想让 load 跟着它们变 */
   const display = useRef({ sort, showHidden });
   display.current = { sort, showHidden };
+  /** 只有最后一次 load 能改动选择 */
   const loadSeq = useRef(0);
 
+  const query = useQuery({
+    ...lsQuery(target, path),
+    enabled: online,
+    // 切换 root 模式时目录不变，新的列表回来之前接着显示原来的
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[3] === path ? prev : undefined),
+  });
+  const ready = query.isSuccess;
+  const entries = query.isSuccess ? query.data : NONE;
+  const listError = query.error?.message ?? null;
+
+  // 换了设备、切换了 root 模式或重新连上：清空选择，之前发出的加载也不再改动选择
+  // biome-ignore lint/correctness/useExhaustiveDependencies: target 和 online 是触发条件，变了就要重置
+  useEffect(() => {
+    loadSeq.current++;
+    clear();
+  }, [target, online, clear]);
+
+  /**
+   * 重新拉取 p，完成后改动选择：focus 是要选中的条目（true 为第一项），
+   * 没有 focus 时按 keep 保留或清空选择。正在进行的同一目录的请求作废，保证拿到的是最新内容
+   */
   const load = useCallback(
-    async (p: string, keepSelection = false) => {
+    async (p: string, { focus, keep = false }: { focus?: string | true; keep?: boolean } = {}) => {
       if (!target) return;
       const seq = ++loadSeq.current;
-      setLoading(true);
+      const q = lsQuery(target, p);
       try {
-        const list = await api.ls(target, p);
+        await queryClient.cancelQueries({ queryKey: q.queryKey, exact: true });
+        const list = await queryClient.fetchQuery({ ...q, staleTime: 0 });
         if (seq !== loadSeq.current) return;
-        setEntries(list);
-        setEntriesDir(p);
-        setListError(null);
-        const want = pendingFocus.current;
-        pendingFocus.current = null;
-        // 先拿缓存顶上的目录已经按缓存选好了，用户可能也已经接着操作，别再动选择
-        const keep = keepSelection || seeded.current === p;
-        seeded.current = null;
-        const focus = want === true ? arrange(list, display.current.sort, display.current.showHidden)[0]?.path : want;
-        if (focus && list.some((e) => e.path === focus)) selectOnly(focus);
+        const want = focus === true ? arrange(list, display.current.sort, display.current.showHidden)[0]?.path : focus;
+        if (want && list.some((e) => e.path === want)) selectOnly(want);
         else if (!keep) clear();
-      } catch (e) {
-        if (seq !== loadSeq.current) return;
-        setEntries([]);
-        setEntriesDir(null);
-        setListError((e as Error).message);
-      } finally {
-        if (seq === loadSeq.current) setLoading(false);
+      } catch {
+        // 错误由 useQuery 返回，界面上显示
       }
     },
-    [target, selectOnly, clear],
+    [target, queryClient, selectOnly, clear],
   );
 
-  useEffect(() => {
-    if (online) void load(path);
-  }, [online, path, load]);
-
-  // ---------- 目录缓存 ----------
-  // 当前目录以外还要显示的目录（分栏视图的上层各栏和下一栏、列表视图展开的文件夹）都存在这里。
-  // 进入缓存里有的目录时先拿缓存顶上，界面不用等 ls 回来
-  const [dirs, setDirs] = useState(() => new Map<string, Listing>());
-  const dirsRef = useRef(dirs);
-  dirsRef.current = dirs;
-  const revRef = useRef(rev);
-  revRef.current = rev;
-  const dirInflight = useRef(new Set<string>());
-  /** 换设备时 +1，丢掉之前发出去还没回来的请求 */
-  const dirGen = useRef(0);
-
-  const putDir = useCallback(
-    (dir: string, listing: Listing) =>
-      setDirs((m) => ((m.get(dir)?.rev ?? -1) > listing.rev ? m : new Map(m).set(dir, listing))),
-    [],
+  /**
+   * 增删改之后更新这台设备上的缓存：gone（改名、移走或删掉的路径）和它们下面的目录已经不在了，直接丢掉；
+   * 其余的全部过期，正在显示的重新加载。skip 由调用方自己加载
+   */
+  const invalidate = useCallback(
+    (gone: string[], skip: string) => {
+      if (!target) return;
+      const queryKey = lsDeviceKey(target.serial);
+      const dir = (q: { queryKey: readonly unknown[] }) => q.queryKey[3] as string;
+      queryClient.removeQueries({
+        queryKey,
+        predicate: (q) => gone.some((g) => dir(q) === g || dir(q).startsWith(g + "/")),
+      });
+      void queryClient.invalidateQueries({ queryKey, predicate: (q) => dir(q) !== skip });
+    },
+    [target, queryClient],
   );
-
-  // 必须排在 usePrefetchDirs 的 effect 之前：换设备时先作废旧请求，预取才会用新的 dirGen 重新发起
-  // biome-ignore lint/correctness/useExhaustiveDependencies: target 是触发条件，换了设备就清空
-  useEffect(() => {
-    dirGen.current++;
-    dirInflight.current.clear();
-    setDirs(new Map());
-  }, [target]);
-
-  // 当前目录加载好了也记下来，往下走一层时它成了上一栏，不用重新加载
-  useEffect(() => {
-    if (entriesDir) putDir(entriesDir, { rev: revRef.current, entries });
-  }, [entriesDir, entries, putDir]);
-
-  const cache = useMemo(() => ({ dirsRef, inflight: dirInflight, gen: dirGen, put: putDir }), [putDir]);
 
   /** focus：进入后选中这一项，true 为第一项 */
   const navigate = useCallback(
@@ -122,37 +107,29 @@ export function useDirectory({
       if (p === path) {
         if (focus === true) focus = arrange(entries, display.current.sort, display.current.showHidden)[0]?.path;
         if (focus) return selectOnly(focus);
-        // 点的是当前目录：path 不变不会触发加载 effect，直接刷新，别清空列表
+        // 点的是当前目录：直接刷新，别清空列表
         return void load(p);
       }
-      const known = dirsRef.current.get(p)?.entries;
-      if (known) {
-        // 缓存里有：立刻显示并选好，后台照常重新加载
-        if (focus === true) focus = arrange(known, display.current.sort, display.current.showHidden)[0]?.path;
-        selectOnly(focus ?? null);
-        pendingFocus.current = null;
-        seeded.current = p;
-        setEntries(known);
-        setEntriesDir(p);
-      } else {
-        pendingFocus.current = focus ?? null;
-        seeded.current = null;
-        setEntries([]);
-        setEntriesDir(null);
-      }
-      setListError(null);
       setPath(p);
+      const cached = queryClient.getQueryState(lsQuery(target, p).queryKey);
+      const known = cached?.status === "success" ? cached.data : undefined;
+      if (!known) return void load(p, { focus });
+      // 缓存里有：立刻显示并选好，后台照常重新加载，加载完不再动选择
+      if (focus === true) focus = arrange(known, display.current.sort, display.current.showHidden)[0]?.path;
+      selectOnly(focus ?? null);
+      void load(p, { keep: true });
     },
-    [path, load, entries, selectOnly, setPath],
+    [path, entries, target, queryClient, load, selectOnly, setPath],
   );
 
-  /** 增删改之后：刷新当前目录，并让分栏视图的上层各栏也重新加载 */
+  /** 增删改之后：刷新当前目录，缓存的其他目录（分栏视图的上层各栏、展开的文件夹）也跟着重新加载 */
   const reload = useCallback(
     (keepSelection = false) => {
-      setRev((r) => r + 1);
-      return load(pathRef.current, keepSelection);
+      const p = pathRef.current;
+      invalidate([], p);
+      return load(p, { keep: keepSelection });
     },
-    [load],
+    [invalidate, load],
   );
 
   /**
@@ -162,15 +139,21 @@ export function useDirectory({
   const afterChange = useCallback(
     async (moved: [from: string, to: string | null][] = [], keepSelection = false) => {
       const cur = pathRef.current;
+      const gone = moved.map(([from]) => from);
       const hit = moved.find(([from]) => cur === from || cur.startsWith(from + "/"));
-      if (!hit) return reload(keepSelection);
+      if (!hit) {
+        invalidate(gone, cur);
+        return load(cur, { keep: keepSelection });
+      }
       const [from, to] = hit;
-      setRev((r) => r + 1);
-      setEntries([]);
-      setEntriesDir(null);
-      setPath(to === null ? parentPath(from) : to + cur.slice(from.length));
+      const next = to === null ? parentPath(from) : to + cur.slice(from.length);
+      // 要去的目录也丢掉缓存，加载完之前不显示过期的内容
+      invalidate(gone, next);
+      queryClient.removeQueries({ queryKey: lsQuery(target, next).queryKey, exact: true });
+      setPath(next);
+      void load(next);
     },
-    [reload, setPath],
+    [target, queryClient, invalidate, load, setPath],
   );
 
   const visible = useMemo(() => arrange(entries, sort, showHidden, filter), [entries, filter, showHidden, sort]);
@@ -178,15 +161,12 @@ export function useDirectory({
   return {
     path,
     entries,
-    entriesDir,
+    ready,
     visible,
-    rev,
-    loading,
+    loading: query.isFetching,
     listError,
     filter,
     setFilter,
-    dirs,
-    cache,
     navigate,
     reload,
     afterChange,
@@ -195,26 +175,26 @@ export function useDirectory({
 
 export type Directory = ReturnType<typeof useDirectory>;
 
-/** 把 wanted 里缓存没有或已过期（增删改、刷新后 rev 变了）的目录拉下来 */
-export function usePrefetchDirs(target: Target | null, rev: number, cache: Directory["cache"], wanted: string[]) {
-  const wantedKey = wanted.join("\n");
-
-  useEffect(() => {
-    if (!target) return;
-    const { dirsRef, inflight, gen, put } = cache;
-    const g = gen.current;
-    for (const dir of wantedKey ? wantedKey.split("\n") : []) {
-      const key = `${dir}@${rev}`;
-      if (dirsRef.current.get(dir)?.rev === rev || inflight.current.has(key)) continue;
-      inflight.current.add(key);
-      const done = (l: Listing) => g === gen.current && put(dir, l);
-      api
-        .ls(target, dir)
-        .then(
-          (list) => done({ rev, entries: list }),
-          (e: Error) => done({ rev, error: e.message }),
-        )
-        .finally(() => inflight.current.delete(key));
-    }
-  }, [wantedKey, rev, target, cache]);
+/**
+ * 当前目录以外还要显示的目录（分栏视图的上层各栏和下一栏、列表视图展开的文件夹）。
+ * 缓存里有就直接用，只在增删改、刷新让缓存过期之后才重新加载；还在加载的目录不在返回的表里
+ */
+export function useListings(target: Target | null, online: boolean, paths: string[]) {
+  const key = paths.join("\n");
+  const combine = useCallback(
+    (results: UseQueryResult<FileEntry[]>[]) => {
+      const out = new Map<string, Listing>();
+      const list = key ? key.split("\n") : [];
+      results.forEach((r, i) => {
+        if (r.isError) out.set(list[i], { error: r.error.message });
+        else if (r.isSuccess) out.set(list[i], { entries: r.data });
+      });
+      return out;
+    },
+    [key],
+  );
+  return useQueries({
+    queries: paths.map((p) => ({ ...lsQuery(target, p), enabled: online, staleTime: Infinity })),
+    combine,
+  });
 }

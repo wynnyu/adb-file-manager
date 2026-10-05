@@ -22,7 +22,7 @@ import { IconGrid } from "./components/views/IconGrid.tsx";
 import { useBookmarks } from "./hooks/useBookmarks.ts";
 import { useClipboard } from "./hooks/useClipboard.ts";
 import { useDevices, useStorage } from "./hooks/useDevices.ts";
-import { useDirectory, usePrefetchDirs } from "./hooks/useDirectory.ts";
+import { useDirectory, useListings } from "./hooks/useDirectory.ts";
 import { useFileOps } from "./hooks/useFileOps.ts";
 import { useRootMode } from "./hooks/useRootMode.ts";
 import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
@@ -61,23 +61,17 @@ export default function App() {
   // ---------- 目录与选择 ----------
   const selection = useSelection();
   const { selected, anchor, selectOnly, clear } = selection;
-  const {
-    path,
-    entries,
-    entriesDir,
+  const { path, entries, ready, visible, loading, listError, filter, setFilter, navigate, reload, afterChange } =
+    useDirectory({ target, online, sort, showHidden, selection });
+  const { expanded, toggleExpand, rows, pending } = useTree({
     visible,
-    rev,
-    loading,
-    listError,
-    filter,
-    setFilter,
-    dirs,
-    cache,
-    navigate,
-    reload,
-    afterChange,
-  } = useDirectory({ target, online, sort, showHidden, selection });
-  const { expanded, toggleExpand, rows, pending } = useTree({ visible, dirs, sort, showHidden, path, target });
+    sort,
+    showHidden,
+    path,
+    target,
+    online,
+    active: view === "list",
+  });
 
   /** 能选中、能用方向键走到的条目：列表视图包括展开的子项 */
   const selectable = useMemo(
@@ -86,17 +80,16 @@ export default function App() {
   );
   const { selectedEntries, onSelect, onToggle, selectAll, step } = useSelectionActions(selection, selectable);
 
-  /** 当前视图要另外加载的目录：分栏视图是上层各栏，加上选中文件夹的下一栏；列表视图是展开的文件夹 */
-  const wanted = useMemo(() => {
-    if (view === "list") return [...expanded];
+  /** 分栏视图要另外加载的目录：上层各栏，加上选中文件夹的下一栏 */
+  const columnDirs = useMemo(() => {
     if (view !== "columns") return [];
     const parts = path.split("/").filter(Boolean);
     const out = parts.map((_, i) => "/" + parts.slice(0, i).join("/"));
     const one = selectedEntries.length === 1 ? selectedEntries[0] : null;
     if (one?.isDir) out.push(one.path);
     return out;
-  }, [view, expanded, path, selectedEntries]);
-  usePrefetchDirs(target, rev, cache, wanted);
+  }, [view, path, selectedEntries]);
+  const dirs = useListings(target, online, columnDirs);
 
   // ---------- 操作 ----------
   const { clip, setClip, canPaste, cutPaths, toClip, copyText } = useClipboard(serial, flash);
@@ -245,7 +238,7 @@ export default function App() {
                       path={path}
                       entries={visible}
                       dirs={dirs}
-                      loading={loading && entriesDir !== path}
+                      loading={loading && !ready}
                       error={listError}
                       selected={selected}
                       cut={cutPaths}
@@ -318,7 +311,7 @@ export default function App() {
                 <StatusBar
                   entries={entries}
                   shown={visible.length}
-                  ready={entriesDir === path}
+                  ready={ready}
                   showHidden={showHidden}
                   onToggleHidden={toggleHidden}
                   storage={storage}

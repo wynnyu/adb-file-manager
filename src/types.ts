@@ -16,8 +16,6 @@ export interface Transfer {
 
 /** 另外加载的某个目录的内容（分栏视图的其他栏、列表视图展开的文件夹） */
 export interface Listing {
-  /** 拉取时的刷新序号，和当前 rev 不一致说明过期了 */
-  rev: number;
   entries?: FileEntry[];
   error?: string;
 }

@@ -159,7 +159,7 @@ pnpm test     # 运行单元测试
 技术栈：
 
 - 后端：Node.js + Express 5，通过 `execFile` 调用 adb，拼接设备端命令时对路径做单引号转义
-- 前端：React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion，字体（MiSans、Maple Mono）打包在本地，无需联网
+- 前端：React 19 + TypeScript + Vite + Tailwind CSS v4 + Motion + TanStack Query，字体（MiSans、Maple Mono）打包在本地，无需联网
 
 目录结构：
 
@@ -179,7 +179,7 @@ shared/
 src/
   App.tsx       主界面，组装各 hook 和组件
   hooks/        状态和交互逻辑：设备、目录、选择、文件操作、快捷键等
-  lib/          前端工具模块：接口请求、书签、排序、格式化、偏好设置、主题切换等
+  lib/          前端工具模块：接口请求、目录查询缓存、书签、排序、格式化、偏好设置、主题切换等
   components/   界面组件，ui.tsx 为共用的基础组件
     views/      图标、列表、分栏、画廊四种视图
     header/     顶栏及设备、语言、主题选择

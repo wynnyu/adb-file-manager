@@ -1,26 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Target } from "../lib/api.ts";
 import { arrange, type Sort } from "../lib/entries.ts";
-import type { FileEntry, Listing, TreeRow } from "../types.ts";
+import type { FileEntry, TreeRow } from "../types.ts";
+import { useListings } from "./useDirectory.ts";
 
 /** 列表视图的展开三角：哪些文件夹展开了、逐行展开后的行，以及还在加载的文件夹 */
 export function useTree({
   visible,
-  dirs,
   sort,
   showHidden,
   path,
   target,
+  online,
+  active,
 }: {
   /** 当前目录排序、筛选后的条目 */
   visible: FileEntry[];
-  dirs: Map<string, Listing>;
   sort: Sort;
   showHidden: boolean;
   path: string;
   target: Target | null;
+  online: boolean;
+  /** 是否在列表视图：其他视图不显示展开的内容，不用加载 */
+  active: boolean;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const open = useMemo(() => (active ? [...expanded] : []), [active, expanded]);
+  const dirs = useListings(target, online, open);
 
   // 换了目录或设备就全部收起
   // biome-ignore lint/correctness/useExhaustiveDependencies: path 和 target 是触发条件，变了就要重置
