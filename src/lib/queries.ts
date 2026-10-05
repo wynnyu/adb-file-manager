@@ -17,3 +17,11 @@ export const lsQuery = (target: Target | null, path: string) =>
     queryKey: ["ls", target?.serial ?? null, target?.root ?? false, path] as const,
     queryFn: target ? () => api.ls(target, path) : skipToken,
   });
+
+/** 查看器里显示的文本；关闭后不保留，重新打开时重新读取 */
+export const textQuery = (target: Target, path: string) =>
+  queryOptions({
+    queryKey: ["text", target.serial, target.root, path] as const,
+    queryFn: () => api.text(target, path),
+    gcTime: 0,
+  });

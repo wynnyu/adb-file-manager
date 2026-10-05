@@ -69,15 +69,23 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 - Filtering, sorting by name / size / modified time, and an option to show or hide dotfiles
 - Internal storage usage (used and total) displayed in the toolbar
 
+**Viewing**
+
+- Double-clicking a file, pressing `Enter` or choosing **Open** in the context menu opens the file in an in-page viewer. Left / Right Arrow moves to the previous / next file in the same folder, and `Esc` closes the viewer
+- Images: initially scaled to fit the window; holding `Ctrl` while scrolling, or pinching on a trackpad, zooms in and out. A zoomed image can be dragged, and a double-click toggles between fit to window and actual size
+- Video and audio: built-in playback controls, autoplay 1 second after opening, a draggable progress bar, and volume and mute settings that persist across files; videos can be played in full screen. Playback depends on the formats supported by the browser
+- Other files are shown as plain text. Only UTF-8 is supported, and only the first 1 MB of larger files is shown
+- Binary files and formats the browser cannot decode (such as HEIC images or MKV videos) show a notice with a download button
+
 **Transfers**
 
 - Upload via the button or by dragging files and folders into the window, with directory structure preserved
-- Single files are downloaded as is; folders and multiple selections are downloaded as a zip archive
+- Downloads start from the context menu, the selection bar or the download button in the viewer. Single files are downloaded as is; folders and multiple selections are downloaded as a zip archive
 - A transfer queue displays the progress and result of each task
 
 **Organizing**
 
-- Context menu: open, download, cut / copy / paste, copy path, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
+- Context menu: open (folders are entered, files open in the viewer), download, cut / copy / paste, copy path, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
 - Copying never overwrites existing files: on a name conflict, a number is appended (`photo 2.jpg`, `photo 3.jpg`, …). Renaming or moving onto an existing name results in an error
 - A folder cannot be moved or copied into itself
 
@@ -91,16 +99,17 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Open |
+| `Enter` | Open a folder, or open a file in the viewer |
 | `F2` | Rename |
 | `Delete` / `Cmd Backspace` | Delete |
 | `Backspace` / `Alt` + Up Arrow | Up one level |
 | `Cmd/Ctrl A` | Select all |
 | `Cmd/Ctrl C` / `X` / `V` | Copy / cut / paste |
 | Up / Down Arrow | Move the selection |
-| Left / Right Arrow | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view |
+| Left / Right Arrow | Collapse or expand folders in list view; go into and out of folders in column view; previous / next item in gallery view; previous / next file in the viewer |
 | `Cmd/Ctrl Shift .` | Show or hide dotfiles |
-| `Esc` | Clear the selection |
+| `Space` | Play or pause video and audio in the viewer |
+| `Esc` | Clear the selection; close the viewer |
 
 ## Root mode
 
@@ -142,7 +151,7 @@ This tool can read and write any file on the device, including system partitions
 - Rejects requests whose `Host` header is not localhost (DNS rebinding protection)
 - Checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
 - Resolves symlinks before deleting, renaming or moving, and refuses to operate on the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
-- Previews are limited to common image formats, and SVGs are rendered in a sandbox so that embedded scripts do not run
+- The viewer reads only common image, video and audio formats as media; other files are limited to the first 1 MB and shown as plain text. SVGs are rendered in a sandbox so that embedded scripts do not run
 
 Do not expose it to a local network or the internet through a reverse proxy or any other means.
 

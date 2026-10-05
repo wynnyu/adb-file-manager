@@ -39,7 +39,7 @@ flowchart LR
 - 后端只监听 `127.0.0.1`，并通过 `guard.ts` 中的 `localOnly` 校验 Host、Origin 和 Sec-Fetch-Site，拒绝来自其他主机或其他网页的请求
 - 列目录、新建、重命名、删除、复制、移动均通过 `adb shell` 在设备端执行；路径在拼接进命令前经过单引号转义（`adb.ts` 中的 `q`）
 - 上传和下载经电脑临时目录中转：上传先由 multer 接收到临时目录，再 `adb push`；下载先 `adb pull` 到临时目录，再由浏览器取回
-- 图片预览使用 `adb exec-out cat` 直接以字节流返回，不经过临时目录
+- 预览（含 Range 分段读取）使用 `adb exec-out` 直接以字节流返回，不经过临时目录；文本预览读取文件开头 1 MB
 - root 模式下，若 adbd 本身以 root 运行则直接执行；否则以 `su -c`（可由 `ADBFM_SU` 修改）包装命令。su 模式下 `adb push` / `adb pull` 本身没有 root 权限，因此再经设备上的 `/data/local/tmp` 中转一次
 
 ### 开发与生产两种运行方式
@@ -69,22 +69,24 @@ flowchart TB
   app --> devRoutes["/api/devices<br/>/api/root-check<br/>/api/storage"]
   app --> files["files.ts<br/>文件操作路由"]
   app --> transfer["transfer.ts<br/>上传、下载路由"]
+  app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & transfer & preview & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files --> guard["guard.ts<br/>受保护路径、源与目标关系"]
-  request & guard & files & transfer --> adb["adb.ts<br/>adb 命令封装"]
+  request & guard & files & transfer & preview --> adb["adb.ts<br/>adb 命令封装"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件、设备相关的三个接口、两组路由、静态文件和统一的错误处理 |
-| `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move`、`/api/preview` |
+| `app.ts` | 注册中间件、设备相关的三个接口、三组路由、静态文件和统一的错误处理 |
+| `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
+| `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除或移动根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除等操作 |
+| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除，以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
 ### 一次请求的处理过程
@@ -153,7 +155,9 @@ flowchart TB
 | `useFileOps` | 上传、下载、粘贴，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
 | `useTransfers` | 传输队列 | 无 |
 | `useToast` | 顶部提示 | 无 |
-| `useShortcuts` | 全局快捷键（无状态，读取最新的上下文） | 无 |
+| `useViewer` | 查看器打开的文件、在可切换文件中的位置；切换时同步选中，掉线或切换设备后关闭 | 无 |
+| `useMediaPlayer` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
+| `useShortcuts` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单或查看器打开时不响应 | 无 |
 | `useUploadPicker` / `useDropUpload` | 文件选择框、拖放上传 | 无 |
 
 `App.tsx` 中还用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`。
@@ -185,6 +189,8 @@ flowchart LR
     useTransfers
     useToast
     useShortcuts
+    useViewer
+    useMediaPlayer
     useUploadPicker
     useDropUpload
   end
@@ -231,6 +237,8 @@ flowchart LR
   useShortcuts --> useSelection
   useShortcuts --> entries
   useShortcuts --> format
+  useViewer --> useSelection
+  useMediaPlayer --> prefs
   useUploadPicker --> drop
   useDropUpload --> drop
 
@@ -256,6 +264,7 @@ flowchart LR
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
     overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>TransferQueue、DropOverlay、UsageTip"]
+    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、Unsupported"]
     misc["NoDevice、UploadInputs"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
@@ -267,10 +276,11 @@ flowchart LR
     theme["theme.ts"]
     bookmarksLib["bookmarks.ts"]
     prefs["prefs.ts"]
+    queries["queries.ts"]
   end
 
-  App --> header & toolbar & views & bm & overlays & misc
-  header & toolbar & views & bm & overlays & misc --> ui
+  App --> header & toolbar & views & bm & overlays & viewer & misc
+  header & toolbar & views & bm & overlays & viewer & misc --> ui
   toolbar --> views
   toolbar --> overlays
   views --> overlays
@@ -283,11 +293,14 @@ flowchart LR
   header --> format & theme
   bm --> bookmarksLib
   overlays --> bookmarksLib & entries & prefs
+  viewer --> views
+  viewer --> api & queries & format & kinds
 ```
 
 说明：
 
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
+- `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
 - `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
 - `overlays/Dialog.tsx` 内嵌 `bookmarks/BookmarkForm.tsx` 编辑书签，`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
 

@@ -15,6 +15,7 @@ import { StatusBar } from "./components/toolbar/StatusBar.tsx";
 import { Toolbar } from "./components/toolbar/Toolbar.tsx";
 import { UploadInputs } from "./components/UploadInputs.tsx";
 import { spring } from "./components/ui.tsx";
+import { Viewer } from "./components/viewer/Viewer.tsx";
 import { ColumnView } from "./components/views/ColumnView.tsx";
 import { FileList } from "./components/views/FileList.tsx";
 import { GalleryView } from "./components/views/GalleryView.tsx";
@@ -25,6 +26,7 @@ import { useDevices, useStorage } from "./hooks/useDevices.ts";
 import { useDirectory, useListings } from "./hooks/useDirectory.ts";
 import { useDropUpload } from "./hooks/useDropUpload.ts";
 import { useFileOps } from "./hooks/useFileOps.ts";
+import { useMediaPlayer } from "./hooks/useMediaPlayer.ts";
 import { useRootMode } from "./hooks/useRootMode.ts";
 import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
@@ -32,6 +34,7 @@ import { useToast } from "./hooks/useToast.ts";
 import { useTransfers } from "./hooks/useTransfers.ts";
 import { useTree } from "./hooks/useTree.ts";
 import { useUploadPicker } from "./hooks/useUploadPicker.ts";
+import { useViewer } from "./hooks/useViewer.ts";
 import { useT } from "./i18n/index.tsx";
 import type { Target } from "./lib/api.ts";
 import type { Bookmark } from "./lib/bookmarks.ts";
@@ -109,9 +112,12 @@ export default function App() {
     openDialog: setDialog,
   });
 
+  const viewer = useViewer({ selectable, selectOnly, target, online });
+  const { openFile } = viewer;
+  const media = useMediaPlayer(viewer.entry?.path ?? null);
   const open = useCallback(
-    (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : void download([entry])),
-    [navigate, download],
+    (entry: FileEntry) => (entry.isDir ? navigate(entry.path) : openFile(entry)),
+    [navigate, openFile],
   );
 
   const picker = useUploadPicker(upload);
@@ -121,7 +127,7 @@ export default function App() {
   // ---------- 快捷键和右键菜单 ----------
   const actions = {
     t,
-    blocked: !!dialog || !!menu,
+    blocked: !!dialog || !!menu || !!viewer.entry,
     path,
     view,
     sort,
@@ -334,6 +340,24 @@ export default function App() {
         onDelete={() => askDelete(selectedEntries)}
         onClear={clear}
       />
+
+      {/* 放在传输队列之前：同一层级时，查看器里点下载后进度显示在查看器上面 */}
+      <AnimatePresence>
+        {viewer.entry && target && (
+          <Viewer
+            target={target}
+            entry={viewer.entry}
+            index={viewer.index}
+            count={viewer.count}
+            hasPrev={viewer.hasPrev}
+            hasNext={viewer.hasNext}
+            media={media}
+            onStep={viewer.step}
+            onClose={viewer.close}
+            onDownload={(e) => void download([e])}
+          />
+        )}
+      </AnimatePresence>
 
       <TransferQueue items={transfers} onDismiss={dismissTransfer}>
         {online && <UsageTip />}

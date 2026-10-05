@@ -12,6 +12,15 @@ export function formatSize(n: number) {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 }
 
+/** 播放时间：不到一小时写作 3:07，否则 1:02:07；时长未知时为 --:-- */
+export function formatDuration(sec: number) {
+  if (!Number.isFinite(sec) || sec < 0) return "--:--";
+  const s = Math.floor(sec);
+  const [h, m, r] = [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(r)}` : `${m}:${pad(r)}`;
+}
+
 const dtfs = new Map<string, Intl.DateTimeFormat>();
 
 function dtf(locale: string, opts: Intl.DateTimeFormatOptions) {

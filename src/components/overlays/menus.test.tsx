@@ -14,6 +14,7 @@ function actions(patch: Partial<MenuActions> = {}): MenuActions {
     clipCount: 0,
     selectable: [file("/sdcard/a.txt")],
     navigate: vi.fn(),
+    open: vi.fn(),
     paste: vi.fn(async () => {}),
     download: vi.fn(async () => {}),
     toClip: vi.fn(),
@@ -59,19 +60,33 @@ describe("itemMenu", () => {
     ]);
     find(items, tz("menu.open")).onSelect();
     expect(act.navigate).toHaveBeenCalledWith(dir.path);
+    expect(act.open).not.toHaveBeenCalled();
     find(items, tz("menu.pasteInto", { name: "DCIM" })).onSelect();
     expect(act.paste).toHaveBeenCalledWith(dir.path);
   });
 
-  it("单个文件：回车是下载", () => {
-    const items = itemMenu([a], actions({ canPaste: true }));
-    expect(labels(items)).not.toContain(tz("menu.open"));
-    expect(find(items, tz("menu.download")).shortcut).toEqual(["enter"]);
+  it("单个文件：首项为打开，回车是打开而不是下载", () => {
+    const act = actions({ canPaste: true });
+    const items = itemMenu([a], act);
+    expect(labels(items)[0]).toBe(tz("menu.open"));
+    expect(find(items, tz("menu.open")).shortcut).toEqual(["enter"]);
+    expect(find(items, tz("menu.download")).shortcut).toBeUndefined();
+    find(items, tz("menu.open")).onSelect();
+    expect(act.open).toHaveBeenCalledWith(a);
+    expect(act.navigate).not.toHaveBeenCalled();
   });
 
-  it("多项：标明数量，没有重命名，操作作用于全部", () => {
+  it("指向文件的符号链接同样可以打开", () => {
+    const link = file("/sdcard/link", { type: "link" });
+    const act = actions();
+    find(itemMenu([link], act), tz("menu.open")).onSelect();
+    expect(act.open).toHaveBeenCalledWith(link);
+  });
+
+  it("多项：标明数量，没有打开和重命名，操作作用于全部", () => {
     const act = actions();
     const items = itemMenu([a, b], act);
+    expect(labels(items)).not.toContain(tz("menu.open"));
     expect(labels(items)).not.toContain(tz("menu.rename"));
     find(items, tz("menu.downloadMany", { n: 2 })).onSelect();
     expect(act.download).toHaveBeenCalledWith([a, b]);

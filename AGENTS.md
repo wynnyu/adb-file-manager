@@ -70,7 +70,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - `App.tsx` 只负责组装；状态和交互逻辑放 `src/hooks/`，界面放 `src/components/`，与 React 状态无关的工具函数放 `src/lib/`
 - hook 中不写 JSX；hooks 与 components 之间只允许 `import type`
 - `src/lib/` 不依赖 `hooks/` 和 `components/`
-- 组件按区域放入 `components/` 下的子目录（`header/`、`toolbar/`、`views/`、`bookmarks/`、`overlays/`），通用按钮等放 `components/ui.tsx`
+- 组件按区域放入 `components/` 下的子目录（`header/`、`toolbar/`、`views/`、`bookmarks/`、`overlays/`、`viewer/`），通用按钮等放 `components/ui.tsx`
 - 调整模块依赖或新增 hook、持久化项后，同步更新 `docs/architecture.md` 中的图和表
 
 ### React

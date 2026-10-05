@@ -67,3 +67,15 @@ export function kindLabel(entry: FileEntry, t: T) {
   const key = KINDS.find(([re]) => re.test(ext))?.[1] ?? "kind.fileOf";
   return t(key, { ext: display });
 }
+
+/** 查看器的显示方式；与后端 /api/preview 支持的扩展名一致，其余文件交给 /api/text 判断是不是文本 */
+export type ViewerKind = "image" | "video" | "audio" | "text";
+
+const VIEWER_KINDS: [RegExp, ViewerKind][] = [
+  [/\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i, "image"],
+  [/\.(mp4|m4v|webm|mov|mkv|3gp)$/i, "video"],
+  [/\.(mp3|m4a|aac|flac|wav|ogg|opus|amr)$/i, "audio"],
+];
+
+export const viewerKind = (entry: FileEntry): ViewerKind =>
+  VIEWER_KINDS.find(([re]) => re.test(entry.name))?.[1] ?? "text";

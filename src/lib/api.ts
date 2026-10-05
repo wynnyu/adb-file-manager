@@ -1,5 +1,14 @@
 import { getLang, tr } from "../i18n/translate.ts";
-import type { Device, ErrorResponse, FileEntry, OkResult, PullResult, RootCheckResult, StorageInfo } from "../types.ts";
+import type {
+  Device,
+  ErrorResponse,
+  FileEntry,
+  OkResult,
+  PullResult,
+  RootCheckResult,
+  StorageInfo,
+  TextPreview,
+} from "../types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
 export interface Target {
@@ -60,7 +69,11 @@ export const api = {
 
   move: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/move", { ...t, paths, dest }),
 
+  /** 图片、视频、音频的地址，直接用作媒体元素的 src */
   previewUrl: (t: Target, path: string) => `/api/preview?${qs(t, { path })}`,
+
+  /** 以文本读取文件开头，不是 UTF-8 文本时为 binary */
+  text: (t: Target, path: string) => request<TextPreview>(`/api/text?${qs(t, { path })}`),
 
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {

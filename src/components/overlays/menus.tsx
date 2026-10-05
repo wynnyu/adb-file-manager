@@ -10,6 +10,7 @@ import {
   Link,
   Pencil,
   RotateCw,
+  ScanEye,
   Scissors,
   Trash2,
   Upload,
@@ -32,6 +33,8 @@ export interface MenuActions {
   clipCount: number;
   selectable: FileEntry[];
   navigate: (p: string) => void;
+  /** 打开条目：文件夹进入，文件在查看器中打开 */
+  open: (entry: FileEntry) => void;
   paste: (dest: string) => Promise<void>;
   download: (targets: FileEntry[]) => Promise<void>;
   toClip: (mode: Clip["mode"], items: FileEntry[]) => void;
@@ -54,6 +57,14 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
   const single = targets.length === 1 ? targets[0] : null;
   const n = targets.length;
   const items: MenuItem[] = [];
+  if (single && !single.isDir) {
+    items.push({
+      label: t("menu.open"),
+      icon: <ScanEye className="size-4" />,
+      shortcut: ["enter"],
+      onSelect: () => a.open(single),
+    });
+  }
   if (single?.isDir) {
     items.push({
       label: t("menu.open"),
@@ -73,7 +84,6 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
     {
       label: n > 1 ? t("menu.downloadMany", { n }) : t("menu.download"),
       icon: <Download className="size-4" />,
-      shortcut: single && !single.isDir ? ["enter"] : undefined,
       onSelect: () => void a.download(targets),
     },
     "sep",

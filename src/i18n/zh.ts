@@ -207,6 +207,26 @@ export const zh = {
   "gallery.bytes": "{n} 字节",
 
   "lang.title": "语言",
+
+  "viewer.prev": "上一个（左方向键）",
+  "viewer.next": "下一个（右方向键）",
+  "viewer.close": "关闭 (Esc)",
+  "viewer.position": "{i} / {n}",
+  "viewer.play": "播放",
+  "viewer.pause": "暂停",
+  "viewer.mute": "静音",
+  "viewer.unmute": "取消静音",
+  "viewer.volume": "音量",
+  "viewer.seek": "播放进度",
+  "viewer.fullscreen": "全屏",
+  "viewer.exitFullscreen": "退出全屏",
+  "viewer.zoomReset": "适合窗口",
+  "viewer.unsupported": "不支持预览此文件",
+  "viewer.cannotPlay": "浏览器无法播放此格式",
+  "viewer.cannotShow": "浏览器无法显示此图片",
+  "viewer.truncated": "文件较大，仅显示前 {size}",
+  "viewer.empty": "空文件",
+  "viewer.loading": "正在加载……",
 } as const;
 
 export type MessageKey = keyof typeof zh;

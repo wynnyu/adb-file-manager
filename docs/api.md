@@ -147,6 +147,7 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 | POST | `/api/copy` | 复制到目录 | `api.copy(target, paths, dest)` |
 | POST | `/api/move` | 移动到目录 | `api.move(target, paths, dest)` |
 | GET | `/api/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
+| GET | `/api/text` | 以文本读取文件开头 | `api.text(target, path)` |
 | POST | `/api/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
 | POST | `/api/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
 | GET | `/api/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
@@ -444,7 +445,8 @@ interface Target {
 | `remove(target, paths)` | `Promise<OkResult>` | 对应 `/api/delete` |
 | `copy(target, paths, dest)` | `Promise<OkResult>` | |
 | `move(target, paths, dest)` | `Promise<OkResult>` | |
-| `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img src>` 使用 |
+| `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img>`、`<video>`、`<audio>` 的 `src` 使用；媒体元素自行发出 Range 请求 |
+| `text(target, path)` | `Promise<TextPreview>` | 通常经 `lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
 | `download(target, paths)` | `Promise<void>` | 调用 `/api/pull` 后创建临时 `<a download>` 指向 `/api/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
@@ -464,4 +466,5 @@ interface Target {
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `ls` | `lib/queries.ts`，由 `hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `hooks/useTree.ts` 使用 |
 | `mkdir`、`rename`、`remove`、`copy`、`move`、`upload`、`download` | `hooks/useFileOps.ts` |
-| `previewUrl` | `components/views/ColumnView.tsx`、`components/views/GalleryView.tsx` |
+| `previewUrl` | `components/views/ColumnView.tsx`、`components/views/GalleryView.tsx`、`components/viewer/Viewer.tsx` |
+| `text` | `lib/queries.ts`，由 `components/viewer/TextViewer.tsx` 使用 |

@@ -10,6 +10,7 @@ export type {
   RootCheckResult,
   RootMethod,
   StorageInfo,
+  TextPreview,
   UploadResult,
 } from "../shared/types.d.ts";
 
