@@ -62,6 +62,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "crumbs.edit": "Double-click to type a path",
   "crumbs.root": "Root",
+  "crumbs.type": "Type a path",
 
   "quick.internal": "Internal storage",
   "quick.downloads": "Downloads",

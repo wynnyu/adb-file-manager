@@ -197,6 +197,15 @@ describe("useShortcuts", () => {
     expect(ctx.open).toHaveBeenCalledTimes(1);
   });
 
+  it("焦点在按钮上时回车交给按钮，不打开选中项", () => {
+    const { ctx } = setup({ selectedEntries: [txt] });
+    const button = document.createElement("button");
+    document.body.append(button);
+    press({ key: "Enter" }, button);
+    button.remove();
+    expect(ctx.open).not.toHaveBeenCalled();
+  });
+
   it("Backspace 和 Alt+上方向键回到上一级，用的是最新的路径", () => {
     const { ctx, rerender } = setup();
     press({ key: "Backspace" });

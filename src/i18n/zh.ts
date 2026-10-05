@@ -58,6 +58,7 @@ export const zh = {
 
   "crumbs.edit": "双击输入路径",
   "crumbs.root": "根目录",
+  "crumbs.type": "输入路径",
 
   "quick.internal": "内部存储",
   "quick.downloads": "下载",

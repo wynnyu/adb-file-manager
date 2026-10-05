@@ -65,7 +65,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 **Browsing**
 
 - Four views modeled on Finder: icons, list, columns and gallery. The list view uses Finder's columns (Name, Date Modified, Size, Kind), and the disclosure triangle next to a folder expands it in place. The column view expands from the root one level at a time: a single click selects an item; a selected folder lists its contents in the next column, and the Right Arrow key or a double-click opens it; a selected file shows its details, including a thumbnail for images. The gallery view shows a large preview above a thumbnail strip, with an info panel on the right
-- Breadcrumb navigation (double-click to enter a path directly) and one-click access to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
+- Breadcrumb navigation (double-click it or click the **Type a path** button at its end to enter a path directly) and one-click access to common folders: internal storage, Downloads, Camera, Pictures, Movies, Music and Documents
 - Filtering, sorting by name / size / modified time, and an option to show or hide dotfiles
 - Internal storage usage (used and total) displayed in the toolbar
 

@@ -94,7 +94,8 @@ function handleKey(e: KeyboardEvent, c: ShortcutContext) {
     if (sub && (sub.error || !arrange(sub.entries ?? [], c.sort, c.showHidden).length)) return;
     c.navigate(one.path, true);
   } else if (e.key === "Delete" || (e.metaKey && e.key === "Backspace")) c.askDelete(selectedEntries);
-  else if (e.key === "Enter" && one) c.open(one);
+  // 焦点在按钮上时回车由按钮自己处理，不再打开选中项
+  else if (e.key === "Enter" && one && !(e.target as HTMLElement).closest("button")) c.open(one);
   else if (e.key === "F2" && one) c.askRename(one);
   else if (e.key === "Backspace" || (e.altKey && e.key === "ArrowUp")) path !== "/" && c.navigate(parentPath(path));
 }

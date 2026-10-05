@@ -152,22 +152,24 @@ export function FileList(props: Props) {
       </div>
 
       {onUp && (
-        <div
+        <button
+          type="button"
           onClick={onUp}
           title={t("files.goUp")}
-          className={`${rowBase} ${cols} cursor-pointer hover:bg-surface0/70`}
+          aria-label={t("files.goUp")}
+          className={`${rowBase} ${cols} w-full cursor-pointer text-left hover:bg-surface0/70`}
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <span className="flex min-w-0 items-center gap-3">
             <span className="-mr-2 w-4 shrink-0" />
-            <span className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent">
+            <span className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent group-focus-visible:bg-accent/15 group-focus-visible:text-accent">
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
             <span className="font-mono font-semibold text-subtext1">..</span>
-            <span className="hidden text-xs text-muted transition-opacity group-hover:opacity-100 sm:inline sm:opacity-0">
+            <span className="hidden text-xs text-muted transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline sm:opacity-0">
               {t("files.goUp")}
             </span>
-          </div>
-        </div>
+          </span>
+        </button>
       )}
 
       {error ? (

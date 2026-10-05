@@ -116,7 +116,7 @@ describe("FileList", () => {
   it("不在根目录时第一行是返回上一级", () => {
     const onUp = vi.fn();
     show({ onUp });
-    fireEvent.click(screen.getByTitle(tz("files.goUp")));
+    fireEvent.click(screen.getByRole("button", { name: tz("files.goUp") }));
     expect(onUp).toHaveBeenCalled();
   });
 
