@@ -10,7 +10,7 @@ import multer from "multer";
 import type { PullResult, UploadResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { msg } from "./i18n.ts";
-import { ctxOf, pathsOf, wrap } from "./request.ts";
+import { ctxOf, pathsOf, uploadPathsOf, wrap } from "./request.ts";
 
 const TMP = path.join(os.tmpdir(), "adb-file-manager");
 
@@ -46,13 +46,15 @@ export function transferRoutes() {
     upload.array("files"),
     wrap(async (req, res) => {
       const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-      const stage = await tmpDir();
+      // 建临时目录也可能失败，放进 try 里保证 multer 存下的文件总会删除
+      let stage: string | undefined;
       try {
         const ctx = await ctxOf(req);
         const dest = adb.assertAbs(req.query.path);
         if (!files.length) throw new adb.AdbError(msg("noFilesReceived"), 400);
         // 文件名用单独的 JSON 字段传，避免 multipart 文件名的编码问题；保留文件夹结构
-        const rel: string[] = JSON.parse(String(req.body.paths ?? "[]"));
+        const rel = uploadPathsOf(req.body.paths);
+        stage = await tmpDir();
         const tops = new Set<string>();
         for (const [i, f] of files.entries()) {
           const parts = (rel[i] || f.originalname).split("/").filter((s) => s && s !== "." && s !== "..");
@@ -67,7 +69,7 @@ export function transferRoutes() {
         res.json({ ok: true, count: files.length } satisfies UploadResult);
       } finally {
         await Promise.all(files.map((f) => fs.rm(f.path, { force: true })));
-        await fs.rm(stage, { recursive: true, force: true });
+        if (stage) await fs.rm(stage, { recursive: true, force: true });
       }
     }),
   );

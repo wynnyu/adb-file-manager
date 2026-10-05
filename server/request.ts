@@ -70,3 +70,18 @@ export function pathsOf(v: unknown): string[] {
   if (!paths.length) throw new adb.AdbError(msg("missingPaths"), 400);
   return paths;
 }
+
+/** 取上传的 paths 字段：JSON 编码的相对路径数组，缺省时为空数组（使用 multipart 文件名） */
+export function uploadPathsOf(v: unknown): string[] {
+  if (v === undefined) return [];
+  let rel: unknown;
+  try {
+    rel = JSON.parse(String(v));
+  } catch {
+    throw new adb.AdbError(msg("badUploadPaths"), 400);
+  }
+  if (!Array.isArray(rel) || !rel.every((p) => typeof p === "string")) {
+    throw new adb.AdbError(msg("badUploadPaths"), 400);
+  }
+  return rel;
+}

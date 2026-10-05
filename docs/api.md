@@ -325,7 +325,7 @@ interface PullResult {
 { "ok": true, "count": 2 }
 ```
 
-错误：没有收到文件时 `400`。
+错误：没有收到文件，或 `paths` 不是字符串数组的 JSON 时 `400`。
 
 ### POST /api/pull
 
