@@ -10,6 +10,7 @@ import {
   imageToIcon,
   isImageIcon,
 } from "../../lib/bookmarks.ts";
+import { press, pressSmall } from "../ui.tsx";
 import { BookmarkGlyph, colorVar, ICON_LIBRARY } from "./BookmarkIcon.tsx";
 
 const field =
@@ -112,7 +113,7 @@ export function BookmarkForm({
         aria-label={label}
         aria-pressed={active}
         tabIndex={usingImage ? -1 : undefined}
-        whileTap={{ scale: 0.85 }}
+        {...pressSmall}
         onClick={() => set({ color: c })}
         style={{ background: colorVar(c) }}
         className={`relative grid size-8 shrink-0 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-base transition-shadow ${
@@ -141,7 +142,7 @@ export function BookmarkForm({
                 <motion.button
                   key={tpl.preset}
                   type="button"
-                  whileTap={{ scale: 0.92 }}
+                  {...press}
                   aria-pressed={active}
                   onClick={() => applyTemplate(tpl)}
                   className={`flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1 text-xs font-semibold transition-colors ${
@@ -188,7 +189,7 @@ export function BookmarkForm({
               title={name}
               aria-label={name}
               aria-pressed={value.icon === name}
-              whileTap={{ scale: 0.85 }}
+              {...pressSmall}
               onClick={() => set({ icon: name })}
               className={tile(value.icon === name)}
             >
@@ -201,7 +202,7 @@ export function BookmarkForm({
               title={t("bookmark.image")}
               aria-label={t("bookmark.image")}
               aria-pressed={value.icon === image}
-              whileTap={{ scale: 0.85 }}
+              {...pressSmall}
               onClick={() => set({ icon: image })}
               className={tile(value.icon === image)}
             >
@@ -212,7 +213,7 @@ export function BookmarkForm({
             type="button"
             title={t("bookmark.upload")}
             aria-label={t("bookmark.upload")}
-            whileTap={{ scale: 0.85 }}
+            {...pressSmall}
             onClick={() => fileInput.current?.click()}
             className={`${tile(false)} text-subtext0 ring-1 ring-surface1 ring-offset-0 hover:text-text`}
           >

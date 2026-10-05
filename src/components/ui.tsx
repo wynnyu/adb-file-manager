@@ -13,8 +13,17 @@ const tones: Record<Tone, string> = {
   "ghost-danger": "text-subtext0 hover:bg-red/15 hover:text-red",
 };
 
+/** 默认弹簧：按压反馈、面板和指示条的位移 */
 export const spring = { type: "spring", stiffness: 500, damping: 30, mass: 0.6 } as const;
-export const press = { whileTap: { scale: 0.88 }, transition: spring };
+/** 带回弹的弹簧：勾选标记、图标弹出 */
+export const springPop = { type: "spring", stiffness: 550, damping: 20 } as const;
+/** 缓慢的弹簧：页面元素入场 */
+export const springSlow = { type: "spring", stiffness: 80, damping: 18 } as const;
+
+/** 按压反馈按元素大小分三档：胶囊按钮缩得少，小色块缩得多 */
+export const pressLarge = { whileTap: { scale: 0.94 }, transition: spring };
+export const press = { whileTap: { scale: 0.9 }, transition: spring };
+export const pressSmall = { whileTap: { scale: 0.85 }, transition: spring };
 
 interface Props extends HTMLMotionProps<"button"> {
   tone?: Tone;
@@ -45,8 +54,7 @@ export function PillButton({
   return (
     <motion.button
       type="button"
-      whileTap={{ scale: 0.94 }}
-      transition={spring}
+      {...pressLarge}
       className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition-[background-color,color,box-shadow] disabled:pointer-events-none disabled:opacity-40 ${tones[tone]} ${className}`}
       {...rest}
     >

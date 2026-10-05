@@ -12,7 +12,7 @@ import {
   switchTheme,
   type Theme,
 } from "../../lib/theme.ts";
-import { spring } from "../ui.tsx";
+import { press, pressSmall, spring } from "../ui.tsx";
 
 /** 扩散起点：鼠标点击取指针位置，键盘触发（detail 为 0）取按钮中心 */
 function origin(e: MouseEvent<HTMLElement>) {
@@ -68,8 +68,7 @@ export function ThemePicker() {
         title={t("theme.title")}
         aria-label={t("theme.title")}
         aria-expanded={open}
-        whileTap={{ scale: 0.9 }}
-        transition={spring}
+        {...press}
         onClick={() => setOpen((o) => !o)}
         className="grid size-12 place-items-center rounded-[50%] bg-surface0 text-accent transition-colors hover:bg-surface1"
       >
@@ -128,7 +127,7 @@ export function ThemePicker() {
                     title={a.name}
                     aria-label={a.name}
                     aria-pressed={active}
-                    whileTap={{ scale: 0.85 }}
+                    {...pressSmall}
                     onClick={(e) => pick({ accent: a.id }, e)}
                     style={{ background: `var(--color-${a.id})` }}
                     className={`grid size-9 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-mantle transition-shadow ${

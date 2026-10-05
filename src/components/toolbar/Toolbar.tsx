@@ -4,7 +4,7 @@ import { useT } from "../../i18n/index.tsx";
 import { parentPath } from "../../lib/format.ts";
 import type { ViewMode } from "../../types.ts";
 import type { MenuState } from "../overlays/ContextMenu.tsx";
-import { IconButton, spring } from "../ui.tsx";
+import { IconButton, pressLarge } from "../ui.tsx";
 import { ViewSwitch } from "../views/ViewSwitch.tsx";
 import { Breadcrumbs } from "./Breadcrumbs.tsx";
 
@@ -77,8 +77,7 @@ export function Toolbar({
             type="button"
             title={t("toolbar.uploadFiles")}
             aria-label={t("toolbar.uploadFiles")}
-            whileTap={{ scale: 0.94 }}
-            transition={spring}
+            {...pressLarge}
             onClick={() => onUpload("files")}
             className="inline-flex h-10 items-center gap-2 rounded-l-full bg-accent pr-3 pl-3.5 text-sm font-bold text-on-accent transition-colors hover:bg-accent-hover @sm:pl-4"
           >
@@ -90,8 +89,7 @@ export function Toolbar({
             title={t("toolbar.uploadMore")}
             aria-label={t("toolbar.uploadMore")}
             aria-haspopup="menu"
-            whileTap={{ scale: 0.94 }}
-            transition={spring}
+            {...pressLarge}
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               onMenu({

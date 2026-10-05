@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useT } from "../../i18n/index.tsx";
 import { formatSize } from "../../lib/format.ts";
 import type { Device, StorageInfo } from "../../types.ts";
-import { spring } from "../ui.tsx";
+import { press, springPop, springSlow } from "../ui.tsx";
 import { DeviceSelect } from "./DeviceSelect.tsx";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
@@ -42,7 +42,7 @@ export function Header({
                   initial={{ scale: 0, rotate: -20 }}
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 20 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                  transition={springPop}
                   className="hidden shrink-0 rounded-full bg-accent px-2.5 py-0.5 font-mono sm:inline text-xs font-semibold tracking-widest text-on-accent shadow-lg shadow-accent/30"
                 >
                   ROOT
@@ -60,8 +60,7 @@ export function Header({
             title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
             aria-label={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
             aria-pressed={rootMode}
-            whileTap={{ scale: 0.9 }}
-            transition={spring}
+            {...press}
             onClick={onToggleRoot}
             className={`grid size-12 place-items-center rounded-[50%] transition-colors ${
               rootMode
@@ -99,7 +98,7 @@ function StorageMeter({ storage }: { storage: StorageInfo | null }) {
               className={`block h-full rounded-full transition-colors ${nearlyFull ? "bg-red" : "bg-accent"}`}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
-              transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.3 }}
+              transition={{ ...springSlow, delay: 0.3 }}
             />
           </span>
           <span className="font-mono whitespace-nowrap">

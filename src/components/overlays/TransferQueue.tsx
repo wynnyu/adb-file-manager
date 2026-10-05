@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useT } from "../../i18n/index.tsx";
 import type { MessageKey } from "../../i18n/zh.ts";
 import type { Transfer } from "../../types.ts";
-import { spring } from "../ui.tsx";
+import { spring, springPop } from "../ui.tsx";
 
 const kindIcon = { upload: ArrowUpFromLine, download: ArrowDownToLine, copy: Copy, move: FolderInput };
 /** 写全类名，Tailwind 才扫得到 */
@@ -69,7 +69,7 @@ export function TransferQueue({
                     initial={{ scale: 0, rotate: -90 }}
                     animate={{ scale: 1, rotate: 0 }}
                     exit={{ scale: 0, rotate: 90 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    transition={springPop}
                   >
                     {item.status === "done" ? (
                       <Check className="size-5" />

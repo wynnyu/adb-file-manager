@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n/index.tsx";
 import type { MessageKey } from "../../i18n/zh.ts";
 import type { Device } from "../../types.ts";
-import { spring } from "../ui.tsx";
+import { pressLarge, spring } from "../ui.tsx";
 
 const stateStyle: Record<string, [MessageKey, string]> = {
   device: ["device.device", "bg-green"],
@@ -53,8 +53,7 @@ export function DeviceSelect({
     <div ref={ref} className="relative">
       <motion.button
         type="button"
-        whileTap={{ scale: 0.96 }}
-        transition={spring}
+        {...pressLarge}
         onClick={() => setOpen((o) => !o)}
         // 窄屏只显示图标，名称要靠 title 和 aria-label 提供
         title={current?.name ?? t("device.none")}

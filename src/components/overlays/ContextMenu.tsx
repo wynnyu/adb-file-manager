@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { IS_MAC } from "../../lib/entries.ts";
+import { spring } from "../ui.tsx";
 
 export type MenuItem =
   | {
@@ -135,7 +136,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
-      transition={{ type: "spring", stiffness: 600, damping: 34, mass: 0.5 }}
+      transition={spring}
       style={{ left: pos.left, top: pos.top, originX: pos.originX, originY: pos.originY }}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={onKeyDown}

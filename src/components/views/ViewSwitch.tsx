@@ -76,8 +76,7 @@ function ViewRadios({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
             aria-checked={active}
             title={t(`view.${id}`)}
             aria-label={t(`view.${id}`)}
-            whileTap={{ scale: 0.9 }}
-            transition={spring}
+            {...press}
             onClick={() => onChange(id)}
             className={`relative grid h-8 w-9 place-items-center rounded-full transition-colors ${
               active ? "text-on-accent" : "text-subtext0 hover:bg-surface1 hover:text-text"

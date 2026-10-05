@@ -116,7 +116,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12 } }}
-        transition={{ type: "spring", stiffness: 420, damping: 28 }}
+        transition={spring}
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();

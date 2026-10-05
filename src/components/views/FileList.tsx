@@ -17,7 +17,7 @@ import type { Sort, SortKey } from "../../lib/entries.ts";
 import { formatDate, formatSize } from "../../lib/format.ts";
 import { kindLabel } from "../../lib/kinds.ts";
 import type { FileEntry, TreeRow } from "../../types.ts";
-import { IconButton, spring } from "../ui.tsx";
+import { IconButton, spring, springPop } from "../ui.tsx";
 import { FileIcon } from "./FileIcon.tsx";
 
 /** 列的顺序同访达：名称、修改日期、大小、种类；窄屏只留名称 */
@@ -272,7 +272,7 @@ export function FileList(props: Props) {
                             initial={{ scale: 0, rotate: -90 }}
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0, rotate: 90, transition: { duration: 0.15 } }}
-                            transition={{ type: "spring", stiffness: 600, damping: 22 }}
+                            transition={springPop}
                             className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent text-on-accent"
                           >
                             <Check className="size-5" strokeWidth={3} />

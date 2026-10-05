@@ -4,6 +4,7 @@ import { type MouseEvent, type ReactNode, useCallback, useLayoutEffect, useRef, 
 import { useT } from "../../i18n/index.tsx";
 import { type Bookmark, bookmarkName } from "../../lib/bookmarks.ts";
 import type { MenuState } from "../overlays/ContextMenu.tsx";
+import { press, spring } from "../ui.tsx";
 import { BookmarkGlyph } from "./BookmarkIcon.tsx";
 
 /** 和 gap-2 一致 */
@@ -158,7 +159,7 @@ export function QuickLinks({
               key={b.id}
               type="button"
               title={b.path}
-              whileTap={{ scale: 0.92 }}
+              {...press}
               onClick={() => onNavigate(b.path)}
               onContextMenu={(e) => onBookmarkMenu(e, b)}
               className={`${chipClass} transition-colors ${
@@ -168,7 +169,7 @@ export function QuickLinks({
               {active && (
                 <motion.span
                   layoutId="quick-active"
-                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  transition={spring}
                   className="absolute inset-0 rounded-full bg-surface1"
                 />
               )}
@@ -179,7 +180,7 @@ export function QuickLinks({
         {hidden.length > 0 && (
           <motion.button
             type="button"
-            whileTap={{ scale: 0.92 }}
+            {...press}
             onClick={openOverflow}
             className={`${chipClass} transition-colors ${
               activeHidden ? "bg-surface1 text-text" : "text-subtext0 hover:bg-surface0 hover:text-text"
@@ -190,7 +191,7 @@ export function QuickLinks({
         )}
         <motion.button
           type="button"
-          whileTap={{ scale: 0.92 }}
+          {...press}
           onClick={onAddBookmark}
           className={`${chipClass} text-subtext0 transition-colors hover:bg-surface0 hover:text-text`}
         >

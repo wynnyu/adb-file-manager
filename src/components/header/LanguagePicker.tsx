@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../../i18n/index.tsx";
 import { LANGS } from "../../i18n/translate.ts";
-import { spring } from "../ui.tsx";
+import { press, spring } from "../ui.tsx";
 
 export function LanguagePicker() {
   const { lang, setLang, t } = useI18n();
@@ -29,8 +29,7 @@ export function LanguagePicker() {
         title={t("lang.title")}
         aria-label={t("lang.title")}
         aria-expanded={open}
-        whileTap={{ scale: 0.9 }}
-        transition={spring}
+        {...press}
         onClick={() => setOpen((o) => !o)}
         className="grid size-12 place-items-center rounded-[50%] bg-surface0 text-accent transition-colors hover:bg-surface1"
       >
