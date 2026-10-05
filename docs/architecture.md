@@ -257,7 +257,7 @@ flowchart LR
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
     overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>TransferQueue、DropOverlay、UsageTip"]
     misc["NoDevice、UploadInputs"]
-    ui["ui.tsx<br/>IconButton、PillButton、spring"]
+    ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
   subgraph lib["lib/"]
     api["api.ts"]
@@ -270,7 +270,7 @@ flowchart LR
   end
 
   App --> header & toolbar & views & bm & overlays & misc
-  header & toolbar & views & overlays & misc --> ui
+  header & toolbar & views & bm & overlays & misc --> ui
   toolbar --> views
   toolbar --> overlays
   views --> overlays
