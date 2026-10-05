@@ -1,7 +1,8 @@
 import { Check, Languages } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { LANGS, useI18n } from "../i18n/index.tsx";
+import { useI18n } from "../i18n/index.tsx";
+import { LANGS } from "../i18n/translate.ts";
 import { spring } from "./ui.tsx";
 
 export function LanguagePicker() {

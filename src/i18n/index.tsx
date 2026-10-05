@@ -1,33 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { loadPref, savePref } from "../lib/prefs.ts";
-import { en } from "./en.ts";
-import { type MessageKey, zh } from "./zh.ts";
-
-export const LANGS = [
-  { id: "zh", name: "中文" },
-  { id: "en", name: "English" },
-] as const;
-
-export type Lang = (typeof LANGS)[number]["id"];
-
-const DICTS: Record<Lang, Record<string, string>> = { zh, en };
-const LANG_KEY = "afm.lang";
-
-function detect(): Lang {
-  const saved = loadPref<string | null>(LANG_KEY, null);
-  if (saved === "zh" || saved === "en") return saved;
-  return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
-}
-
-type Params = Record<string, string | number>;
-
-/** 文案里的 {name} 占位；params.n === 1 且存在 `${key}_one` 时用单数形式 */
-function format(lang: Lang, key: MessageKey, params?: Params) {
-  const dict = DICTS[lang];
-  const one = params?.n === 1 ? dict[`${key}_one`] : undefined;
-  const tpl = one ?? dict[key] ?? zh[key];
-  return params ? tpl.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m)) : tpl;
-}
+import { changeLang, format, initLang, type Lang, type Params, type T } from "./translate.ts";
+import type { MessageKey } from "./zh.ts";
 
 type Tags = Record<string, (children: string) => ReactNode>;
 
@@ -46,7 +19,6 @@ function renderRich(text: string, tags: Tags): ReactNode[] {
   return out;
 }
 
-export type T = (key: MessageKey, params?: Params) => string;
 export type Rich = (key: MessageKey, tags: Tags, params?: Params) => ReactNode;
 
 interface I18n {
@@ -58,17 +30,11 @@ interface I18n {
 
 const Ctx = createContext<I18n | null>(null);
 
-/** React 之外（api.ts 等）用；随 Provider 同步 */
-let current: Lang = "zh";
-export const getLang = () => current;
-export const tr: T = (key, params) => format(current, key, params);
-
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => (current = detect()));
+  const [lang, setLangState] = useState<Lang>(initLang);
 
   const setLang = useCallback((l: Lang) => {
-    current = l;
-    savePref(LANG_KEY, l);
+    changeLang(l);
     setLangState(l);
   }, []);
 

@@ -1,4 +1,4 @@
-import type { T } from "../i18n/index.tsx";
+import type { T } from "../i18n/translate.ts";
 import type { MessageKey } from "../i18n/zh.ts";
 import type { FileEntry } from "../types.ts";
 

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { MenuItem } from "../components/ContextMenu.tsx";
 import { VIEWS } from "../components/ViewSwitch.tsx";
-import type { T } from "../i18n/index.tsx";
+import type { T } from "../i18n/translate.ts";
 import type { Clip, FileEntry, ViewMode } from "../types.ts";
 import type { Bookmark } from "./bookmarks.ts";
 import { MOD } from "./entries.ts";

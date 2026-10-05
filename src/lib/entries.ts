@@ -1,4 +1,4 @@
-import { tr } from "../i18n/index.tsx";
+import { tr } from "../i18n/translate.ts";
 import type { FileEntry } from "../types.ts";
 import { kindLabel } from "./kinds.ts";
 
