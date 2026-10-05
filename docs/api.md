@@ -67,8 +67,8 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 ```ts
 interface Device {
   serial: string;
-  /** adb devices 报告的状态 */
-  state: "device" | "unauthorized" | "offline" | string;
+  /** adb devices 报告的状态，常见的有 device、unauthorized、offline，也可能是 bootloader、recovery 等 */
+  state: string;
   /** adb devices -l 中的 model，下划线换成空格 */
   model: string;
   /** 设备的市场名称，读取不到时依次退回到品牌加型号、model、serial */

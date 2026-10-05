@@ -6,15 +6,20 @@ import type { MessageKey } from "../../i18n/zh.ts";
 import type { Device } from "../../types.ts";
 import { pressLarge, spring } from "../ui.tsx";
 
-const stateStyle: Record<string, [MessageKey, string]> = {
+type KnownState = "device" | "unauthorized" | "offline";
+
+const stateStyle: Record<KnownState, [MessageKey, string]> = {
   device: ["device.device", "bg-green"],
   unauthorized: ["device.unauthorized", "bg-yellow"],
   offline: ["device.offline", "bg-red"],
 };
 
+/** adb 还会报告 bootloader、recovery 等状态，只有常见的几种有专门的文案和颜色 */
+const isKnownState = (state: string): state is KnownState => Object.hasOwn(stateStyle, state);
+
 /** 连上时 ping 一次提示状态变化；key 跟着 state 走，状态不变就不重放 */
 function Dot({ state }: { state: string }) {
-  const color = stateStyle[state]?.[1] ?? "bg-overlay0";
+  const color = isKnownState(state) ? stateStyle[state][1] : "bg-overlay0";
   return (
     <span className="relative flex size-2.5">
       {state === "device" && (
@@ -85,7 +90,7 @@ export function DeviceSelect({
             {current ? (
               <>
                 <Dot state={current.state} />
-                {stateStyle[current.state] ? t(stateStyle[current.state][0]) : current.state}
+                {isKnownState(current.state) ? t(stateStyle[current.state][0]) : current.state}
               </>
             ) : (
               t("device.waiting")

@@ -2,7 +2,8 @@
 
 export interface Device {
   serial: string;
-  state: "device" | "unauthorized" | "offline" | string;
+  /** adb devices 报告的状态，常见的有 device、unauthorized、offline，也可能是 bootloader、recovery 等 */
+  state: string;
   model: string;
   name: string;
 }

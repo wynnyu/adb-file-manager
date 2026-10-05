@@ -7,6 +7,9 @@ import { BookmarkForm, BookmarkPreview } from "../bookmarks/BookmarkForm.tsx";
 import { PillButton, spring } from "../ui.tsx";
 import { type DialogMessage, DialogMessageBody } from "./DialogMessage.tsx";
 
+/** 对话框的配色：confirm 可指定 danger 或 warn，其余为 default */
+type DialogTone = "default" | "danger" | "warn";
+
 export type DialogState =
   | {
       kind: "prompt";
@@ -22,7 +25,7 @@ export type DialogState =
       icon: LucideIcon;
       message: DialogMessage;
       confirm: string;
-      tone?: "danger" | "warn";
+      tone?: Exclude<DialogTone, "default">;
       /** 附带一个可勾选项，结果传给 onSubmit */
       checkbox?: string;
       /** 确认按钮倒计时若干秒后才可点击 */
@@ -39,7 +42,7 @@ export type DialogState =
       onSubmit: (v: BookmarkFields) => Promise<void>;
     };
 
-const toneStyles = {
+const toneStyles: Record<DialogTone, { badge: string; ring: string; countdown: string }> = {
   default: { badge: "bg-accent/15 text-accent", ring: "ring-surface0", countdown: "bg-on-accent/20" },
   danger: { badge: "bg-red/15 text-red", ring: "ring-red/40", countdown: "bg-red/20" },
   warn: { badge: "bg-peach/15 text-peach", ring: "ring-peach/40", countdown: "bg-peach/20" },

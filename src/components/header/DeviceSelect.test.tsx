@@ -21,6 +21,11 @@ describe("DeviceSelect", () => {
     expect(screen.getByText(tz("device.device"))).toBeTruthy();
   });
 
+  it.each(["recovery", "toString"])("没有专门文案的状态 %s 原样显示", (state) => {
+    show([{ ...pixel, state }], "R5CT");
+    expect(screen.getByText(state)).toBeTruthy();
+  });
+
   it("没有选中设备时提示等待连接", () => {
     show([], null);
     expect(screen.getByText(tz("device.none"))).toBeTruthy();
