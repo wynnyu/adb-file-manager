@@ -25,6 +25,8 @@ const zh = {
   downloadExpired: "下载已过期，请重试",
   intoItself: "无法将 {name} 移动或拷贝到其自身内部",
   notPreviewable: "不支持预览此类型的文件",
+  forbiddenHost: "仅允许从本机访问",
+  forbiddenOrigin: "拒绝来自其他网页的请求",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -51,6 +53,8 @@ const en: Record<MsgKey, string> = {
   downloadExpired: "Download expired. Please try again",
   intoItself: "Cannot move or copy {name} into itself",
   notPreviewable: "Preview is not supported for this file type",
+  forbiddenHost: "Only local access is allowed",
+  forbiddenOrigin: "Requests from other pages are rejected",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

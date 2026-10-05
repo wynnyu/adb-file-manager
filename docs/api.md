@@ -10,9 +10,9 @@
 
 - 后端监听 `127.0.0.1`，端口默认为 3001，可通过环境变量 `PORT` 修改；开发时前端经 Vite 代理访问
 - 所有接口位于 `/api/` 下；构建后，`/api/` 以外的 GET 请求返回前端页面
-- 每个请求都经过 `localOnly` 校验，不满足以下条件时返回 `403`：
-  - `Host` 去掉端口后为 `localhost`、`127.0.0.1` 或 `[::1]`，否则返回 `{ "error": "forbidden host" }`
-  - 若带有 `Origin`，须为上述主机的 `http:` 地址；若带有 `Sec-Fetch-Site`，须为 `same-origin` 或 `none`，否则返回 `{ "error": "forbidden origin" }`
+- 每个请求都经过 `localOnly` 校验，不满足以下条件时返回 `403`，`error` 按请求语言说明原因：
+  - `Host` 去掉端口后为 `localhost`、`127.0.0.1` 或 `[::1]`
+  - 若带有 `Origin`，须为上述主机的 `http:` 地址；若带有 `Sec-Fetch-Site`，须为 `same-origin` 或 `none`
 
 ### 公共参数
 

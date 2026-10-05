@@ -19,7 +19,7 @@ function isLocalOrigin(origin: string) {
 export function localOnly(req: Request, res: Response, next: NextFunction) {
   const host = (req.headers.host ?? "").replace(/:\d+$/, "");
   if (!LOCAL_HOSTS.includes(host)) {
-    res.status(403).json({ error: "forbidden host" } satisfies ErrorResponse);
+    res.status(403).json({ error: msg("forbiddenHost") } satisfies ErrorResponse);
     return;
   }
   const origin = req.headers.origin;
@@ -28,7 +28,7 @@ export function localOnly(req: Request, res: Response, next: NextFunction) {
     (origin !== undefined && !isLocalOrigin(origin)) ||
     (site !== undefined && site !== "same-origin" && site !== "none")
   ) {
-    res.status(403).json({ error: "forbidden origin" } satisfies ErrorResponse);
+    res.status(403).json({ error: msg("forbiddenOrigin") } satisfies ErrorResponse);
     return;
   }
   next();
