@@ -40,9 +40,9 @@ export type DialogState =
     };
 
 const toneStyles = {
-  default: { badge: "bg-accent/15 text-accent", ring: "ring-surface0" },
-  danger: { badge: "bg-red/15 text-red", ring: "ring-red/40" },
-  warn: { badge: "bg-peach/15 text-peach", ring: "ring-peach/40" },
+  default: { badge: "bg-accent/15 text-accent", ring: "ring-surface0", countdown: "bg-on-accent/20" },
+  danger: { badge: "bg-red/15 text-red", ring: "ring-red/40", countdown: "bg-red/20" },
+  warn: { badge: "bg-peach/15 text-peach", ring: "ring-peach/40", countdown: "bg-peach/20" },
 };
 
 export function Dialog({ state, onClose }: { state: DialogState; onClose: () => void }) {
@@ -196,13 +196,13 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
           </PillButton>
           <PillButton
             type="submit"
-            tone={tone === "default" ? "accent" : "danger"}
-            className={`relative h-12 flex-1 justify-center overflow-hidden ${tone === "warn" ? "!bg-peach/15 !text-peach hover:!bg-peach hover:!text-crust" : ""}`}
+            tone={tone === "default" ? "accent" : tone}
+            className="relative h-12 flex-1 justify-center overflow-hidden"
             disabled={busy || left > 0}
           >
             {countdown > 0 && (
               <motion.span
-                className="absolute inset-y-0 left-0 bg-red/20"
+                className={`absolute inset-y-0 left-0 ${styles.countdown}`}
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{ duration: countdown, ease: "linear" }}

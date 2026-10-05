@@ -311,8 +311,8 @@ export function FileList(props: Props) {
                         <Pencil className="size-4" />
                       </IconButton>
                       <IconButton
-                        tone="ghost"
-                        className="size-9 hover:!bg-red/15 hover:!text-red"
+                        tone="ghost-danger"
+                        className="size-9"
                         title={t("files.delete")}
                         onClick={() => props.onDelete(entry)}
                       >

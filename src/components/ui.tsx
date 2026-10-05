@@ -1,13 +1,16 @@
 import { type HTMLMotionProps, motion } from "motion/react";
 import type { ReactNode } from "react";
 
-type Tone = "default" | "accent" | "danger" | "ghost";
+type Tone = "default" | "accent" | "danger" | "warn" | "ghost" | "ghost-danger";
 
 const tones: Record<Tone, string> = {
   default: "bg-surface0 text-text hover:bg-surface1",
   accent: "bg-accent text-on-accent hover:bg-accent-hover shadow-lg shadow-accent/15 hover:shadow-accent-hover/25",
   danger: "bg-red/15 text-red hover:bg-red hover:text-crust",
+  warn: "bg-peach/15 text-peach hover:bg-peach hover:text-crust",
   ghost: "text-subtext0 hover:bg-surface0 hover:text-text",
+  /** 平时同 ghost，悬停时变红：用于列表行里不想太醒目的删除按钮 */
+  "ghost-danger": "text-subtext0 hover:bg-red/15 hover:text-red",
 };
 
 export const spring = { type: "spring", stiffness: 500, damping: 30, mass: 0.6 } as const;
