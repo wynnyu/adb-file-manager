@@ -1,5 +1,5 @@
 import { getLang, tr } from "../i18n/translate.ts";
-import type { Device, FileEntry, RootMethod, StorageInfo } from "../types.ts";
+import type { Device, FileEntry, PullResult, RootCheckResult, StorageInfo } from "../types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
 export interface Target {
@@ -43,7 +43,7 @@ const qs = (t: Target, extra: Record<string, string> = {}) =>
 export const api = {
   devices: () => request<Device[]>("/api/devices"),
 
-  rootCheck: (serial: string) => post<{ method: RootMethod }>("/api/root-check", { serial }),
+  rootCheck: (serial: string) => post<RootCheckResult>("/api/root-check", { serial }),
 
   storage: (serial: string) => request<StorageInfo>(`/api/storage?${new URLSearchParams({ serial })}`),
 
@@ -63,7 +63,7 @@ export const api = {
 
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {
-    const { token } = await post<{ token: string; name: string }>("/api/pull", { ...t, paths });
+    const { token } = await post<PullResult>("/api/pull", { ...t, paths });
     const a = document.createElement("a");
     a.href = `/api/fetch/${token}`;
     a.download = "";

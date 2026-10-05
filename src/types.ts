@@ -1,6 +1,14 @@
 import type { FileEntry } from "../shared/types.d.ts";
 
-export type { Device, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
+export type {
+  Device,
+  FileEntry,
+  PullResult,
+  RootCheckResult,
+  RootMethod,
+  StorageInfo,
+  UploadResult,
+} from "../shared/types.d.ts";
 
 export type TransferStatus = "uploading" | "pushing" | "pulling" | "copying" | "moving" | "done" | "error";
 

@@ -97,6 +97,23 @@ interface StorageInfo {
   total: number;
   free: number;
 }
+
+/** POST /api/root-check 的响应 */
+interface RootCheckResult {
+  method: RootMethod;
+}
+
+/** POST /api/upload 的响应；count 为收到的文件数 */
+interface UploadResult {
+  ok: true;
+  count: number;
+}
+
+/** POST /api/pull 的响应：一次性下载 token 和下载后的文件名 */
+interface PullResult {
+  token: string;
+  name: string;
+}
 ```
 
 ## 接口一览

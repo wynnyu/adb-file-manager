@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
+import type { RootCheckResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
@@ -26,7 +27,7 @@ export function createApp() {
   app.post(
     "/api/root-check",
     wrap(async (req, res) => {
-      res.json({ method: await rootFor(serialOf(req), true) });
+      res.json({ method: await rootFor(serialOf(req), true) } satisfies RootCheckResult);
     }),
   );
 

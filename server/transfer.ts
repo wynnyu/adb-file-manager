@@ -7,6 +7,7 @@ import posix from "node:path/posix";
 import { ZipArchive } from "archiver";
 import { Router } from "express";
 import multer from "multer";
+import type { PullResult, UploadResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { msg } from "./i18n.ts";
 import { ctxOf, pathsOf, wrap } from "./request.ts";
@@ -63,7 +64,7 @@ export function transferRoutes() {
         }
         await adb.mkdir(ctx, dest);
         await adb.push(ctx, [...tops], dest);
-        res.json({ ok: true, count: files.length });
+        res.json({ ok: true, count: files.length } satisfies UploadResult);
       } finally {
         await Promise.all(files.map((f) => fs.rm(f.path, { force: true })));
         await fs.rm(stage, { recursive: true, force: true });
@@ -93,7 +94,7 @@ export function transferRoutes() {
         };
         if (single) job.file = path.join(dir, job.name);
         jobs.set(token, job);
-        res.json({ token, name: job.name });
+        res.json({ token, name: job.name } satisfies PullResult);
       } catch (e) {
         await fs.rm(dir, { recursive: true, force: true });
         throw e;
