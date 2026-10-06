@@ -2,10 +2,14 @@ import type { FileEntry } from "../shared/types.d.ts";
 
 export type {
   Device,
+  DirUsage,
   ErrorCode,
   ErrorResponse,
   FileEntry,
+  FileStat,
+  LinkInfo,
   OkResult,
+  PartitionInfo,
   PullResult,
   RootCheckResult,
   RootMethod,

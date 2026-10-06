@@ -1,8 +1,10 @@
 import { getLang, tr } from "../i18n/translate.ts";
 import type {
   Device,
+  DirUsage,
   ErrorResponse,
   FileEntry,
+  FileStat,
   OkResult,
   PullResult,
   RootCheckResult,
@@ -73,6 +75,19 @@ export const api = {
 
   /** 图片、视频、音频的地址，直接用作媒体元素的 src */
   previewUrl: (t: Target, path: string) => `/api/preview?${qs(t, { path })}`,
+
+  stat: (t: Target, path: string) => request<FileStat>(`/api/stat?${qs(t, { path })}`),
+
+  /** 文件夹的递归统计，目录大时较慢，可用 signal 取消 */
+  usage: (t: Target, path: string, signal?: AbortSignal) =>
+    request<DirUsage>(`/api/usage?${qs(t, { path })}`, { signal }),
+
+  chmod: (t: Target, paths: string[], mode: string, recursive: boolean) =>
+    post<OkResult>("/api/chmod", { ...t, paths, mode, recursive }),
+
+  /** owner 和 group 至少给一个 */
+  chown: (t: Target, paths: string[], owner: string | undefined, group: string | undefined, recursive: boolean) =>
+    post<OkResult>("/api/chown", { ...t, paths, owner, group, recursive }),
 
   /** 以文本读取文件开头，不是 UTF-8 文本时为 binary */
   text: (t: Target, path: string) => request<TextPreview>(`/api/text?${qs(t, { path })}`),

@@ -58,7 +58,31 @@ export function joinPath(dir: string, name: string) {
   return dir === "/" ? `/${name}` : `${dir}/${name}`;
 }
 
+export function basename(p: string) {
+  return p.slice(p.lastIndexOf("/") + 1);
+}
+
 export function parentPath(p: string) {
   const i = p.lastIndexOf("/");
   return i <= 0 ? "/" : p.slice(0, i);
 }
+
+/** 权限位转成 rwxr-xr-x；setuid、setgid、sticky 占用对应的执行位（s、s、t，没有执行位时写成大写） */
+export function formatMode(mode: number) {
+  const special = [0o4000, 0o2000, 0o1000];
+  let out = "";
+  for (let i = 0; i < 9; i++) {
+    const on = (mode & (0o400 >> i)) !== 0;
+    const slot = i % 3;
+    if (slot < 2 || !(mode & special[(i - 2) / 3])) out += on ? "rwx"[slot] : "-";
+    else out += i === 8 ? (on ? "t" : "T") : on ? "s" : "S";
+  }
+  return out;
+}
+
+/** 八进制写法：带 setuid、setgid、sticky 时 4 位，否则 3 位 */
+export const formatOctal = (mode: number) =>
+  mode & 0o7000 ? (mode & 0o7777).toString(8).padStart(4, "0") : (mode & 0o777).toString(8).padStart(3, "0");
+
+/** 解析 3 到 4 位八进制，不合法时为 null */
+export const parseOctal = (s: string) => (/^[0-7]{3,4}$/.test(s) ? Number.parseInt(s, 8) : null);
