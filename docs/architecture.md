@@ -164,7 +164,7 @@ flowchart TB
 | `useShortcuts` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应 | 无 |
 | `useUploadPicker` / `useDropUpload` | 文件选择框、拖放上传 | 无 |
 
-`App.tsx` 中还用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap`。
+`App.tsx` 中还用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
 
 ### 目录缓存
 
@@ -206,6 +206,8 @@ flowchart LR
     queries["queries.ts"]
     entries["entries.ts"]
     kinds["kinds.ts"]
+    code["code.ts"]
+    markdown["markdown.ts"]
     format["format.ts"]
     prefs["prefs.ts"]
     bookmarks["bookmarks.ts"]
@@ -271,7 +273,7 @@ flowchart LR
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
     overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>Properties、TransferQueue、<br/>DropOverlay、UsageTip"]
-    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>CodeView、Unsupported"]
+    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>CodeView、MarkdownView、<br/>MarkdownParts、Unsupported"]
     misc["NoDevice、UploadInputs"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
@@ -301,13 +303,15 @@ flowchart LR
   bm --> bookmarksLib
   overlays --> bookmarksLib & entries & prefs
   viewer --> views
-  viewer --> api & queries & format & kinds
+  viewer --> api & queries & format & kinds & code
+  viewer --> markdown
 ```
 
 说明：
 
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
 - `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取，再由 `CodeView`（CodeMirror 6，只读，首次打开文本时懒加载）显示，语言识别和主题配色在 `lib/code.ts`。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
+- Markdown 文件（`lib/kinds.ts` 的 `isMarkdown`）默认由 `MarkdownView` 渲染为排版后的预览，同样懒加载，`vite.config.ts` 把 unified 生态的依赖单独分为 `markdown` 块，避免并入首屏。渲染链路为 react-markdown，加 remark-gfm（表格、任务列表、删除线、脚注）、rehype-raw 和 rehype-sanitize（GitHub 风格白名单，净化原始 HTML）；各标签的样式在 `MarkdownView` 的 `components` 映射里用 Tailwind 类名写出。代码块由 `MarkdownParts` 的 `CodeBlock` 接管，经 `lib/code.ts` 的 `languageForFence` 和 `highlightLines` 复用源码视图的语言识别和配色，`codeHighlightCss` 提供对应的样式规则。链接和图片的路径解析、标题锚点在 `lib/markdown.ts`：指向设备上其他文件的相对链接不可点击，相对路径的图片按 md 所在目录解析，经 `api.previewUrl` 读取
 - `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
 - `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `lib/queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
 - `overlays/Dialog.tsx` 内嵌 `bookmarks/BookmarkForm.tsx` 编辑书签，`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
