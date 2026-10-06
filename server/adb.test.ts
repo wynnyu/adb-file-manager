@@ -3,7 +3,18 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { AdbError, assertAbs, type ByteRange, catCmd, LINK_MARK, parseLs, q } from "./adb.ts";
+import {
+  AdbError,
+  AUTH_RETRY_DELAY,
+  type AuthWatch,
+  assertAbs,
+  type ByteRange,
+  catCmd,
+  LINK_MARK,
+  parseLs,
+  pickAuthRetries,
+  q,
+} from "./adb.ts";
 
 describe("assertAbs", () => {
   it("规范化路径", () => {
@@ -154,5 +165,41 @@ describe("parseLs", () => {
 
   it("跳过空行和字段不全的行", () => {
     expect(parseLs(lines("", "garbage", "directory|1|2|/x", LINK_MARK))).toEqual([]);
+  });
+});
+
+describe("pickAuthRetries", () => {
+  const un = [{ serial: "A", state: "unauthorized" }];
+  const ok = [{ serial: "A", state: "device" }];
+
+  it("首次出现只记录，不重试", () => {
+    const state = new Map<string, AuthWatch>();
+    expect(pickAuthRetries(un, 1000, state)).toEqual([]);
+    expect(state.get("A")).toEqual({ since: 1000, retried: false });
+  });
+
+  it.each([
+    [AUTH_RETRY_DELAY - 1, []],
+    [AUTH_RETRY_DELAY, ["A"]],
+  ])("持续 %i 毫秒后的结果为 %j", (elapsed, expected) => {
+    const state = new Map<string, AuthWatch>([["A", { since: 0, retried: false }]]);
+    expect(pickAuthRetries(un, elapsed, state)).toEqual(expected);
+  });
+
+  it("超时后只重试一次", () => {
+    const state = new Map<string, AuthWatch>([["A", { since: 0, retried: false }]]);
+    expect(pickAuthRetries(un, AUTH_RETRY_DELAY, state)).toEqual(["A"]);
+    expect(pickAuthRetries(un, AUTH_RETRY_DELAY * 3, state)).toEqual([]);
+  });
+
+  it.each([
+    ["状态恢复", ok],
+    ["设备消失", []],
+  ])("%s后清除记录，再次待授权时重新计时", (_name, next) => {
+    const state = new Map<string, AuthWatch>([["A", { since: 0, retried: true }]]);
+    pickAuthRetries(next, 100_000, state);
+    expect(state.has("A")).toBe(false);
+    expect(pickAuthRetries(un, 200_000, state)).toEqual([]);
+    expect(pickAuthRetries(un, 200_000 + AUTH_RETRY_DELAY, state)).toEqual(["A"]);
   });
 });

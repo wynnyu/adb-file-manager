@@ -91,6 +91,46 @@ export async function rootMethod(serial: string): Promise<RootMethod> {
 
 const nameCache = new Map<string, string>();
 
+/** 持续 unauthorized 多久后自动重新握手一次，留出时间让第一次弹窗正常显示和点击 */
+export const AUTH_RETRY_DELAY = 8_000;
+
+export interface AuthWatch {
+  since: number;
+  retried: boolean;
+}
+
+/**
+ * 根据当前设备列表更新 unauthorized 的计时记录，返回本次需要重新握手的 serial。
+ * 状态变化或设备消失时清除记录，重新插拔后会再重试一次。
+ */
+export function pickAuthRetries(list: Pick<Device, "serial" | "state">[], now: number, state: Map<string, AuthWatch>) {
+  const pending = new Set(list.filter((d) => d.state === "unauthorized").map((d) => d.serial));
+  for (const serial of state.keys()) if (!pending.has(serial)) state.delete(serial);
+  const retry: string[] = [];
+  for (const serial of pending) {
+    const watch = state.get(serial);
+    if (!watch) state.set(serial, { since: now, retried: false });
+    else if (!watch.retried && now - watch.since >= AUTH_RETRY_DELAY) {
+      watch.retried = true;
+      retry.push(serial);
+    }
+  }
+  return retry;
+}
+
+const authWatch = new Map<string, AuthWatch>();
+
+/** 断开并重连 offline 和 unauthorized 的传输，设备会重新弹出授权提示，不影响已授权的设备 */
+export async function reconnectOffline() {
+  await run(["reconnect", "offline"], 10_000);
+}
+
+/** 重启 adb 服务；kill-server 在服务未运行时会报错，忽略即可 */
+export async function restartServer() {
+  await run(["kill-server"], 10_000).catch(() => {});
+  await run(["start-server"], 15_000);
+}
+
 export async function devices(): Promise<Device[]> {
   const out = await run(["devices", "-l"], 10_000);
   const list: Device[] = [];
@@ -115,6 +155,7 @@ export async function devices(): Promise<Device[]> {
     }
     list.push({ serial, state, model, name: name || model || serial });
   }
+  if (pickAuthRetries(list, Date.now(), authWatch).length) reconnectOffline().catch(() => {});
   return list;
 }
 

@@ -104,11 +104,18 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "nodevice.step1.text":
     "Open “About phone” in Settings, tap “Build number” 7 times, then enable “USB debugging” in “Developer options”.",
   "nodevice.step2.title": "Connect with a USB cable",
-  "nodevice.step2.text": "The USB mode can be set to “Charging only”; adb does not rely on MTP file transfer.",
+  "nodevice.step2.text":
+    "The default USB mode is usually fine. If no authorization prompt appears, switch to “File transfer” mode.",
   "nodevice.step3.title": "Authorize USB debugging on the device",
   "nodevice.step3.text":
     "When the USB debugging authorization prompt appears on the device, tap “Allow”. Selecting “Always allow from this computer” is recommended.",
   "nodevice.unauthorized": "Allow USB debugging on the device",
+  "nodevice.reauthorize": "Request authorization again",
+  "nodevice.restartAdb": "Restart adb server",
+  "nodevice.restartAdbHint": "Interrupts other tools that are using adb",
+  "nodevice.tip1": "Make sure the device screen is unlocked",
+  "nodevice.tip2": "Choose “Revoke USB debugging authorizations” in Developer options, then reconnect",
+  "nodevice.tip3": "Some models only show the prompt when the USB mode is set to “File transfer”",
   "nodevice.connect": "Connect a device",
   "nodevice.waiting": "Waiting for a device…",
   "nodevice.adbError": "adb error: {error}",

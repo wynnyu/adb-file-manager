@@ -138,6 +138,8 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 | 方法 | 路径 | 说明 | 前端封装 |
 | --- | --- | --- | --- |
 | GET | `/api/devices` | 列出设备 | `api.devices()` |
+| POST | `/api/devices/reconnect` | 重新请求授权 | `api.reconnectDevices()` |
+| POST | `/api/devices/restart-server` | 重启 adb 服务 | `api.restartAdb()` |
 | POST | `/api/root-check` | 检测 root 方式 | `api.rootCheck(serial)` |
 | GET | `/api/storage` | 查询存储空间 | `api.storage(serial)` |
 | GET | `/api/ls` | 列出目录 | `api.ls(target, path)` |
@@ -158,11 +160,21 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 
 列出 adb 识别到的全部设备，包括未授权和离线的设备。执行 `adb devices -l`，超时 10 秒。设备名称通过 `getprop` 读取并按序列号缓存。
 
+某台设备连续处于 `unauthorized` 超过 8 秒时，会自动执行一次 `adb reconnect offline` 让设备重新弹出授权提示；状态变化或设备消失后记录清除，重新插拔后可再次自动重试。
+
 响应：`Device[]`
 
 ```json
 [{ "serial": "R5CT1234", "state": "device", "model": "Pixel 9", "name": "Pixel 9" }]
 ```
+
+### POST /api/devices/reconnect
+
+执行 `adb reconnect offline`，断开并重连 offline 和 unauthorized 的设备，设备会重新弹出授权提示，不影响已授权的设备。超时 10 秒。无需参数，响应：`{ "ok": true }`
+
+### POST /api/devices/restart-server
+
+执行 `adb kill-server` 后接 `adb start-server`，会中断其他正在使用 adb 的工具。服务未运行导致的 kill-server 错误会被忽略。无需参数，响应：`{ "ok": true }`
 
 前端每 2 秒轮询一次（`useDevices`）。
 
@@ -437,6 +449,7 @@ interface Target {
 | 方法 | 返回值 | 说明 |
 | --- | --- | --- |
 | `devices()` | `Promise<Device[]>` | |
+| `reconnectDevices()`、`restartAdb()` | `Promise<OkResult>` | 设备待授权时的补救操作，由 `hooks/useReauthorize.ts` 调用 |
 | `rootCheck(serial)` | `Promise<{ method: RootMethod }>` | |
 | `storage(serial)` | `Promise<StorageInfo>` | |
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |

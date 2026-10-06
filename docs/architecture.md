@@ -143,6 +143,7 @@ flowchart TB
 | hook | 管理的状态 | 持久化（localStorage） |
 | --- | --- | --- |
 | `useDevices` | 设备列表、当前设备、adb 错误；每 2 秒轮询 | 无 |
+| `useReauthorize` | 待授权时“重新请求授权”“重启 adb 服务”的进行状态和错误 | 无 |
 | `useStorage` | 当前设备的存储空间 | 无 |
 | `useRootMode` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
 | `useSelection` | 选中的路径、连选起点 | 无 |
@@ -179,6 +180,7 @@ hooks 之间及 hooks 与 `lib/` 的依赖如下。所有 hook 和组件都通�
 flowchart LR
   subgraph hooks["hooks/"]
     useDevices
+    useReauthorize
     useRootMode
     useSelection
     useDirectory
@@ -212,6 +214,7 @@ flowchart LR
   Dialog["components/overlays/Dialog.tsx"]
 
   useDevices --> api
+  useReauthorize --> api
   useRootMode --> api
   useRootMode --> prefs
   useRootMode --> favicon

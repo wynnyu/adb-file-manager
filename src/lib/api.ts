@@ -52,6 +52,8 @@ const qs = (t: Target, extra: Record<string, string> = {}) =>
 
 export const api = {
   devices: () => request<Device[]>("/api/devices"),
+  reconnectDevices: () => post<OkResult>("/api/devices/reconnect", {}),
+  restartAdb: () => post<OkResult>("/api/devices/restart-server", {}),
 
   rootCheck: (serial: string) => post<RootCheckResult>("/api/root-check", { serial }),
 

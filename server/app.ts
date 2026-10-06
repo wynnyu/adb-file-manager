@@ -26,6 +26,22 @@ export function createApp() {
   );
 
   app.post(
+    "/api/devices/reconnect",
+    wrap(async (_req, res) => {
+      await adb.reconnectOffline();
+      res.json({ ok: true });
+    }),
+  );
+
+  app.post(
+    "/api/devices/restart-server",
+    wrap(async (_req, res) => {
+      await adb.restartServer();
+      res.json({ ok: true });
+    }),
+  );
+
+  app.post(
     "/api/root-check",
     wrap(async (req, res) => {
       res.json({ method: await rootFor(serialOf(req), true) } satisfies RootCheckResult);
