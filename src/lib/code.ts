@@ -1,7 +1,7 @@
-import { HighlightStyle, LanguageDescription } from "@codemirror/language";
+import { HighlightStyle, type Language, LanguageDescription } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
-import { tags as t } from "@lezer/highlight";
+import { highlightCode, tags as t } from "@lezer/highlight";
 
 /** Android 上常见、但 language-data 没有收录的扩展名，值是语言名或别名 */
 const EXTRA_EXTENSIONS: Record<string, string> = {
@@ -26,6 +26,36 @@ export function languageFor(name: string, text: string): LanguageDescription | n
   if (/python/.test(first)) return LanguageDescription.matchLanguageName(languages, "python", false);
   if (/sh\b|bash/.test(first)) return LanguageDescription.matchLanguageName(languages, "shell", false);
   return null;
+}
+
+/** Markdown 围栏代码块的语言：取 info 的第一个词，先按语言名和别名找，再按扩展名找。识别不了时返回 null */
+export function languageForFence(info: string): LanguageDescription | null {
+  const lang =
+    info
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/^\{?\.?/, "") ?? "";
+  if (!lang) return null;
+  return LanguageDescription.matchLanguageName(languages, lang, true) ?? languageFor(`x.${lang}`, "");
+}
+
+/** 按行切分的高亮片段，cls 为空表示不着色 */
+export interface Token {
+  text: string;
+  cls: string;
+}
+
+/** 不创建编辑器，直接用 codeHighlight 把代码切成按行的片段，配色与源码视图一致 */
+export function highlightLines(code: string, language: Language): Token[][] {
+  const lines: Token[][] = [[]];
+  highlightCode(
+    code,
+    language.parser.parse(code),
+    codeHighlight,
+    (text, cls) => lines[lines.length - 1].push({ text, cls }),
+    () => lines.push([]),
+  );
+  return lines;
 }
 
 /** 编辑器外观，颜色全部取主题变量，随 data-flavor 和 data-accent 自动变化 */
@@ -131,3 +161,6 @@ export const codeHighlight = HighlightStyle.define([
   { tag: [t.deleted, t.invalid], color: "var(--color-red)" },
   { tag: [t.operator, t.punctuation, t.bracket], color: "var(--color-subtext1)" },
 ]);
+
+/** codeHighlight 的样式规则文本：HighlightStyle 挂到编辑器时才注入样式，预览里没有编辑器，需要自行注入 */
+export const codeHighlightCss = codeHighlight.module?.getRules() ?? "";
