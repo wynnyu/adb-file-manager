@@ -1,7 +1,10 @@
 import { createApp } from "./app.ts";
+import { cleanTmp } from "./tmp.ts";
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = "127.0.0.1";
+
+await cleanTmp();
 
 createApp().listen(PORT, HOST, (err?: Error) => {
   if (err) {

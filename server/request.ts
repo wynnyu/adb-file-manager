@@ -47,6 +47,8 @@ export async function rootFor(serial: string, fresh = false) {
     rootCache.delete(serial);
     m = await adb.rootMethod(serial);
     rootCache.set(serial, m);
+    // 不在连接时就用 su 清理，避免每次启动都弹出 root 管理器的授权提示
+    if (m === "su") adb.cleanStagesOnce({ serial, root: m });
   }
   return m;
 }

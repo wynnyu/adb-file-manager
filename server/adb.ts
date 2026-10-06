@@ -152,6 +152,7 @@ export async function devices(): Promise<Device[]> {
     if (!m) continue;
     const [, serial, state, rest] = m;
     const model = (rest.match(/model:(\S+)/)?.[1] ?? "").replace(/_/g, " ");
+    if (state === "device") cleanStagesOnce({ serial, root: false });
     let name = nameCache.get(serial);
     if (!name && state === "device") {
       try {
@@ -236,8 +237,34 @@ export async function realpaths(ctx: Ctx, paths: string[]): Promise<string[]> {
   return paths.map((p, i) => (lines[i]?.startsWith("/") ? path.normalize(lines[i]) : p));
 }
 
+/** 本进程的标识，写进暂存目录名，清理时据此区分以前的进程留下的目录和本进程正在使用的目录 */
+const BOOT = Math.random().toString(36).slice(2, 8);
+
 /** su 模式下 adb push/pull 本身没有 root 权限，先经 /data/local/tmp 中转 */
-const stagingDir = () => `/data/local/tmp/adbfm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const stagingDir = () =>
+  `/data/local/tmp/adbfm-${BOOT}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** 清理暂存目录的设备端命令：删除除 boot 对应进程之外留下的 adbfm-*，总是成功返回。boot 只来自内部，不含外部输入 */
+export function stageCleanupCmd(boot: string) {
+  const dir = "/data/local/tmp";
+  return (
+    `for d in ${dir}/adbfm-*; do [ -e "$d" ] || continue; ` +
+    `case "$d" in ${dir}/adbfm-${boot}-*) ;; *) rm -rf "$d" ;; esac; done 2>/dev/null; true`
+  );
+}
+
+const cleaned = new Set<string>();
+
+/**
+ * 清理以前的进程留下的暂存目录，每个设备和 root 方式只执行一次，不阻塞调用方。
+ * push 的暂存目录归 shell 用户所有，普通用户即可删除；pull 的由 root 创建，需要 su 才能删
+ */
+export function cleanStagesOnce(ctx: Ctx) {
+  const key = `${ctx.serial}|${ctx.root}`;
+  if (cleaned.has(key)) return;
+  cleaned.add(key);
+  shell(ctx, stageCleanupCmd(BOOT), { timeout: 0 }).catch(() => {});
+}
 
 export async function push(ctx: Ctx, locals: string[], remoteDir: string) {
   if (ctx.root !== "su") {

@@ -83,14 +83,14 @@ flowchart TB
 
 | 模块 | 职责 |
 | --- | --- |
-| `index.ts` | 读取 `PORT`，在 `127.0.0.1` 上启动服务 |
+| `index.ts` | 读取 `PORT`，先清理电脑临时目录，再在 `127.0.0.1` 上启动服务 |
 | `app.ts` | 注册中间件、设备相关的三个接口、五组路由、静态文件和统一的错误处理 |
 | `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
 | `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `properties.ts` | `/api/stat`（属性、符号链接目标、所在分区）、`/api/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/chmod`、`/api/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
 | `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）、`/api/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
 | `zip.ts` | zip 的电脑端生成：`compressZip` 依次预估空间、`adb pull`、打包、`adb push`，`buildZip` 用 `archiver` 写出 zip，已压缩的格式直接存储 |
-| `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用 |
+| `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例） |
 | `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |

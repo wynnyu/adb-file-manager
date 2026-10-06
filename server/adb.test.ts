@@ -18,6 +18,7 @@ import {
   parseLs,
   pickAuthRetries,
   q,
+  stageCleanupCmd,
 } from "./adb.ts";
 
 describe("assertAbs", () => {
@@ -60,6 +61,19 @@ describe("execError", () => {
     expect(e).toBeInstanceOf(AdbError);
     expect(e.status).toBe(status);
     expect(e.message).toContain(text);
+  });
+});
+
+describe("stageCleanupCmd", () => {
+  it("跳过当前进程的暂存目录，删除其余的 adbfm-*", () => {
+    const cmd = stageCleanupCmd("abc");
+    expect(cmd).toContain("for d in /data/local/tmp/adbfm-*;");
+    expect(cmd).toContain(`case "$d" in /data/local/tmp/adbfm-abc-*) ;; *) rm -rf "$d" ;; esac`);
+    expect(cmd.endsWith("; true")).toBe(true);
+  });
+
+  it("除参数外不含其他外部输入", () => {
+    expect(stageCleanupCmd("x1")).toBe(stageCleanupCmd("abc").replaceAll("abc", "x1"));
   });
 });
 
