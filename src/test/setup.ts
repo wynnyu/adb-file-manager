@@ -8,6 +8,9 @@ MotionGlobalConfig.skipAnimations = true;
 // jsdom 没有实现滚动
 Element.prototype.scrollIntoView = () => {};
 Element.prototype.scrollTo = () => {};
+// CodeMirror 测量文字位置时需要，jsdom 没有实现
+Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect = () => new DOMRect();
 
 beforeEach(() => {
   localStorage.clear();

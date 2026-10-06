@@ -17,7 +17,18 @@ export default defineConfig({
           groups: [
             { name: "react", test: dep(/node_modules[\\/](react|react-dom|scheduler)[\\/]/) },
             { name: "motion", test: dep(/node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/) },
-            { name: "vendor", test: dep(/node_modules[\\/]/) },
+            {
+              name: "codemirror",
+              test: dep(
+                /node_modules[\\/](@codemirror[\\/](state|view|language|search|commands)|@lezer[\\/](common|lr|highlight)|style-mod|w3c-keyname|crelt|@marijn[\\/]find-cluster-break)[\\/]/,
+              ),
+            },
+            // 其余 CodeMirror 语言包（含 language-data 引用的第三方包）不进 vendor，保持按需加载
+            // pnpm 的路径里有两层 node_modules，所以不能只匹配第一层之后的目录
+            {
+              name: "vendor",
+              test: (id) => dep(/node_modules[\\/]/)(id) && !/node_modules[\\/](@codemirror|@lezer)[\\/]/.test(id),
+            },
           ],
         },
       },

@@ -41,6 +41,8 @@ export function Viewer({ target, entry, index, count, hasPrev, hasNext, media, o
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // 已被处理的按键不再响应，例如搜索面板中的 Esc 只关闭面板
+      if (e.defaultPrevented) return;
       const c = latest.current;
       // 全屏时 Esc 由浏览器退出全屏
       if (e.key === "Escape" && !document.fullscreenElement) {

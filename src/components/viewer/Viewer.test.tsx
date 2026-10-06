@@ -100,18 +100,40 @@ describe("TextViewer", () => {
   it("默认自动换行，可关闭，设置会被记住", async () => {
     text({ kind: "text", text: "a long line", truncated: false, limit: 1024 });
     const first = show();
-    const pre = await screen.findByText("a long line");
-    expect(pre.className).toContain("whitespace-pre-wrap");
+    const content = await screen.findByRole("textbox", { name: txt.name });
+    expect(content.classList.contains("cm-lineWrapping")).toBe(true);
     expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("true");
 
     fireEvent.click(button(tz("viewer.wrap")));
     expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("false");
-    expect(screen.getByText("a long line").className).not.toContain("whitespace-pre-wrap");
+    expect(screen.getByRole("textbox", { name: txt.name }).classList.contains("cm-lineWrapping")).toBe(false);
 
     first.unmount();
     show();
-    expect((await screen.findByText("a long line")).className).not.toContain("whitespace-pre-wrap");
+    expect((await screen.findByRole("textbox", { name: txt.name })).classList.contains("cm-lineWrapping")).toBe(false);
     expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("内容区只读", async () => {
+    text({ kind: "text", text: "a long line", truncated: false, limit: 1024 });
+    show();
+    const content = await screen.findByRole("textbox", { name: txt.name });
+    expect(content.getAttribute("aria-readonly")).toBe("true");
+  });
+
+  it("Ctrl+F 打开搜索面板，Esc 先关闭面板，再关闭查看器", async () => {
+    text({ kind: "text", text: "a long line", truncated: false, limit: 1024 });
+    const { props } = show();
+    const content = await screen.findByRole("textbox", { name: txt.name });
+    fireEvent.keyDown(content, { key: "f", ctrlKey: true });
+    const input = await screen.findByRole("textbox", { name: tz("viewer.find") });
+
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: tz("viewer.find") })).toBeNull();
+    expect(props.onClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(content, { key: "Escape" });
+    expect(props.onClose).toHaveBeenCalled();
   });
 
   it("截断时提示只显示了开头", async () => {

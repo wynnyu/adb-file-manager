@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Info, WrapText } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { useT } from "../../i18n/index.tsx";
 import type { Target } from "../../lib/api.ts";
 import { formatSize } from "../../lib/format.ts";
@@ -9,7 +10,10 @@ import type { FileEntry } from "../../types.ts";
 import { IconButton } from "../ui.tsx";
 import { Spinner, Unsupported } from "./Unsupported.tsx";
 
-/** 纯文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览。自动换行可切换，设置在文件之间保持 */
+// CodeMirror 体积较大，第一次打开文本时才下载
+const CodeView = lazy(() => import("./CodeView.tsx").then((m) => ({ default: m.CodeView })));
+
+/** 文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览。经 CodeView 只读显示，按文件名语法高亮。自动换行可切换，设置在文件之间保持 */
 export function TextViewer({
   target,
   entry,
@@ -47,13 +51,9 @@ export function TextViewer({
           {t("viewer.truncated", { size: formatSize(data.limit) })}
         </p>
       )}
-      <pre
-        className={`min-h-0 flex-1 overflow-auto px-5 py-4 font-mono text-sm leading-relaxed text-text select-text ${
-          wrap ? "whitespace-pre-wrap wrap-break-word" : "whitespace-pre"
-        }`}
-      >
-        {data.text}
-      </pre>
+      <Suspense fallback={<Spinner />}>
+        <CodeView text={data.text} name={entry.name} wrap={wrap} />
+      </Suspense>
       <IconButton
         tone={wrap ? "accent" : "default"}
         title={t("viewer.wrap")}

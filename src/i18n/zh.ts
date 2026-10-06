@@ -278,6 +278,18 @@ export const zh = {
   "viewer.truncated": "文件较大，仅显示前 {size}",
   "viewer.empty": "空文件",
   "viewer.wrap": "自动换行",
+  "viewer.find": "查找",
+  "viewer.findNext": "下一个",
+  "viewer.findPrev": "上一个",
+  "viewer.findAll": "全部选中",
+  "viewer.matchCase": "区分大小写",
+  "viewer.regexp": "正则表达式",
+  "viewer.wholeWord": "全字匹配",
+  "viewer.findClose": "关闭",
+  "viewer.currentMatch": "当前匹配",
+  "viewer.onLine": "所在行",
+  "viewer.gotoLine": "跳转到行",
+  "viewer.go": "跳转",
   "viewer.loading": "正在加载……",
 } as const;
 
