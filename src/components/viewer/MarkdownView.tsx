@@ -79,15 +79,15 @@ export function MarkdownView({
       ul: ({ node: _, className, ...p }) => (
         <ul
           {...p}
-          className={`my-4 space-y-1 ${
-            className?.includes("contains-task-list") ? "pl-0" : "list-disc pl-6 marker:text-muted"
+          className={`my-4 space-y-1 [li>&]:my-1 [li>&]:basis-full ${
+            className?.includes("contains-task-list") ? "pl-0 [li>&]:pl-7" : "list-disc pl-6 marker:text-muted"
           }`}
         />
       ),
       ol: ({ node: _, className, ...p }) => (
         <ol
           {...p}
-          className={`my-4 space-y-1 ${
+          className={`my-4 space-y-1 [li>&]:my-1 [li>&]:basis-full ${
             className?.includes("contains-task-list")
               ? "pl-0"
               : "list-decimal pl-6 marker:text-muted marker:tabular-nums"
@@ -95,7 +95,10 @@ export function MarkdownView({
         />
       ),
       li: ({ node: _, className, ...p }) => (
-        <li {...p} className={className?.includes("task-list-item") ? "flex items-start gap-2" : undefined} />
+        <li
+          {...p}
+          className={className?.includes("task-list-item") ? "flex flex-wrap items-start gap-x-2" : undefined}
+        />
       ),
       input: ({ node: _, type, checked }) => (type === "checkbox" ? <TaskCheck checked={!!checked} /> : null),
       blockquote: ({ node: _, ...p }) => (
