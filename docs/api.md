@@ -131,6 +131,83 @@ interface PullResult {
 
 /** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
+
+/** 符号链接的信息；目标按跟随链接后的结果统计 */
+interface LinkInfo {
+  /** 链接中保存的原始目标，可能是相对路径 */
+  target: string;
+  /** 目标的绝对路径，用于跳转 */
+  resolved: string;
+  /** 目标不存在 */
+  broken: boolean;
+  targetType?: "dir" | "file";
+  targetSize?: number;
+}
+
+/** 条目所在的分区；读取不到时 GET /api/stat 不返回该字段 */
+interface PartitionInfo {
+  /** 挂载点 */
+  mount: string;
+  device: string;
+  /** 文件系统类型，读取不到 /proc/mounts 时缺省 */
+  fsType?: string;
+  /** 字节 */
+  total: number;
+  free: number;
+}
+
+/** GET /api/stat 的响应；type 对符号链接为 link，目标信息见 link */
+interface FileStat {
+  name: string;
+  path: string;
+  type: "dir" | "file" | "link";
+  size: number;
+  mtime: number;
+  /** 状态变更时间（ctime） */
+  ctime: number;
+  /** 权限位的数值，含 setuid、setgid、sticky，例如 0o755 为 493 */
+  mode: number;
+  uid: number;
+  gid: number;
+  /** 老设备的 stat 不支持名称时缺省 */
+  user?: string;
+  group?: string;
+  inode?: number;
+  links?: number;
+  /** SELinux 上下文，设备不支持时缺省 */
+  context?: string;
+  link?: LinkInfo;
+  partition?: PartitionInfo;
+  /** 路径受保护，不允许修改权限 */
+  protected: boolean;
+}
+
+/** GET /api/usage 的响应：文件夹的递归统计，不跟随符号链接 */
+interface DirUsage {
+  /** 全部非目录条目的大小之和，字节 */
+  size: number;
+  /** 非目录条目数（含符号链接） */
+  files: number;
+  /** 子文件夹数，不含自身 */
+  dirs: number;
+  /** 部分子项无权限读取，统计不完整 */
+  partial: boolean;
+}
+
+/** POST /api/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
+interface ChmodRequest {
+  paths: string[];
+  mode: string;
+  recursive?: boolean;
+}
+
+/** POST /api/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
+interface ChownRequest {
+  paths: string[];
+  owner?: string;
+  group?: string;
+  recursive?: boolean;
+}
 ```
 
 ## 接口一览
@@ -150,6 +227,10 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 | POST | `/api/move` | 移动到目录 | `api.move(target, paths, dest)` |
 | GET | `/api/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
 | GET | `/api/text` | 以文本读取文件开头 | `api.text(target, path)` |
+| GET | `/api/stat` | 读取属性 | `api.stat(target, path)` |
+| GET | `/api/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
+| POST | `/api/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
+| POST | `/api/chown` | 修改所有者和用户组 | `api.chown(target, paths, owner, group, recursive)` |
 | POST | `/api/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
 | POST | `/api/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
 | GET | `/api/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
@@ -295,7 +376,7 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 
 ### 受保护路径
 
-删除、移动和重命名（源路径）前，服务端按原路径和 `readlink -f` 解析后的真实路径各检查一次，以下路径一律拒绝：
+删除、移动、重命名（源路径），以及修改权限和所有者前，服务端按原路径和 `readlink -f` 解析后的真实路径各检查一次，以下路径一律拒绝：
 
 - 根目录和一级目录，例如 `/`、`/sdcard`、`/data`、`/system`、`/storage`、`/mnt`
 - `/storage` 的下一级，例如 `/storage/emulated`、`/storage/self`、SD 卡根目录 `/storage/1234-ABCD`
@@ -373,6 +454,83 @@ type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: numb
 - 前 8 KB 中含 NUL 字节，或内容不是合法的 UTF-8 时，返回 `{ "kind": "binary" }`。GBK、UTF-16 等编码的文本同样按二进制处理
 
 错误：文件不存在时 `404`；无读取权限时 `403`。
+
+## 属性
+
+以下接口均接受[公共参数](#公共参数)中的 `serial` 和 `root`。
+
+### GET /api/stat
+
+读取单个条目的属性，符号链接不跟随，目标信息放在 `link` 中。
+
+| 查询参数 | 必填 |
+| --- | --- |
+| `serial` | 是 |
+| `path` | 是 |
+| `root` | 否 |
+
+响应：`FileStat`
+
+```json
+{
+  "name": "a.txt", "path": "/sdcard/a.txt", "type": "file", "size": 12,
+  "mtime": 1700000000, "ctime": 1700000100, "mode": 432, "uid": 0, "gid": 1015,
+  "user": "root", "group": "sdcard_rw", "inode": 42, "links": 1,
+  "context": "u:object_r:sdcardfs:s0",
+  "partition": { "mount": "/storage/emulated", "device": "/dev/fuse", "fsType": "sdcardfs", "total": 137438953472, "free": 51539607552 },
+  "protected": false
+}
+```
+
+- `stat -c` 的格式依次降级：完整格式、不含 SELinux 上下文、只含基本字段。老设备上不支持的字段缺省，不报错
+- 分区信息来自 `df -k` 和 `/proc/mounts`，读取失败时不返回 `partition`
+- `protected` 为 `true` 时，`POST /api/chmod` 和 `POST /api/chown` 会拒绝该路径
+
+错误：路径不存在时 `404`；无权限读取时 `403`。
+
+### GET /api/usage
+
+递归统计文件夹的总大小、文件数和子文件夹数。统计的是各条目的实际字节数，不是磁盘占用；不跟随符号链接，符号链接按一个文件计，大小为链接自身的大小。
+
+| 查询参数 | 必填 |
+| --- | --- |
+| `serial` | 是 |
+| `path` | 是，须为目录 |
+| `root` | 否 |
+
+响应：`DirUsage`
+
+```json
+{ "size": 1048576, "files": 120, "dirs": 8, "partial": false }
+```
+
+目录很大时耗时较长：超时 120 秒，客户端取消请求或断开连接时终止设备上的 `find`。部分子项无权限读取时仍返回已统计的结果，`partial` 为 `true`。
+
+错误：路径不存在时 `404`；不是目录时 `400`。
+
+### POST /api/chmod
+
+修改权限位。
+
+```json
+{ "serial": "R5CT1234", "root": true, "paths": ["/sdcard/a.sh"], "mode": "755", "recursive": false }
+```
+
+`mode` 须为 3 到 4 位八进制数字，`recursive` 为 `true` 时加 `-R` 作用于子项。响应：`{ "ok": true }`
+
+错误：`mode` 不合法时 `400`；任一路径受保护时 `400`，不会修改任何内容；设备拒绝时返回设备给出的错误信息。
+
+### POST /api/chown
+
+修改所有者或用户组。
+
+```json
+{ "serial": "R5CT1234", "root": true, "paths": ["/sdcard/a.sh"], "owner": "root", "group": "sdcard_rw", "recursive": false }
+```
+
+`owner` 和 `group` 至少给一个，可以是名称或数字 id，只允许字母、数字、下划线、点和连字符，且不能以点或连字符开头。响应：`{ "ok": true }`
+
+错误：二者都缺省或不合法时 `400`；任一路径受保护时 `400`；设备拒绝时返回设备给出的错误信息。普通 shell 用户通常无权修改，需开启 root 模式。
 
 ## 传输
 

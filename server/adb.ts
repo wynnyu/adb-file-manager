@@ -18,9 +18,9 @@ export class AdbError extends Error {
   }
 }
 
-function run(args: string[], timeout = 0): Promise<string> {
+function run(args: string[], timeout = 0, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(ADB, args, { maxBuffer: 64 * 1024 * 1024, timeout }, (err, stdout, stderr) => {
+    execFile(ADB, args, { maxBuffer: 64 * 1024 * 1024, timeout, signal }, (err, stdout, stderr) => {
       if (err) {
         const msg = (stderr || stdout || err.message).trim();
         reject(new AdbError(cleanError(msg)));
@@ -65,9 +65,10 @@ export interface Ctx {
   root: false | RootMethod;
 }
 
-export function shell(ctx: Ctx, cmd: string) {
+/** 在设备上执行命令；给出 signal 时可中途取消，timeout 单位毫秒，0 为不限 */
+export function shell(ctx: Ctx, cmd: string, opts: { signal?: AbortSignal; timeout?: number } = {}) {
   const full = ctx.root === "su" ? `${SU} ${q(cmd)}` : cmd;
-  return run(["-s", ctx.serial, "shell", full]);
+  return run(["-s", ctx.serial, "shell", full], opts.timeout, opts.signal);
 }
 
 /** 检测设备能否以 root 运行命令 */
@@ -268,6 +269,36 @@ export const mkdir = (ctx: Ctx, p: string) => checked(ctx, `mkdir -p ${q(p)}`);
 export const rename = (ctx: Ctx, from: string, to: string) =>
   checked(ctx, `[ ! -e ${q(to)} ] || { echo __ADBFM_EXISTS__; exit 1; }; mv ${q(from)} ${q(to)}`);
 export const remove = (ctx: Ctx, paths: string[]) => checked(ctx, `rm -rf ${paths.map(q).join(" ")}`);
+
+/** 修改权限位；mode 须已通过 parseModeInput 校验 */
+export const chmod = (ctx: Ctx, paths: string[], mode: string, recursive: boolean) =>
+  checked(ctx, `chmod ${recursive ? "-R " : ""}${mode} ${paths.map(q).join(" ")}`);
+
+/** 修改所有者或用户组；owner 和 group 须已通过 parseOwnerInput 校验，至少给一个 */
+export const chown = (
+  ctx: Ctx,
+  paths: string[],
+  owner: string | undefined,
+  group: string | undefined,
+  recursive: boolean,
+) =>
+  checked(
+    ctx,
+    `chown ${recursive ? "-R " : ""}${q(`${owner ?? ""}${group ? `:${group}` : ""}`)} ${paths.map(q).join(" ")}`,
+  );
+
+/** 校验权限位输入，只接受 3 到 4 位八进制数字 */
+export function parseModeInput(v: unknown): string {
+  if (typeof v !== "string" || !/^[0-7]{3,4}$/.test(v)) throw new AdbError(t("badMode"), 400);
+  return v;
+}
+
+/** 校验所有者或用户组输入：名称或数字 id，缺省时返回 undefined */
+export function parseOwnerInput(v: unknown): string | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(v)) throw new AdbError(t("badOwner"), 400);
+  return v;
+}
 
 /** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……，从不覆盖 */
 export function copyInto(ctx: Ctx, src: string, destDir: string) {

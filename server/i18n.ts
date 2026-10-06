@@ -28,6 +28,11 @@ const zh = {
   badRange: "请求的范围超出文件大小",
   forbiddenHost: "仅允许从本机访问",
   forbiddenOrigin: "拒绝来自其他网页的请求",
+  badMode: "权限必须是 3 到 4 位八进制数字，例如 755",
+  badOwner: "所有者和用户组只能包含字母、数字、下划线、点和连字符",
+  missingOwner: "至少需要指定所有者或用户组之一",
+  protectedChange: "为安全起见，不允许修改 {shown} 的权限或所有者",
+  notDir: "不是目录：{path}",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -57,6 +62,11 @@ const en: Record<MsgKey, string> = {
   badRange: "Requested range is outside the file",
   forbiddenHost: "Only local access is allowed",
   forbiddenOrigin: "Requests from other pages are rejected",
+  badMode: "Mode must be 3 to 4 octal digits, for example 755",
+  badOwner: "Owner and group may only contain letters, digits, underscores, dots and hyphens",
+  missingOwner: "Specify at least one of owner and group",
+  protectedChange: "For safety, changing the permissions or owner of {shown} is not allowed",
+  notDir: "Not a directory: {path}",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

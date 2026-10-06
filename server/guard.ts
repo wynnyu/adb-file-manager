@@ -51,12 +51,19 @@ export function isProtected(p: string) {
   return p.startsWith("/mnt/") && !/\/(emulated\/\d+|[0-9A-F]{4}-[0-9A-F]{4})\/./i.test(p);
 }
 
-export async function assertSafeTargets(ctx: adb.Ctx, paths: string[]) {
+/** 路径本身或其真实路径是否受保护 */
+export async function isProtectedPath(ctx: adb.Ctx, p: string) {
+  const [real] = await adb.realpaths(ctx, [p]);
+  return isProtected(p) || isProtected(real);
+}
+
+/** purpose 决定报错文案：delete 为删除或移动，change 为修改权限或所有者 */
+export async function assertSafeTargets(ctx: adb.Ctx, paths: string[], purpose: "delete" | "change" = "delete") {
   const real = await adb.realpaths(ctx, paths);
   paths.forEach((p, i) => {
     if (isProtected(p) || isProtected(real[i])) {
       const shown = real[i] !== p ? msg("resolvesTo", { path: p, real: real[i] }) : p;
-      throw new adb.AdbError(msg("protectedPath", { shown }), 400);
+      throw new adb.AdbError(msg(purpose === "delete" ? "protectedPath" : "protectedChange", { shown }), 400);
     }
   });
 }

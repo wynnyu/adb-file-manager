@@ -60,3 +60,80 @@ export interface PullResult {
 
 /** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 export type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
+
+/** 符号链接的信息；目标按跟随链接后的结果统计 */
+export interface LinkInfo {
+  /** 链接中保存的原始目标，可能是相对路径 */
+  target: string;
+  /** 目标的绝对路径，用于跳转 */
+  resolved: string;
+  /** 目标不存在 */
+  broken: boolean;
+  targetType?: "dir" | "file";
+  targetSize?: number;
+}
+
+/** 条目所在的分区；读取不到时 GET /api/stat 不返回该字段 */
+export interface PartitionInfo {
+  /** 挂载点 */
+  mount: string;
+  device: string;
+  /** 文件系统类型，读取不到 /proc/mounts 时缺省 */
+  fsType?: string;
+  /** 字节 */
+  total: number;
+  free: number;
+}
+
+/** GET /api/stat 的响应；type 对符号链接为 link，目标信息见 link */
+export interface FileStat {
+  name: string;
+  path: string;
+  type: FileEntry["type"];
+  size: number;
+  mtime: number;
+  /** 状态变更时间（ctime） */
+  ctime: number;
+  /** 权限位的数值，含 setuid、setgid、sticky，例如 0o755 为 493 */
+  mode: number;
+  uid: number;
+  gid: number;
+  /** 老设备的 stat 不支持名称时缺省 */
+  user?: string;
+  group?: string;
+  inode?: number;
+  links?: number;
+  /** SELinux 上下文，设备不支持时缺省 */
+  context?: string;
+  link?: LinkInfo;
+  partition?: PartitionInfo;
+  /** 路径受 guard 保护，不允许修改权限 */
+  protected: boolean;
+}
+
+/** GET /api/usage 的响应：文件夹的递归统计，不跟随符号链接 */
+export interface DirUsage {
+  /** 全部非目录条目的大小之和，字节 */
+  size: number;
+  /** 非目录条目数（含符号链接） */
+  files: number;
+  /** 子文件夹数，不含自身 */
+  dirs: number;
+  /** 部分子项无权限读取，统计不完整 */
+  partial: boolean;
+}
+
+/** POST /api/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
+export interface ChmodRequest {
+  paths: string[];
+  mode: string;
+  recursive?: boolean;
+}
+
+/** POST /api/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
+export interface ChownRequest {
+  paths: string[];
+  owner?: string;
+  group?: string;
+  recursive?: boolean;
+}
