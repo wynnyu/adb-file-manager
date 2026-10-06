@@ -7,6 +7,7 @@ import { api, formatSize, type Target, viewerKind } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { IconButton, spring } from "../ui.tsx";
 import { FileIcon } from "../views/index.ts";
+import { ArchiveView } from "./ArchiveView.tsx";
 import { AudioPlayer } from "./AudioPlayer.tsx";
 import { ImageViewer } from "./ImageViewer.tsx";
 import { TextViewer } from "./TextViewer.tsx";
@@ -27,7 +28,7 @@ interface Props {
   onDownload: (entry: FileEntry) => void;
 }
 
-/** 页面内查看器：铺满窗口的遮罩，按文件类型显示图片、视频、音频或文本 */
+/** 页面内查看器：铺满窗口的遮罩，按文件类型显示图片、视频、音频、压缩包内容或文本 */
 export function Viewer({ target, entry, index, count, hasPrev, hasNext, media, onStep, onClose, onDownload }: Props) {
   const t = useT();
   const kind = viewerKind(entry);
@@ -110,6 +111,8 @@ export function Viewer({ target, entry, index, count, hasPrev, hasNext, media, o
           <VideoPlayer key={entry.path} entry={entry} src={src} player={media} onDownload={download} />
         ) : kind === "audio" ? (
           <AudioPlayer key={entry.path} entry={entry} src={src} player={media} onDownload={download} />
+        ) : kind === "archive" ? (
+          <ArchiveView key={entry.path} target={target} entry={entry} onDownload={download} />
         ) : (
           <TextViewer key={entry.path} target={target} entry={entry} onDownload={download} />
         )}

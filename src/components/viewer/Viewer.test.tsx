@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useMediaPlayer } from "../../hooks/index.ts";
 import { api, codeHighlight } from "../../lib/index.ts";
 import { file, newQueryClient, providers, tz } from "../../test/utils.tsx";
-import type { TextPreview } from "../../types.ts";
+import type { ArchiveListing, TextPreview } from "../../types.ts";
 import { Viewer } from "./Viewer.tsx";
 
 const target = { serial: "R5CT", root: false };
@@ -417,5 +417,69 @@ describe("AudioPlayer", () => {
     expect(button(tz("viewer.play"))).toBeTruthy();
     expect(screen.getByRole("slider", { name: tz("viewer.volume") })).toBeTruthy();
     expect(screen.queryByRole("button", { name: tz("viewer.fullscreen") })).toBeNull();
+  });
+});
+
+describe("Viewer 压缩包", () => {
+  const zip = file("/sdcard/app.zip", { size: 4096 });
+  const listing = (patch: Partial<ArchiveListing> = {}) =>
+    vi.spyOn(api, "archive").mockResolvedValue({
+      format: "zip",
+      truncated: false,
+      entries: [
+        { path: "docs", isDir: true, size: 0 },
+        { path: "docs/readme.txt", isDir: false, size: 2048, date: "2024-05-06 13:45" },
+        { path: "a.txt", isDir: false, size: 10 },
+      ],
+      ...patch,
+    });
+
+  it("显示汇总和顶层条目，文件夹点击后展开、再点收起", async () => {
+    listing();
+    show({ entry: zip });
+    expect(await screen.findByText(/解压后/)).toBeTruthy();
+    expect(
+      screen.getByText(new RegExp(`${tz("props.fileCount", { n: 2 })}，${tz("props.dirCount", { n: 1 })}`)),
+    ).toBeTruthy();
+    expect(screen.getByText("a.txt")).toBeTruthy();
+    expect(screen.queryByText("readme.txt")).toBeNull();
+
+    const docs = screen.getByRole("button", { name: /docs/ });
+    expect(docs.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(docs);
+    expect(docs.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("readme.txt")).toBeTruthy();
+    expect(screen.getByText("2.0 KB")).toBeTruthy();
+    fireEvent.click(docs);
+    expect(screen.queryByText("readme.txt")).toBeNull();
+    expect(api.archive).toHaveBeenCalledWith(target, zip.path);
+  });
+
+  it("条目被截断时给出提示", async () => {
+    listing({ truncated: true });
+    show({ entry: zip });
+    expect(await screen.findByText(tz("archive.truncated", { n: 3 }))).toBeTruthy();
+  });
+
+  it("空压缩包给出提示", async () => {
+    listing({ entries: [] });
+    show({ entry: zip });
+    expect(await screen.findByText(tz("archive.empty"))).toBeTruthy();
+  });
+
+  it("读取失败时显示原因，仍可下载", async () => {
+    vi.spyOn(api, "archive").mockRejectedValue(new Error("设备上没有 unzip 命令"));
+    const { props } = show({ entry: zip });
+    expect(await screen.findByText("设备上没有 unzip 命令")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: tz("files.download") }).at(-1)!);
+    expect(props.onDownload).toHaveBeenCalledWith(zip);
+  });
+
+  it("不支持的格式仍走文本查看器", async () => {
+    const archive = vi.spyOn(api, "archive");
+    text({ kind: "binary" });
+    show({ entry: file("/sdcard/a.7z") });
+    expect(await screen.findByText(tz("viewer.unsupported"))).toBeTruthy();
+    expect(archive).not.toHaveBeenCalled();
   });
 });

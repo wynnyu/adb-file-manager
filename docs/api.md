@@ -132,6 +132,33 @@ interface PullResult {
 /** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
 
+/** 支持预览和解压的压缩包格式：zip 系（含 apk、jar 等）、tar、tar.gz、tar.bz2 */
+type ArchiveFormat = "zip" | "tar" | "tgz" | "tbz";
+
+/** 压缩包里的一个条目；路径相对压缩包根，不含首尾的 / */
+interface ArchiveEntry {
+  path: string;
+  isDir: boolean;
+  /** 解压后的大小，字节 */
+  size: number;
+  /** 压缩包里记录的时间原文，无时区 */
+  date?: string;
+  /** 符号链接的目标 */
+  link?: string;
+}
+
+/** GET /api/archive 的响应；truncated 时只含前面的部分条目 */
+interface ArchiveListing {
+  format: ArchiveFormat;
+  entries: ArchiveEntry[];
+  truncated: boolean;
+}
+
+/** POST /api/extract 的响应：解压出的文件夹或文件 */
+interface ExtractResult {
+  path: string;
+}
+
 /** 符号链接的信息；目标按跟随链接后的结果统计 */
 interface LinkInfo {
   /** 链接中保存的原始目标，可能是相对路径 */
@@ -227,6 +254,8 @@ interface ChownRequest {
 | POST | `/api/move` | 移动到目录 | `api.move(target, paths, dest)` |
 | GET | `/api/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
 | GET | `/api/text` | 以文本读取文件开头 | `api.text(target, path)` |
+| GET | `/api/archive` | 列出压缩包内的条目 | `api.archive(target, path)` |
+| POST | `/api/extract` | 在设备上解压压缩包 | `api.extract(target, path)` |
 | GET | `/api/stat` | 读取属性 | `api.stat(target, path)` |
 | GET | `/api/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
 | POST | `/api/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
@@ -455,6 +484,75 @@ interface ChownRequest {
 
 错误：文件不存在时 `404`；无读取权限时 `403`。
 
+## 压缩包
+
+压缩包在设备上处理，不经电脑中转：zip 系用设备自带的 `unzip`（Android 9 起提供），tar 系用 toybox 的 `tar`。支持的格式按文件扩展名判断，其余（7z、rar、xz 等）返回 `415`：
+
+| 扩展名 | 格式 |
+| --- | --- |
+| `.zip` `.apk` `.apks` `.xapk` `.jar` `.aar` | `zip` |
+| `.tar` | `tar` |
+| `.tar.gz` `.tgz` | `tgz` |
+| `.tar.bz2` `.tbz2` `.tbz` | `tbz` |
+
+设备上缺少对应命令时返回 `501`，提示缺少 `unzip` 或 `tar`。toybox 的 `tar` 支持 `z` 和 `j`，不支持 xz。
+
+### GET /api/archive
+
+列出压缩包内的全部条目，供查看器显示目录树。
+
+| 查询参数 | 必填 |
+| --- | --- |
+| `serial` | 是 |
+| `path` | 是 |
+| `root` | 否 |
+
+响应：`ArchiveListing`
+
+```json
+{
+  "format": "zip",
+  "entries": [
+    { "path": "res", "isDir": true, "size": 0, "date": "2009-01-01 00:00" },
+    { "path": "res/layout/main.xml", "isDir": false, "size": 3104, "date": "2009-01-01 00:00" }
+  ],
+  "truncated": false
+}
+```
+
+- 条目路径去掉开头的 `./` 和末尾的 `/`，压缩包根（`.`）不列出；压缩包没有单独列出的中间目录不会补全，由前端补齐
+- zip 解析 `unzip -lv` 的输出，tar 解析 `tar -tv` 的输出；tar 中符号链接的目标放在 `link`，硬链接按普通文件处理
+- `date` 是压缩包里记录的时间原文，格式为 `YYYY-MM-DD HH:MM`，不含时区
+- 条目超过 20000 时只返回前 20000 个，`truncated` 为 `true`
+
+错误：扩展名不受支持时 `415`；文件不存在时 `404`；无读取权限时 `403`；压缩包损坏或命令执行失败时 `400`；设备缺少命令时 `501`。
+
+### POST /api/extract
+
+在设备上把压缩包解压到它所在的目录，不覆盖已有内容。
+
+请求体：`{ serial, path, root? }`，`path` 为压缩包的绝对路径。响应：`ExtractResult`
+
+```json
+{ "path": "/sdcard/Download/photos" }
+```
+
+解压位置同访达：
+
+- 压缩包内只有一个顶层项目时，直接解出该项目
+- 否则新建以压缩包名（去掉 `.zip`、`.tar.gz` 等扩展名）命名的文件夹，把全部内容放入其中
+- 目标重名时依次改为“名字 2”“名字 3”，文件保留扩展名（`a 2.txt`），文件夹不拆分名字中的点；悬空的符号链接同样视为重名
+
+实现上先解到压缩包所在目录下的暂存目录 `.adbfm-extract-<随机>`，再移到最终位置，最后删除暂存目录，失败时也会删除。tar 使用 `-o`，不还原属主，root 模式下也不会产生异常的 uid。
+
+安全检查（`archive.ts` 的 `assertSafeEntries`）：解压前列出全部条目，出现以下任一情况即返回 `400`，不解压任何内容：
+
+- 绝对路径
+- 路径含 `..` 段（zip-slip）
+- 路径位于某个符号链接条目之下（先放置指向目录之外的链接，再经由链接写出）
+
+错误：除上述外，与 `GET /api/archive` 相同。
+
 ## 属性
 
 以下接口均接受[公共参数](#公共参数)中的 `serial` 和 `root`。
@@ -618,6 +716,8 @@ interface Target {
 | `move(target, paths, dest)` | `Promise<OkResult>` | |
 | `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img>`、`<video>`、`<audio>` 的 `src` 使用；媒体元素自行发出 Range 请求 |
 | `text(target, path)` | `Promise<TextPreview>` | 通常经 `lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
+| `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
+| `extract(target, path)` | `Promise<ExtractResult>` | 耗时随压缩包大小而定，没有进度 |
 | `download(target, paths)` | `Promise<void>` | 调用 `/api/pull` 后创建临时 `<a download>` 指向 `/api/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
@@ -636,6 +736,7 @@ interface Target {
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `ls` | `lib/queries.ts`，由 `hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `hooks/useTree.ts` 使用 |
-| `mkdir`、`rename`、`remove`、`copy`、`move`、`upload`、`download` | `hooks/useFileOps.ts` |
+| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`upload`、`download` | `hooks/useFileOps.ts` |
 | `previewUrl` | `components/views/ColumnView.tsx`、`components/views/GalleryView.tsx`、`components/viewer/Viewer.tsx` |
 | `text` | `lib/queries.ts`，由 `components/viewer/TextViewer.tsx` 使用 |
+| `archive` | `lib/queries.ts`，由 `components/viewer/ArchiveView.tsx` 使用 |

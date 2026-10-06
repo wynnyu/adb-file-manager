@@ -61,6 +61,33 @@ export interface PullResult {
 /** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 export type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
 
+/** 支持预览和解压的压缩包格式：zip 系（含 apk、jar 等）、tar、tar.gz、tar.bz2 */
+export type ArchiveFormat = "zip" | "tar" | "tgz" | "tbz";
+
+/** 压缩包里的一个条目；路径相对压缩包根，不含首尾的 / */
+export interface ArchiveEntry {
+  path: string;
+  isDir: boolean;
+  /** 解压后的大小，字节 */
+  size: number;
+  /** 压缩包里记录的时间原文，无时区 */
+  date?: string;
+  /** 符号链接的目标 */
+  link?: string;
+}
+
+/** GET /api/archive 的响应；truncated 时只含前面的部分条目 */
+export interface ArchiveListing {
+  format: ArchiveFormat;
+  entries: ArchiveEntry[];
+  truncated: boolean;
+}
+
+/** POST /api/extract 的响应：解压出的文件夹或文件 */
+export interface ExtractResult {
+  path: string;
+}
+
 /** 符号链接的信息；目标按跟随链接后的结果统计 */
 export interface LinkInfo {
   /** 链接中保存的原始目标，可能是相对路径 */

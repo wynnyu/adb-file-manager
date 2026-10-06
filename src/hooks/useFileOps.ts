@@ -22,7 +22,7 @@ const needsRoot = (p: string) => !SHELL_WRITABLE.some((re) => re.test(p));
 const batchLabel = (names: string[], t: T) =>
   names.length === 1 ? names[0] : t("common.itemsEtc", { name: names[0], n: names.length, rest: names.length - 1 });
 
-/** 对设备上文件的操作：上传、下载、粘贴，以及删除、重命名、新建文件夹的对话框 */
+/** 对设备上文件的操作：上传、下载、粘贴、解压，以及删除、重命名、新建文件夹的对话框 */
 export function useFileOps({
   target,
   online,
@@ -121,6 +121,24 @@ export function useFileOps({
       }
     },
     [target, clip, setClip, t, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
+  );
+
+  const extract = useCallback(
+    async (entry: FileEntry) => {
+      if (!target) return;
+      const id = startTransfer({ kind: "extract", label: entry.name, status: "extracting" });
+      try {
+        await api.extract(target, entry.path);
+        patchTransfer(id, { status: "done" });
+        refreshStorage();
+        await afterChange([], true);
+      } catch (e) {
+        patchTransfer(id, { status: "error", error: (e as Error).message });
+        // 中途失败时可能已经解出了一部分
+        void reload(true);
+      }
+    },
+    [target, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
   );
 
   const askDelete = useCallback(
@@ -224,5 +242,5 @@ export function useFileOps({
     [target, path, reload, openDialog, t],
   );
 
-  return { upload, download, paste, askDelete, askRename, askMkdir };
+  return { upload, download, paste, extract, askDelete, askRename, askMkdir };
 }

@@ -125,6 +125,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "transfer.pulling": "adb pull from device",
   "transfer.copying": "Copying…",
   "transfer.moving": "Moving…",
+  "transfer.extracting": "Extracting…",
   "transfer.done": "Done",
   "transfer.error": "Failed",
 
@@ -167,6 +168,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "view.title": "View",
 
   "menu.open": "Open",
+  "menu.extract": "Extract",
   "menu.download": "Download to computer",
   "menu.downloadMany": "Download {n} items to computer",
   "menu.cut": "Cut",
@@ -312,4 +314,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "viewer.gotoLine": "Go to line",
   "viewer.go": "Go",
   "viewer.loading": "Loading…",
+
+  "archive.summary": "{files}, {dirs}, {size} when extracted",
+  "archive.truncated": "Many entries. Showing the first {n} only",
+  "archive.empty": "The archive is empty",
 };

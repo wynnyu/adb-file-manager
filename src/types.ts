@@ -1,10 +1,14 @@
 import type { FileEntry } from "../shared/types.d.ts";
 
 export type {
+  ArchiveEntry,
+  ArchiveFormat,
+  ArchiveListing,
   Device,
   DirUsage,
   ErrorCode,
   ErrorResponse,
+  ExtractResult,
   FileEntry,
   FileStat,
   LinkInfo,
@@ -18,11 +22,19 @@ export type {
   UploadResult,
 } from "../shared/types.d.ts";
 
-export type TransferStatus = "uploading" | "pushing" | "pulling" | "copying" | "moving" | "done" | "error";
+export type TransferStatus =
+  | "uploading"
+  | "pushing"
+  | "pulling"
+  | "copying"
+  | "moving"
+  | "extracting"
+  | "done"
+  | "error";
 
 export interface Transfer {
   id: string;
-  kind: "upload" | "download" | "copy" | "move";
+  kind: "upload" | "download" | "copy" | "move" | "extract";
   label: string;
   status: TransferStatus;
   /** 0 到 1，仅浏览器传到电脑的阶段可知 */

@@ -26,6 +26,14 @@ export const textQuery = (target: Target, path: string) =>
     gcTime: 0,
   });
 
+/** 查看器里显示的压缩包内容；同文本一样关闭后不保留 */
+export const archiveQuery = (target: Target, path: string) =>
+  queryOptions({
+    queryKey: ["archive", target.serial, target.root, path] as const,
+    queryFn: () => api.archive(target, path),
+    gcTime: 0,
+  });
+
 /** 属性页的基本信息；关闭后不保留，每次打开都重新读取 */
 export const statQuery = (target: Target, path: string) =>
   queryOptions({

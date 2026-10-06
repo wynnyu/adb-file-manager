@@ -10,6 +10,7 @@ import {
   assertAbs,
   type ByteRange,
   catCmd,
+  extractCmd,
   LINK_MARK,
   parseLs,
   pickAuthRetries,
@@ -32,6 +33,30 @@ describe("q", () => {
     expect(q("a b")).toBe("'a b'");
     expect(q("it's")).toBe(`'it'\\''s'`);
     expect(q("$(rm -rf /)")).toBe("'$(rm -rf /)'");
+  });
+});
+
+describe("extractCmd", () => {
+  it("路径、条目名和暂存目录都经过转义", () => {
+    const cmd = extractCmd("/sdcard/it's.zip", "zip", "a'b", "w'rap", "/sdcard/.adbfm-extract-x");
+    expect(cmd).toContain(`unzip -o -q '/sdcard/it'\\''s.zip' -d '/sdcard/.adbfm-extract-x'`);
+    expect(cmd).toContain(`mv '/sdcard/.adbfm-extract-x/a'\\''b' "$t"`);
+    expect(cmd).toContain(`rm -rf '/sdcard/.adbfm-extract-x'`);
+  });
+
+  it("没有唯一顶层项目时把暂存目录改名为压缩包名", () => {
+    const cmd = extractCmd("/sdcard/a b.tar.gz", "tgz", null, "a b", "/sdcard/.adbfm-extract-x");
+    expect(cmd).toContain(`tar -xozf '/sdcard/a b.tar.gz' -C '/sdcard/.adbfm-extract-x'`);
+    expect(cmd).toContain(`mv '/sdcard/.adbfm-extract-x' "$t"`);
+    expect(cmd).toContain(`b='a b'`);
+  });
+
+  it.each([
+    ["tar", "tar -xof"],
+    ["tgz", "tar -xozf"],
+    ["tbz", "tar -xojf"],
+  ] as const)("%s 格式使用 %s", (format, expected) => {
+    expect(extractCmd("/sdcard/a", format, null, "a", "/sdcard/.s")).toContain(expected);
   });
 });
 

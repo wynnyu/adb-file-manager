@@ -33,6 +33,9 @@ const zh = {
   missingOwner: "至少需要指定所有者或用户组之一",
   protectedChange: "为安全起见，不允许修改 {shown} 的权限或所有者",
   notDir: "不是目录：{path}",
+  notArchive: "不支持的压缩包格式",
+  archiveToolMissing: "设备上没有 {tool} 命令，无法处理此压缩包",
+  unsafeArchive: "压缩包含有指向目录之外的路径，已拒绝解压",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -67,6 +70,9 @@ const en: Record<MsgKey, string> = {
   missingOwner: "Specify at least one of owner and group",
   protectedChange: "For safety, changing the permissions or owner of {shown} is not allowed",
   notDir: "Not a directory: {path}",
+  notArchive: "Unsupported archive format",
+  archiveToolMissing: "The {tool} command is not available on the device, so this archive cannot be processed",
+  unsafeArchive: "The archive contains paths that point outside the target folder. Extraction was rejected",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

@@ -1,4 +1,5 @@
 export * from "./api.ts";
+export * from "./archive.ts";
 export * from "./bookmarks.ts";
 export * from "./code.ts";
 export * from "./drop.ts";

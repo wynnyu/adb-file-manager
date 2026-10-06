@@ -1,8 +1,10 @@
 import { getLang, tr } from "../i18n/translate.ts";
 import type {
+  ArchiveListing,
   Device,
   DirUsage,
   ErrorResponse,
+  ExtractResult,
   FileEntry,
   FileStat,
   OkResult,
@@ -91,6 +93,12 @@ export const api = {
 
   /** 以文本读取文件开头，不是 UTF-8 文本时为 binary */
   text: (t: Target, path: string) => request<TextPreview>(`/api/text?${qs(t, { path })}`),
+
+  /** 压缩包里的条目 */
+  archive: (t: Target, path: string) => request<ArchiveListing>(`/api/archive?${qs(t, { path })}`),
+
+  /** 在设备上解压，返回解出的文件夹或文件；耗时随压缩包大小而定 */
+  extract: (t: Target, path: string) => post<ExtractResult>("/api/extract", { ...t, path }),
 
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {

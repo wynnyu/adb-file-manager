@@ -48,7 +48,7 @@ const upItem = (path: string) => ({ file: new File(["x"], path.split("/").at(-1)
 
 describe("useFileOps", () => {
   beforeEach(() => {
-    for (const k of ["upload", "download", "copy", "move", "remove", "rename", "mkdir"] as const) {
+    for (const k of ["upload", "download", "copy", "move", "extract", "remove", "rename", "mkdir"] as const) {
       vi.spyOn(api, k).mockResolvedValue(undefined as never);
     }
   });
@@ -161,6 +161,38 @@ describe("useFileOps", () => {
       const { result } = setup({ clip });
       await act(() => result.current.paste("/sdcard"));
       expect(api.copy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("extract", () => {
+    const zip = file("/sdcard/a.zip");
+
+    it("进度记在传输队列里，成功后刷新存储空间和目录", async () => {
+      const { result, startTransfer, patchTransfer, refreshStorage, afterChange } = setup();
+      await act(() => result.current.extract(zip));
+      expect(api.extract).toHaveBeenCalledWith(target, zip.path);
+      expect(startTransfer).toHaveBeenCalledWith({ kind: "extract", label: "a.zip", status: "extracting" });
+      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "done" });
+      expect(refreshStorage).toHaveBeenCalled();
+      expect(afterChange).toHaveBeenCalledWith([], true);
+    });
+
+    it("失败时记下错误，并刷新目录（可能已经解出一部分）", async () => {
+      vi.mocked(api.extract).mockRejectedValue(new Error("压缩包含有指向目录之外的路径"));
+      const { result, patchTransfer, reload, afterChange } = setup();
+      await act(() => result.current.extract(zip));
+      expect(patchTransfer).toHaveBeenLastCalledWith("job", {
+        status: "error",
+        error: "压缩包含有指向目录之外的路径",
+      });
+      expect(reload).toHaveBeenCalledWith(true);
+      expect(afterChange).not.toHaveBeenCalled();
+    });
+
+    it("没有设备时不解压", async () => {
+      const { result } = setup({ t: null });
+      await act(() => result.current.extract(zip));
+      expect(api.extract).not.toHaveBeenCalled();
     });
   });
 

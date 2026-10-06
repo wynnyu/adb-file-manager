@@ -117,6 +117,7 @@ export const zh = {
   "transfer.pulling": "从设备 adb pull",
   "transfer.copying": "正在拷贝……",
   "transfer.moving": "正在移动……",
+  "transfer.extracting": "正在解压……",
   "transfer.done": "完成",
   "transfer.error": "失败",
 
@@ -159,6 +160,7 @@ export const zh = {
   "view.title": "显示方式",
 
   "menu.open": "打开",
+  "menu.extract": "解压",
   "menu.download": "下载到电脑",
   "menu.downloadMany": "下载 {n} 项到电脑",
   "menu.cut": "剪切",
@@ -296,6 +298,10 @@ export const zh = {
   "viewer.gotoLine": "跳转到行",
   "viewer.go": "跳转",
   "viewer.loading": "正在加载……",
+
+  "archive.summary": "{files}，{dirs}，解压后 {size}",
+  "archive.truncated": "条目较多，仅显示前 {n} 项",
+  "archive.empty": "压缩包是空的",
 } as const;
 
 export type MessageKey = keyof typeof zh;

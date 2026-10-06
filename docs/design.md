@@ -162,14 +162,14 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 
 ### 右键菜单
 
-`components/overlays/ContextMenu.tsx`：菜单项为 36px 高的胶囊，左侧依次为对勾位（单选或开关项）、图标、文字，右侧为快捷键提示。危险项为红色。快捷键提示中的特殊键用 `KEY_ICONS` 中的 `lucide-react` 图标显示（Mac 上的 `Cmd`、`Shift`，以及 `Enter`、`Backspace`），其余键直接显示文字。
+`components/overlays/ContextMenu.tsx`：菜单项为 36px 高的胶囊，左侧依次为对勾位（单选或开关项）、图标、文字，右侧为快捷键提示。危险项为红色。单选压缩包（zip 系、tar、tar.gz、tar.bz2）时，在“打开”之后多一项“解压”（`PackageOpen` 图标）；双击压缩包在查看器中显示可展开的目录树，只列条目。快捷键提示中的特殊键用 `KEY_ICONS` 中的 `lucide-react` 图标显示（Mac 上的 `Cmd`、`Shift`，以及 `Enter`、`Backspace`），其余键直接显示文字。
 
 ### 提示与反馈
 
 | 场景 | 方式 |
 | --- | --- |
 | 剪切、拷贝、拷贝路径、权限修改完成等短暂反馈，以及 root 模式退出等异常 | Toast，`surface0` 底；错误时为红色实底 |
-| 上传、下载、粘贴的进度 | 右下角传输队列，进度条为随口味变化的彩虹渐变（`.bg-rainbow`）；完成显示对勾，失败显示叉号 |
+| 上传、下载、粘贴、解压的进度 | 右下角传输队列，进度条为随口味变化的彩虹渐变（`.bg-rainbow`）；完成显示对勾，失败显示叉号 |
 | 加载中 | 转圈图标；无法确定进度时为来回滑动的进度条（`.animate-indeterminate`） |
 | 拖入文件 | 主面板上覆盖主色虚线框，标明将上传到的目录 |
 | 首次使用 | 右下角提示卡片，介绍右键菜单和拖拽上传，关闭后不再出现（`afm.tipDismissed`） |

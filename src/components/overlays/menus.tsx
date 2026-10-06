@@ -9,6 +9,7 @@ import {
   FolderUp,
   Info,
   Link,
+  PackageOpen,
   Pencil,
   RotateCw,
   ScanEye,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import type { T } from "../../i18n/index.tsx";
 import type { Bookmark } from "../../lib/index.ts";
-import { IS_MAC } from "../../lib/index.ts";
+import { IS_MAC, isArchive } from "../../lib/index.ts";
 import type { Clip, FileEntry, ViewMode } from "../../types.ts";
 import { VIEWS } from "../views/index.ts";
 import type { MenuItem } from "./ContextMenu.tsx";
@@ -40,6 +41,8 @@ export interface MenuActions {
   /** 打开条目：文件夹进入，文件在查看器中打开 */
   open: (entry: FileEntry) => void;
   paste: (dest: string) => Promise<void>;
+  /** 在设备上把压缩包解压到所在目录 */
+  extract: (entry: FileEntry) => Promise<void>;
   download: (targets: FileEntry[]) => Promise<void>;
   toClip: (mode: Clip["mode"], items: FileEntry[]) => void;
   copyText: (text: string) => void;
@@ -70,6 +73,13 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
       shortcut: ["enter"],
       onSelect: () => a.open(single),
     });
+    if (isArchive(single.name)) {
+      items.push({
+        label: t("menu.extract"),
+        icon: <PackageOpen className="size-4" />,
+        onSelect: () => void a.extract(single),
+      });
+    }
   }
   if (single?.isDir) {
     items.push({

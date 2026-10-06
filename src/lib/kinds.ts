@@ -1,6 +1,6 @@
 import type { T } from "../i18n/translate.ts";
 import type { MessageKey } from "../i18n/zh.ts";
-import type { FileEntry } from "../types.ts";
+import type { ArchiveFormat, FileEntry } from "../types.ts";
 
 /** 从扩展名到访达式“种类”文案的映射，文案里的 {ext} 换成扩展名的显示名 */
 const KINDS: [RegExp, MessageKey][] = [
@@ -68,8 +68,19 @@ export function kindLabel(entry: FileEntry, t: T) {
   return t(key, { ext: display });
 }
 
+/** 可预览、解压的压缩包格式；扩展名须与后端 server/archive.ts 的 archiveFormat 一致（7z、rar、xz 不支持） */
+export function archiveFormat(name: string): ArchiveFormat | null {
+  if (/\.(zip|apk|apks|xapk|jar|aar)$/i.test(name)) return "zip";
+  if (/\.tar\.gz$|\.tgz$/i.test(name)) return "tgz";
+  if (/\.tar\.bz2$|\.tbz2?$/i.test(name)) return "tbz";
+  if (/\.tar$/i.test(name)) return "tar";
+  return null;
+}
+
+export const isArchive = (name: string) => archiveFormat(name) !== null;
+
 /** 查看器的显示方式；与后端 /api/preview 支持的扩展名一致，其余文件交给 /api/text 判断是不是文本 */
-export type ViewerKind = "image" | "video" | "audio" | "text";
+export type ViewerKind = "image" | "video" | "audio" | "archive" | "text";
 
 const VIEWER_KINDS: [RegExp, ViewerKind][] = [
   [/\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i, "image"],
@@ -78,7 +89,7 @@ const VIEWER_KINDS: [RegExp, ViewerKind][] = [
 ];
 
 export const viewerKind = (entry: FileEntry): ViewerKind =>
-  VIEWER_KINDS.find(([re]) => re.test(entry.name))?.[1] ?? "text";
+  isArchive(entry.name) ? "archive" : (VIEWER_KINDS.find(([re]) => re.test(entry.name))?.[1] ?? "text");
 
 /** Markdown 文件，默认以排版后的预览显示（不含 .mdx） */
 export const isMarkdown = (name: string) => /\.(md|markdown|mkd|mdown)$/i.test(name);

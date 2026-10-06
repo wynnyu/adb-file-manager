@@ -75,6 +75,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 - Images: initially scaled to fit the window; holding `Ctrl` while scrolling, or pinching on a trackpad, zooms in and out. A zoomed image can be dragged, and a double-click toggles between fit to window and actual size
 - Video and audio: built-in playback controls, autoplay 1 second after opening, a draggable progress bar, and volume and mute settings that persist across files; videos can be played in full screen. `Space` plays or pauses, and `F` toggles full screen. Playback depends on the formats supported by the browser
 - Other files are shown as plain text. Only UTF-8 is supported, and only the first 1 MB of larger files is shown
+- Archives (`.zip`, `.apk`, `.apks`, `.xapk`, `.jar`, `.aar`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tbz`) are shown as an expandable tree with names, sizes and dates. The contents of the entries are not previewed, and only the first 20000 entries are shown for larger archives. 7z, rar and xz are not supported and are handled like other files
 - Binary files and formats the browser cannot decode (such as HEIC images or MKV videos) show a notice with a download button
 
 **Transfers**
@@ -85,7 +86,8 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 **Organizing**
 
-- Context menu: open (folders are entered, files open in the viewer), download, cut / copy / paste, copy path, properties, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
+- Context menu: open (folders are entered, files open in the viewer), extract (archives only), download, cut / copy / paste, copy path, properties, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
+- Choosing **Extract** on an archive extracts it on the device into the folder that contains the archive, without passing through the computer. An archive with a single top-level item extracts that item directly; otherwise a folder named after the archive is created. On a name conflict, a number is appended and existing files are never overwritten. Extraction uses the `unzip` (available from Android 9) and `tar` commands of the device, and archives that contain absolute paths, `..` segments or entries below a symbolic link are rejected before anything is extracted
 - Copying never overwrites existing files: on a name conflict, a number is appended (`photo 2.jpg`, `photo 3.jpg`, …). Renaming or moving onto an existing name results in an error
 - A folder cannot be moved or copied into itself
 

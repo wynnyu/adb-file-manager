@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
-import type { Device, ErrorCode, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
+import type { ArchiveFormat, Device, ErrorCode, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
@@ -257,12 +257,14 @@ export async function pull(ctx: Ctx, remote: string, local: string) {
   }
 }
 
+/** 执行命令并要求成功，返回去掉成功标记后的输出 */
 async function checked(ctx: Ctx, cmd: string) {
   // 包进子 shell：2>&1 作用于整条命令；命令里的 exit 只退出子 shell，
   // 整体总是返回 0（新版 adb 会透传退出码，否则会在这里之前就报错，拿不到下面的标记）
   const out = await shell(ctx, `(${cmd}) 2>&1 && echo __ADBFM_OK__; true`);
   if (out.includes("__ADBFM_EXISTS__")) throw new AdbError(t("targetExists"), 400);
   if (!out.includes("__ADBFM_OK__")) throw new AdbError(cleanError(out.trim()), 400);
+  return out.replace("__ADBFM_OK__", "");
 }
 
 export const mkdir = (ctx: Ctx, p: string) => checked(ctx, `mkdir -p ${q(p)}`);
@@ -300,18 +302,70 @@ export function parseOwnerInput(v: unknown): string | undefined {
   return v;
 }
 
-/** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……，从不覆盖 */
-export function copyInto(ctx: Ctx, src: string, destDir: string) {
-  const name = path.basename(src);
+/**
+ * 在 shell 中把变量 t 设为 destDir 下不重名的路径：重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……。
+ * src 是要放进去的源，为目录时名字里的点不算扩展名（com.example.app 不该变成 com.example 2.app）
+ */
+function uniqueTarget(destDir: string, name: string, src: string) {
   const dot = name.lastIndexOf(".");
   const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
-  // 目录名里的点不算扩展名（com.example.app 不该变成 com.example 2.app）
-  return checked(
-    ctx,
+  // 悬空的符号链接 -e 为假，但同样会挡住 cp 和 mv，要一并避开
+  return (
     `b=${q(base)}; e=${q(ext)}; [ -d ${q(src)} ] && { b=${q(name)}; e=; }; ` +
-      `t=${q(destDir)}/"$b$e"; i=2; while [ -e "$t" ]; do t=${q(destDir)}/"$b $i$e"; i=$((i+1)); done; ` +
-      `cp -R ${q(src)} "$t"`,
+    `t=${q(destDir)}/"$b$e"; i=2; while [ -e "$t" ] || [ -L "$t" ]; do t=${q(destDir)}/"$b $i$e"; i=$((i+1)); done`
   );
+}
+
+/** 复制到目标目录下；重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……，从不覆盖 */
+export function copyInto(ctx: Ctx, src: string, destDir: string) {
+  return checked(ctx, `${uniqueTarget(destDir, path.basename(src), src)}; cp -R ${q(src)} "$t"`);
+}
+
+/** 压缩包里列目录、解压用的设备端命令；zip 用 unzip，其余用 toybox 的 tar */
+const ARCHIVE_TOOL: Record<ArchiveFormat, string> = { zip: "unzip", tar: "tar", tgz: "tar", tbz: "tar" };
+const TAR_FLAG: Record<ArchiveFormat, string> = { zip: "", tar: "", tgz: "z", tbz: "j" };
+
+const EXIT_MARK = "__ADBFM_EXIT__";
+
+/** 列出压缩包内容的原始输出，交给 archive.ts 解析 */
+export async function listArchive(ctx: Ctx, p: string, format: ArchiveFormat) {
+  const list = format === "zip" ? `unzip -lv ${q(p)}` : `tar -tv${TAR_FLAG[format]}f ${q(p)}`;
+  // 标记写在命令之后：输出里可能含有文件名，退出码只能靠它之后的标记判断
+  const out = await shell(ctx, `${list} 2>&1; echo ${EXIT_MARK}$?`);
+  const at = out.lastIndexOf(EXIT_MARK);
+  const body = at < 0 ? out : out.slice(0, at);
+  const code = at < 0 ? 1 : Number.parseInt(out.slice(at + EXIT_MARK.length), 10);
+  if (code === 0) return body;
+  if (/not found/i.test(body)) throw new AdbError(t("archiveToolMissing", { tool: ARCHIVE_TOOL[format] }), 501);
+  throw new AdbError(cleanError(body.trim()), 400);
+}
+
+const PATH_MARK = "__ADBFM_PATH__";
+
+/**
+ * 解压的设备端命令。先解到压缩包所在目录的暂存目录 stage，再按不重名的名字移到最终位置：
+ * single 非空时移出 stage 下的这一项，否则把 stage 整个改名为 wrapper，最后删除暂存目录（失败时也删）。
+ * tar 的 -o 不还原属主，root 模式下也不会产生奇怪的 uid
+ */
+export function extractCmd(p: string, format: ArchiveFormat, single: string | null, wrapper: string, stage: string) {
+  const dir = path.dirname(p);
+  const extract =
+    format === "zip" ? `unzip -o -q ${q(p)} -d ${q(stage)}` : `tar -xo${TAR_FLAG[format]}f ${q(p)} -C ${q(stage)}`;
+  const src = single === null ? stage : `${stage}/${single}`;
+  return (
+    `mkdir ${q(stage)} || exit 1; r=1; ` +
+    `if ${extract}; then ${uniqueTarget(dir, single ?? wrapper, src)}; mv ${q(src)} "$t"; r=$?; fi; ` +
+    `rm -rf ${q(stage)}; [ $r = 0 ] && echo ${PATH_MARK}"$t"; exit $r`
+  );
+}
+
+/** 解压压缩包，返回解出的文件夹或文件的路径；single 是压缩包里唯一的顶层项目名，没有则为 null */
+export async function extract(ctx: Ctx, p: string, format: ArchiveFormat, single: string | null, wrapper: string) {
+  const stage = path.join(path.dirname(p), `.adbfm-extract-${Math.random().toString(36).slice(2, 10)}`);
+  const out = await checked(ctx, extractCmd(p, format, single, wrapper, stage));
+  const line = out.split("\n").find((l) => l.startsWith(PATH_MARK));
+  if (!line) throw new AdbError(t("adbFailed"));
+  return line.slice(PATH_MARK.length).replace(/\r$/, "");
 }
 
 /** exec-out 的参数：su 模式下包上提权前缀；exec-out 不经过 pty，二进制内容不会被改写 */

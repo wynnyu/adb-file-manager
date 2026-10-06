@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { ErrorResponse, RootCheckResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import { archiveRoutes } from "./archive.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
 import { langMiddleware } from "./i18n.ts";
@@ -58,6 +59,7 @@ export function createApp() {
 
   app.use(fileRoutes());
   app.use(previewRoutes());
+  app.use(archiveRoutes());
   app.use(propertyRoutes());
   app.use(transferRoutes());
 

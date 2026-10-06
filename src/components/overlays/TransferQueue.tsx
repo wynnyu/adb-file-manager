@@ -1,4 +1,13 @@
-import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, FolderInput, type LucideIcon, X } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
+  Copy,
+  FolderInput,
+  type LucideIcon,
+  PackageOpen,
+  X,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import type { MessageKey } from "../../i18n/index.tsx";
@@ -11,6 +20,7 @@ const kindIcon: Record<Transfer["kind"], LucideIcon> = {
   download: ArrowDownToLine,
   copy: Copy,
   move: FolderInput,
+  extract: PackageOpen,
 };
 /** 写全类名，Tailwind 才扫得到 */
 const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
@@ -18,6 +28,7 @@ const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
   download: { badge: "bg-blue/20 text-blue", bar: "bg-blue" },
   copy: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
   move: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
+  extract: { badge: "bg-yellow/20 text-yellow", bar: "bg-yellow" },
 };
 
 const statusText: Record<Transfer["status"], MessageKey> = {
@@ -26,6 +37,7 @@ const statusText: Record<Transfer["status"], MessageKey> = {
   pulling: "transfer.pulling",
   copying: "transfer.copying",
   moving: "transfer.moving",
+  extracting: "transfer.extracting",
   done: "transfer.done",
   error: "transfer.error",
 };

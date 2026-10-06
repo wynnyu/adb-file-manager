@@ -71,24 +71,26 @@ flowchart TB
   app --> transfer["transfer.ts<br/>上传、下载路由"]
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> properties["properties.ts<br/>属性、递归统计、权限路由"]
+  app --> archive["archive.ts<br/>压缩包预览、解压路由"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & preview & properties & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & transfer & preview & properties & archive & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files & properties --> guard["guard.ts<br/>受保护路径、源与目标关系"]
-  request & guard & files & transfer & preview & properties --> adb["adb.ts<br/>adb 命令封装"]
+  request & guard & files & transfer & preview & properties & archive --> adb["adb.ts<br/>adb 命令封装"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件、设备相关的三个接口、四组路由、静态文件和统一的错误处理 |
+| `app.ts` | 注册中间件、设备相关的三个接口、五组路由、静态文件和统一的错误处理 |
 | `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
 | `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `properties.ts` | `/api/stat`（属性、符号链接目标、所在分区）、`/api/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/chmod`、`/api/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
+| `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目 |
 | `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown，以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
+| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown、压缩包的列出和解压（`listArchive`、`extract`，重名编号与复制共用 `uniqueTarget`），以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
 ### 一次请求的处理过程
@@ -275,7 +277,7 @@ flowchart LR
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
     overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>Properties、TransferQueue、<br/>DropOverlay、UsageTip"]
-    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>CodeView、MarkdownView、<br/>MarkdownParts、Unsupported"]
+    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>ArchiveView、CodeView、<br/>MarkdownView、MarkdownParts、<br/>Unsupported"]
     misc["NoDevice、UploadInputs"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
@@ -288,6 +290,7 @@ flowchart LR
     bookmarksLib["bookmarks.ts"]
     prefs["prefs.ts"]
     queries["queries.ts"]
+    archiveLib["archive.ts"]
   end
 
   App --> header & toolbar & views & bm & overlays & viewer & misc
@@ -307,12 +310,14 @@ flowchart LR
   viewer --> views
   viewer --> api & queries & format & kinds & code
   viewer --> markdown
+  viewer --> archiveLib
 ```
 
 说明：
 
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
 - `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取，再由 `CodeView`（CodeMirror 6，只读，首次打开文本时懒加载）显示，语言识别和主题配色在 `lib/code.ts`。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
+- 压缩包（`lib/kinds.ts` 的 `isArchive`，扩展名须与后端 `archiveFormat` 一致）在查看器中由 `ArchiveView` 显示：经 `archiveQuery` 读取条目，`lib/archive.ts` 的 `archiveTree` 补齐中间目录并排序，`flattenTree` 按展开状态输出可见的行，`treeStats` 统计文件数、文件夹数和总大小。只列条目，不预览内部文件。7z、rar、xz 不在支持范围内，仍走文本查看器
 - Markdown 文件（`lib/kinds.ts` 的 `isMarkdown`）默认由 `MarkdownView` 渲染为排版后的预览，同样懒加载，`vite.config.ts` 把 unified 生态的依赖单独分为 `markdown` 块，避免并入首屏。渲染链路为 react-markdown，加 remark-gfm（表格、任务列表、删除线、脚注）、rehype-raw 和 rehype-sanitize（GitHub 风格白名单，净化原始 HTML）；各标签的样式在 `MarkdownView` 的 `components` 映射里用 Tailwind 类名写出。代码块由 `MarkdownParts` 的 `CodeBlock` 接管，经 `lib/code.ts` 的 `languageForFence` 和 `highlightLines` 复用源码视图的语言识别和配色，`codeHighlightCss` 提供对应的样式规则。链接和图片的路径解析、标题锚点在 `lib/markdown.ts`：指向设备上其他文件的相对链接不可点击，相对路径的图片按 md 所在目录解析，经 `api.previewUrl` 读取
 - `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
 - `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `lib/queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
@@ -376,6 +381,29 @@ sequenceDiagram
 ### 下载
 
 下载分两步：先由后端 `adb pull` 到临时目录并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/fetch/:token` 取回。单个文件原样返回，目录或多项打包为 zip。响应结束后临时目录即被删除；未取回的任务 30 分钟后清理。
+
+### 解压
+
+```mermaid
+sequenceDiagram
+  participant F as useFileOps
+  participant A as lib/api.ts
+  participant S as /api/extract
+  participant P as 设备
+  F->>F: startTransfer（extracting）
+  F->>A: api.extract(target, path)
+  A->>S: POST { serial, path, root? }
+  S->>P: unzip -lv 或 tar -tv，列出全部条目
+  S->>S: assertSafeEntries，topLevelSingle
+  S->>P: 在压缩包所在目录建 .adbfm-extract-*，解压其中
+  S->>P: 单个顶层项目则移出，否则整个暂存目录改名为压缩包名，重名加序号
+  S->>P: 删除暂存目录（失败时也删除）
+  S-->>A: { path }
+  A-->>F: resolve
+  F->>F: patchTransfer（done），刷新存储空间和当前目录
+```
+
+解压失败时（含安全检查不通过）任务显示错误，并刷新当前目录，因为中途失败时可能已经解出了一部分。
 
 ### root 模式
 

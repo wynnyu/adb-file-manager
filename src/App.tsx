@@ -103,7 +103,7 @@ export default function App() {
   // ---------- 操作 ----------
   const { clip, setClip, canPaste, cutPaths, toClip, copyText } = useClipboard(serial, flash);
   const { bookmarks, askBookmark, askDeleteBookmark } = useBookmarks(path, setDialog);
-  const { upload, download, paste, askDelete, askRename, askMkdir } = useFileOps({
+  const { upload, download, paste, extract, askDelete, askRename, askMkdir } = useFileOps({
     target,
     online,
     rootMode,
@@ -156,6 +156,7 @@ export default function App() {
     open,
     reload,
     paste,
+    extract,
     download,
     toClip,
     copyText,

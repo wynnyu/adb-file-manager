@@ -16,6 +16,7 @@ function actions(patch: Partial<MenuActions> = {}): MenuActions {
     navigate: vi.fn(),
     open: vi.fn(),
     paste: vi.fn(async () => {}),
+    extract: vi.fn(async () => {}),
     download: vi.fn(async () => {}),
     toClip: vi.fn(),
     copyText: vi.fn(),
@@ -77,6 +78,20 @@ describe("itemMenu", () => {
     find(items, tz("menu.open")).onSelect();
     expect(act.open).toHaveBeenCalledWith(a);
     expect(act.navigate).not.toHaveBeenCalled();
+  });
+
+  it("单个压缩包在打开之后有解压，普通文件、文件夹和多选没有", () => {
+    const zip = file("/sdcard/a.zip");
+    const act = actions();
+    const items = itemMenu([zip], act);
+    expect(labels(items).slice(0, 2)).toEqual([tz("menu.open"), tz("menu.extract")]);
+    find(items, tz("menu.extract")).onSelect();
+    expect(act.extract).toHaveBeenCalledWith(zip);
+    expect(labels(itemMenu([a], act))).not.toContain(tz("menu.extract"));
+    expect(labels(itemMenu([folder("/sdcard/x.zip")], act))).not.toContain(tz("menu.extract"));
+    expect(labels(itemMenu([zip, file("/sdcard/b.tar.gz")], act))).not.toContain(tz("menu.extract"));
+    // 不支持的格式仍走原来的查看器
+    expect(labels(itemMenu([file("/sdcard/a.7z")], act))).not.toContain(tz("menu.extract"));
   });
 
   it("属性作用于全部目标，单项和多项都有", () => {
