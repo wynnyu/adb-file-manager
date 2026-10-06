@@ -4,7 +4,7 @@ import { providers, tz } from "../../test/utils.tsx";
 import { SelectionBar } from "./SelectionBar.tsx";
 
 function show(showBar: boolean, count = 3) {
-  const fns = { onDownload: vi.fn(), onDelete: vi.fn(), onClear: vi.fn() };
+  const fns = { onDownload: vi.fn(), onCompress: vi.fn(), onDelete: vi.fn(), onClear: vi.fn() };
   render(<SelectionBar show={showBar} count={count} {...fns} />, { wrapper: providers() });
   return fns;
 }
@@ -19,9 +19,11 @@ describe("SelectionBar", () => {
     const fns = show(true, 3);
     expect(screen.getByText("3")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: tz("selection.download") }));
+    fireEvent.click(screen.getByRole("button", { name: tz("selection.compress") }));
     fireEvent.click(screen.getByRole("button", { name: tz("selection.delete") }));
     fireEvent.click(screen.getByRole("button", { name: tz("selection.cancel") }));
     expect(fns.onDownload).toHaveBeenCalled();
+    expect(fns.onCompress).toHaveBeenCalled();
     expect(fns.onDelete).toHaveBeenCalled();
     expect(fns.onClear).toHaveBeenCalled();
   });

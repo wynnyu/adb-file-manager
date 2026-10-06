@@ -42,6 +42,18 @@ describe("TransferQueue", () => {
     expect(onDismiss).toHaveBeenCalledWith("9");
   });
 
+  it("压缩中显示正在压缩，不能关闭", () => {
+    show([{ id: "1", kind: "compress", label: "photos", status: "compressing" }]);
+    expect(screen.getByText(tz("transfer.compressing"))).toBeTruthy();
+    expect(close()).toHaveLength(0);
+  });
+
+  it("完成的任务带说明时显示说明而不是完成", () => {
+    show([{ id: "1", kind: "compress", label: "d", status: "done", note: tz("transfer.skipped", { n: 3 }) }]);
+    expect(screen.getByText(tz("transfer.skipped", { n: 3 }))).toBeTruthy();
+    expect(screen.queryByText(tz("transfer.done"))).toBeNull();
+  });
+
   it("完成的任务显示完成", () => {
     show([{ id: "1", kind: "copy", label: "a", status: "done" }]);
     expect(screen.getByText(tz("transfer.done"))).toBeTruthy();

@@ -1,6 +1,8 @@
 import { getLang, tr } from "../i18n/translate.ts";
 import type {
+  ArchiveFormat,
   ArchiveListing,
+  CompressResult,
   Device,
   DirUsage,
   ErrorResponse,
@@ -99,6 +101,12 @@ export const api = {
 
   /** 在设备上解压，返回解出的文件夹或文件；耗时随压缩包大小而定 */
   extract: (t: Target, path: string) => post<ExtractResult>("/api/extract", { ...t, path }),
+
+  /**
+   * 压缩到所选项的公共父目录，返回生成的压缩包；zip 在电脑上生成，需要经过电脑中转，耗时随大小而定
+   */
+  compress: (t: Target, paths: string[], format: ArchiveFormat) =>
+    post<CompressResult>("/api/compress", { ...t, paths, format }),
 
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {

@@ -103,7 +103,7 @@ export default function App() {
   // ---------- 操作 ----------
   const { clip, setClip, canPaste, cutPaths, toClip, copyText } = useClipboard(serial, flash);
   const { bookmarks, askBookmark, askDeleteBookmark } = useBookmarks(path, setDialog);
-  const { upload, download, paste, extract, askDelete, askRename, askMkdir } = useFileOps({
+  const { upload, download, paste, extract, compress, askDelete, askRename, askMkdir } = useFileOps({
     target,
     online,
     rootMode,
@@ -157,6 +157,7 @@ export default function App() {
     reload,
     paste,
     extract,
+    compress,
     download,
     toClip,
     copyText,
@@ -347,6 +348,7 @@ export default function App() {
         show={online && selectedEntries.length > (view === "gallery" ? 1 : 0)}
         count={selectedEntries.length}
         onDownload={() => download(selectedEntries)}
+        onCompress={() => compress(selectedEntries, "zip")}
         onDelete={() => askDelete(selectedEntries)}
         onClear={clear}
       />

@@ -5,7 +5,7 @@ import type { T } from "../i18n/index.tsx";
 import { useT } from "../i18n/index.tsx";
 import type { UploadItem } from "../lib/index.ts";
 import { api, joinPath, loadPref, parentPath, savePref, type Target } from "../lib/index.ts";
-import type { Clip, FileEntry } from "../types.ts";
+import type { ArchiveFormat, Clip, FileEntry } from "../types.ts";
 import type { Directory } from "./useDirectory.ts";
 import type { Transfers } from "./useTransfers.ts";
 
@@ -22,7 +22,7 @@ const needsRoot = (p: string) => !SHELL_WRITABLE.some((re) => re.test(p));
 const batchLabel = (names: string[], t: T) =>
   names.length === 1 ? names[0] : t("common.itemsEtc", { name: names[0], n: names.length, rest: names.length - 1 });
 
-/** 对设备上文件的操作：上传、下载、粘贴、解压，以及删除、重命名、新建文件夹的对话框 */
+/** 对设备上文件的操作：上传、下载、粘贴、解压、压缩，以及删除、重命名、新建文件夹的对话框 */
 export function useFileOps({
   target,
   online,
@@ -141,6 +141,35 @@ export function useFileOps({
     [target, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
   );
 
+  const compress = useCallback(
+    async (targets: FileEntry[], format: ArchiveFormat) => {
+      if (!target || !targets.length) return;
+      const label = batchLabel(
+        targets.map((x) => x.name),
+        t,
+      );
+      const id = startTransfer({ kind: "compress", label, status: "compressing" });
+      try {
+        const { skipped } = await api.compress(
+          target,
+          targets.map((x) => x.path),
+          format,
+        );
+        patchTransfer(
+          id,
+          skipped ? { status: "done", note: t("transfer.skipped", { n: skipped }) } : { status: "done" },
+        );
+        refreshStorage();
+        await afterChange([], true);
+      } catch (e) {
+        patchTransfer(id, { status: "error", error: (e as Error).message });
+        // 失败时设备上已清理暂存文件，刷新是为了让多项压缩前后的列表一致
+        void reload(true);
+      }
+    },
+    [target, startTransfer, patchTransfer, refreshStorage, afterChange, reload, t],
+  );
+
   const askDelete = useCallback(
     (targets: FileEntry[]) => {
       if (!target || !targets.length) return;
@@ -242,5 +271,5 @@ export function useFileOps({
     [target, path, reload, openDialog, t],
   );
 
-  return { upload, download, paste, extract, askDelete, askRename, askMkdir };
+  return { upload, download, paste, extract, compress, askDelete, askRename, askMkdir };
 }

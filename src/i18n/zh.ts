@@ -39,6 +39,7 @@ export const zh = {
   "selection.selected": "已选",
   "selection.unit": "项",
   "selection.download": "下载",
+  "selection.compress": "压缩",
   "selection.delete": "删除",
   "selection.cancel": "取消选择 (Esc)",
 
@@ -118,6 +119,8 @@ export const zh = {
   "transfer.copying": "正在拷贝……",
   "transfer.moving": "正在移动……",
   "transfer.extracting": "正在解压……",
+  "transfer.compressing": "正在压缩……",
+  "transfer.skipped": "已跳过 {n} 个符号链接或特殊文件",
   "transfer.done": "完成",
   "transfer.error": "失败",
 
@@ -161,6 +164,8 @@ export const zh = {
 
   "menu.open": "打开",
   "menu.extract": "解压",
+  "menu.compressZip": "压缩为 zip",
+  "menu.compressTgz": "压缩为 tar.gz",
   "menu.download": "下载到电脑",
   "menu.downloadMany": "下载 {n} 项到电脑",
   "menu.cut": "剪切",

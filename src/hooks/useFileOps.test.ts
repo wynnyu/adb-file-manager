@@ -48,7 +48,17 @@ const upItem = (path: string) => ({ file: new File(["x"], path.split("/").at(-1)
 
 describe("useFileOps", () => {
   beforeEach(() => {
-    for (const k of ["upload", "download", "copy", "move", "extract", "remove", "rename", "mkdir"] as const) {
+    for (const k of [
+      "upload",
+      "download",
+      "copy",
+      "move",
+      "extract",
+      "compress",
+      "remove",
+      "rename",
+      "mkdir",
+    ] as const) {
       vi.spyOn(api, k).mockResolvedValue(undefined as never);
     }
   });
@@ -193,6 +203,58 @@ describe("useFileOps", () => {
       const { result } = setup({ t: null });
       await act(() => result.current.extract(zip));
       expect(api.extract).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("compress", () => {
+    it("多项压缩：按所选路径调用，进度记在传输队列里，成功后刷新存储空间和目录", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/Archive.zip" });
+      const { result, startTransfer, patchTransfer, refreshStorage, afterChange } = setup();
+      await act(() => result.current.compress([a, b], "zip"));
+      expect(api.compress).toHaveBeenCalledWith(target, [a.path, b.path], "zip");
+      expect(startTransfer).toHaveBeenCalledWith({
+        kind: "compress",
+        label: tz("common.itemsEtc", { name: "a.txt", n: 2, rest: 1 }),
+        status: "compressing",
+      });
+      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "done" });
+      expect(refreshStorage).toHaveBeenCalled();
+      expect(afterChange).toHaveBeenCalledWith([], true);
+    });
+
+    it("单项以其名称作为标题，格式原样传给接口", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/a.txt.tar.gz" });
+      const { result, startTransfer } = setup();
+      await act(() => result.current.compress([a], "tgz"));
+      expect(api.compress).toHaveBeenCalledWith(target, [a.path], "tgz");
+      expect(startTransfer).toHaveBeenCalledWith({ kind: "compress", label: "a.txt", status: "compressing" });
+    });
+
+    it("zip 跳过了符号链接时，完成状态带上说明", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/d.zip", skipped: 3 });
+      const { result, patchTransfer } = setup();
+      await act(() => result.current.compress([folder("/sdcard/d")], "zip"));
+      expect(patchTransfer).toHaveBeenLastCalledWith("job", {
+        status: "done",
+        note: tz("transfer.skipped", { n: 3 }),
+      });
+    });
+
+    it("失败时记下错误并刷新目录", async () => {
+      vi.mocked(api.compress).mockRejectedValue(new Error("电脑上的临时空间不足"));
+      const { result, patchTransfer, reload, afterChange } = setup();
+      await act(() => result.current.compress([a], "zip"));
+      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "电脑上的临时空间不足" });
+      expect(reload).toHaveBeenCalledWith(true);
+      expect(afterChange).not.toHaveBeenCalled();
+    });
+
+    it("没有设备或没有选中项时不压缩", async () => {
+      const none = setup({ t: null });
+      await act(() => none.result.current.compress([a], "zip"));
+      const empty = setup();
+      await act(() => empty.result.current.compress([], "zip"));
+      expect(api.compress).not.toHaveBeenCalled();
     });
   });
 

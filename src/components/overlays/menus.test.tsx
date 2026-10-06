@@ -17,6 +17,7 @@ function actions(patch: Partial<MenuActions> = {}): MenuActions {
     open: vi.fn(),
     paste: vi.fn(async () => {}),
     extract: vi.fn(async () => {}),
+    compress: vi.fn(async () => {}),
     download: vi.fn(async () => {}),
     toClip: vi.fn(),
     copyText: vi.fn(),
@@ -53,6 +54,8 @@ describe("itemMenu", () => {
       tz("menu.open"),
       tz("menu.pasteInto", { name: "DCIM" }),
       tz("menu.download"),
+      tz("menu.compressZip"),
+      tz("menu.compressTgz"),
       "---",
       tz("menu.cut"),
       tz("menu.copy"),
@@ -92,6 +95,17 @@ describe("itemMenu", () => {
     expect(labels(itemMenu([zip, file("/sdcard/b.tar.gz")], act))).not.toContain(tz("menu.extract"));
     // 不支持的格式仍走原来的查看器
     expect(labels(itemMenu([file("/sdcard/a.7z")], act))).not.toContain(tz("menu.extract"));
+  });
+
+  it("文件、文件夹和多选都有压缩，分别压缩为 zip 和 tar.gz", () => {
+    const act = actions();
+    for (const targets of [[a], [folder("/sdcard/d")], [a, folder("/sdcard/d")]]) {
+      const items = itemMenu(targets, act);
+      find(items, tz("menu.compressZip")).onSelect();
+      expect(act.compress).toHaveBeenLastCalledWith(targets, "zip");
+      find(items, tz("menu.compressTgz")).onSelect();
+      expect(act.compress).toHaveBeenLastCalledWith(targets, "tgz");
+    }
   });
 
   it("属性作用于全部目标，单项和多项都有", () => {

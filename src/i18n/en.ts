@@ -43,6 +43,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "selection.selected": "Selected",
   "selection.unit": "",
   "selection.download": "Download",
+  "selection.compress": "Compress",
   "selection.delete": "Delete",
   "selection.cancel": "Clear selection (Esc)",
 
@@ -126,6 +127,9 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "transfer.copying": "Copying…",
   "transfer.moving": "Moving…",
   "transfer.extracting": "Extracting…",
+  "transfer.compressing": "Compressing…",
+  "transfer.skipped": "Skipped {n} symbolic links or special files",
+  "transfer.skipped_one": "Skipped 1 symbolic link or special file",
   "transfer.done": "Done",
   "transfer.error": "Failed",
 
@@ -169,6 +173,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
 
   "menu.open": "Open",
   "menu.extract": "Extract",
+  "menu.compressZip": "Compress as zip",
+  "menu.compressTgz": "Compress as tar.gz",
   "menu.download": "Download to computer",
   "menu.downloadMany": "Download {n} items to computer",
   "menu.cut": "Cut",

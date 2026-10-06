@@ -9,6 +9,7 @@ import {
   FolderUp,
   Info,
   Link,
+  Package,
   PackageOpen,
   Pencil,
   RotateCw,
@@ -20,7 +21,7 @@ import {
 import type { T } from "../../i18n/index.tsx";
 import type { Bookmark } from "../../lib/index.ts";
 import { IS_MAC, isArchive } from "../../lib/index.ts";
-import type { Clip, FileEntry, ViewMode } from "../../types.ts";
+import type { ArchiveFormat, Clip, FileEntry, ViewMode } from "../../types.ts";
 import { VIEWS } from "../views/index.ts";
 import type { MenuItem } from "./ContextMenu.tsx";
 
@@ -43,6 +44,8 @@ export interface MenuActions {
   paste: (dest: string) => Promise<void>;
   /** 在设备上把压缩包解压到所在目录 */
   extract: (entry: FileEntry) => Promise<void>;
+  /** 在所选项的公共父目录生成压缩包 */
+  compress: (targets: FileEntry[], format: ArchiveFormat) => Promise<void>;
   download: (targets: FileEntry[]) => Promise<void>;
   toClip: (mode: Clip["mode"], items: FileEntry[]) => void;
   copyText: (text: string) => void;
@@ -101,6 +104,16 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
       label: n > 1 ? t("menu.downloadMany", { n }) : t("menu.download"),
       icon: <Download className="size-4" />,
       onSelect: () => void a.download(targets),
+    },
+    {
+      label: t("menu.compressZip"),
+      icon: <Package className="size-4" />,
+      onSelect: () => void a.compress(targets, "zip"),
+    },
+    {
+      label: t("menu.compressTgz"),
+      icon: <Package className="size-4" />,
+      onSelect: () => void a.compress(targets, "tgz"),
     },
     "sep",
     {

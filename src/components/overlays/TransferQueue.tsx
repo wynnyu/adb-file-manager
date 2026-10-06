@@ -5,6 +5,7 @@ import {
   Copy,
   FolderInput,
   type LucideIcon,
+  Package,
   PackageOpen,
   X,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const kindIcon: Record<Transfer["kind"], LucideIcon> = {
   copy: Copy,
   move: FolderInput,
   extract: PackageOpen,
+  compress: Package,
 };
 /** 写全类名，Tailwind 才扫得到 */
 const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
@@ -29,6 +31,7 @@ const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
   copy: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
   move: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
   extract: { badge: "bg-yellow/20 text-yellow", bar: "bg-yellow" },
+  compress: { badge: "bg-peach/20 text-peach", bar: "bg-peach" },
 };
 
 const statusText: Record<Transfer["status"], MessageKey> = {
@@ -38,6 +41,7 @@ const statusText: Record<Transfer["status"], MessageKey> = {
   copying: "transfer.copying",
   moving: "transfer.moving",
   extracting: "transfer.extracting",
+  compressing: "transfer.compressing",
   done: "transfer.done",
   error: "transfer.error",
 };
@@ -119,7 +123,7 @@ export function TransferQueue({
                   </div>
                 ) : null}
                 <div className={`truncate text-xs ${item.status === "error" ? "text-red" : "text-subtext1"}`}>
-                  {item.error ?? t(statusText[item.status])}
+                  {item.error ?? item.note ?? t(statusText[item.status])}
                 </div>
               </div>
               {!busy && (

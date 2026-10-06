@@ -32,6 +32,19 @@ describe("useTransfers", () => {
     expect(result.current.transfers).toEqual([]);
   });
 
+  it("完成但带说明的任务一直保留，直到手动关闭", () => {
+    const { result } = renderHook(() => useTransfers());
+    let id = "";
+    act(() => {
+      id = result.current.startTransfer({ kind: "compress", label: "a", status: "compressing" });
+    });
+    act(() => result.current.patchTransfer(id, { status: "done", note: "已跳过 2 个符号链接或特殊文件" }));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(result.current.transfers).toHaveLength(1);
+    act(() => result.current.dismissTransfer(id));
+    expect(result.current.transfers).toEqual([]);
+  });
+
   it("失败的任务一直保留，直到手动关闭", () => {
     const { result } = renderHook(() => useTransfers());
     let id = "";

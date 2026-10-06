@@ -31,17 +31,20 @@ export type TransferStatus =
   | "copying"
   | "moving"
   | "extracting"
+  | "compressing"
   | "done"
   | "error";
 
 export interface Transfer {
   id: string;
-  kind: "upload" | "download" | "copy" | "move" | "extract";
+  kind: "upload" | "download" | "copy" | "move" | "extract" | "compress";
   label: string;
   status: TransferStatus;
   /** 0 到 1，仅浏览器传到电脑的阶段可知 */
   progress?: number;
   error?: string;
+  /** 完成后需要用户留意的说明，有说明的任务不会自动移除 */
+  note?: string;
 }
 
 /** 另外加载的某个目录的内容（分栏视图的其他栏、列表视图展开的文件夹） */

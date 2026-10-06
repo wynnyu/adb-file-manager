@@ -1,19 +1,22 @@
-import { Download, Trash2, X } from "lucide-react";
+import { Download, Package, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useT } from "../../i18n/index.tsx";
 import { IconButton, PillButton, spring } from "../ui.tsx";
 
-/** 底部居中的多选操作条：已选数量、下载、删除和取消选择 */
+/** 底部居中的多选操作条：已选数量、下载、压缩、删除和取消选择 */
 export function SelectionBar({
   show,
   count,
   onDownload,
+  onCompress,
   onDelete,
   onClear,
 }: {
   show: boolean;
   count: number;
   onDownload: () => void;
+  /** 压缩为 zip */
+  onCompress: () => void;
   onDelete: () => void;
   onClear: () => void;
 }) {
@@ -48,6 +51,9 @@ export function SelectionBar({
           </span>
           <PillButton tone="accent" icon={<Download className="size-4" />} onClick={onDownload}>
             {t("selection.download")}
+          </PillButton>
+          <PillButton icon={<Package className="size-4" />} onClick={onCompress}>
+            {t("selection.compress")}
           </PillButton>
           <PillButton tone="danger" icon={<Trash2 className="size-4" />} onClick={onDelete}>
             {t("selection.delete")}
