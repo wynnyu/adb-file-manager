@@ -23,6 +23,13 @@ export default defineConfig({
                 /node_modules[\\/](@codemirror[\\/](state|view|language|search|commands)|@lezer[\\/](common|lr|highlight)|style-mod|w3c-keyname|crelt|@marijn[\\/]find-cluster-break)[\\/]/,
               ),
             },
+            // Markdown 渲染链路（unified 生态）只在打开 .md 的预览时才需要，不能并入首屏加载的 vendor
+            {
+              name: "markdown",
+              test: dep(
+                /node_modules[\\/](react-markdown|remark-[\w-]+|rehype-[\w-]+|micromark[\w-]*|mdast-util-[\w-]+|hast-util-[\w-]+|hastscript|hast-to-hyperscript|unist-util-[\w-]+|unist-builder|vfile[\w-]*|unified|bail|trough|is-plain-obj|devlop|decode-named-character-reference|character-entities[\w-]*|parse5|entities|property-information|space-separated-tokens|comma-separated-tokens|html-url-attributes|html-void-elements|web-namespaces|zwitch|ccount|markdown-table|longest-streak|trim-lines|stringify-entities|estree-util-[\w-]+|inline-style-parser|style-to-[\w-]+|@ungap[\\/]structured-clone)[\\/]/,
+              ),
+            },
             // 其余 CodeMirror 语言包（含 language-data 引用的第三方包）不进 vendor，保持按需加载
             // pnpm 的路径里有两层 node_modules，所以不能只匹配第一层之后的目录
             {

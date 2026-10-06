@@ -79,3 +79,6 @@ const VIEWER_KINDS: [RegExp, ViewerKind][] = [
 
 export const viewerKind = (entry: FileEntry): ViewerKind =>
   VIEWER_KINDS.find(([re]) => re.test(entry.name))?.[1] ?? "text";
+
+/** Markdown 文件，默认以排版后的预览显示（不含 .mdx） */
+export const isMarkdown = (name: string) => /\.(md|markdown|mkd|mdown)$/i.test(name);

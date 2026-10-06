@@ -1,8 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { tags } from "@lezer/highlight";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useMediaPlayer } from "../../hooks/useMediaPlayer.ts";
 import { api } from "../../lib/api.ts";
+import { codeHighlight } from "../../lib/code.ts";
 import { file, newQueryClient, providers, tz } from "../../test/utils.tsx";
 import type { TextPreview } from "../../types.ts";
 import { Viewer } from "./Viewer.tsx";
@@ -161,6 +163,155 @@ describe("TextViewer", () => {
     vi.spyOn(api, "text").mockRejectedValue(new Error("无读取权限：/data/x"));
     show();
     expect(await screen.findByText("无读取权限：/data/x")).toBeTruthy();
+  });
+});
+
+describe("MarkdownView", () => {
+  const md = file("/sdcard/docs/README.md", { size: 100 });
+  const markdown = (source: string) => text({ kind: "text", text: source, truncated: false, limit: 1024 });
+  const showMd = () => show({ entry: md });
+
+  it("默认显示预览，可切回源码，设置会被记住", async () => {
+    markdown("# Title\n\nbody");
+    const first = showMd();
+    expect(await screen.findByRole("heading", { level: 1, name: "Title" })).toBeTruthy();
+    expect(screen.getByRole("article", { name: md.name })).toBeTruthy();
+    expect(button(tz("viewer.markdownPreview")).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(button(tz("viewer.markdownPreview")));
+    expect(await screen.findByRole("textbox", { name: md.name })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(button(tz("viewer.markdownPreview")).getAttribute("aria-pressed")).toBe("false");
+
+    first.unmount();
+    showMd();
+    expect(await screen.findByRole("textbox", { name: md.name })).toBeTruthy();
+  });
+
+  it("非 Markdown 文件没有预览按钮", async () => {
+    text({ kind: "text", text: "# not markdown", truncated: false, limit: 1024 });
+    show();
+    expect(await screen.findByRole("textbox", { name: txt.name })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: tz("viewer.markdownPreview") })).toBeNull();
+  });
+
+  it("渲染 GFM：表格、任务列表、删除线、脚注", async () => {
+    markdown(
+      [
+        "| a | b |",
+        "|:-:|--:|",
+        "| 1 | 2 |",
+        "",
+        "- [x] done",
+        "- [ ] todo",
+        "",
+        "~~gone~~",
+        "",
+        "note[^1]",
+        "",
+        "[^1]: the footnote",
+      ].join("\n"),
+    );
+    showMd();
+    expect(await screen.findByRole("table")).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "1" }).style.textAlign).toBe("center");
+    expect(screen.getByRole("cell", { name: "2" }).style.textAlign).toBe("right");
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+    expect(screen.getByRole("deletion").textContent).toBe("gone");
+    const back = screen.getByRole("link", { name: tz("viewer.footnoteBack") });
+    expect(back.textContent).toBe("");
+    expect(screen.getByText(tz("viewer.footnotes")).className).toBe("sr-only");
+  });
+
+  it("净化原始 HTML", async () => {
+    markdown(
+      [
+        "<details><summary>Sum</summary>inside</details>",
+        "",
+        "<script>alert(1)</script>",
+        "",
+        '<img src="https://e.com/a.png" alt="pic" onerror="alert(2)">',
+        "",
+        "[bad](javascript:alert(3))",
+        "",
+        '<p align="center">centered</p>',
+      ].join("\n"),
+    );
+    showMd();
+    const summary = await screen.findByText("Sum");
+    expect(summary.closest("details")).toBeTruthy();
+    const article = screen.getByRole("article");
+    expect(article.querySelector("script")).toBeNull();
+    expect(article.textContent).not.toContain("alert(1)");
+    expect(screen.getByRole("img", { name: "pic" }).hasAttribute("onerror")).toBe(false);
+    expect(screen.getByText("bad")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "bad" })).toBeNull();
+    expect(screen.getByText("centered").getAttribute("align")).toBe("center");
+  });
+
+  it("外部链接在新标签页打开，相对链接不可点击并提示设备路径", async () => {
+    markdown("[site](https://example.com) and [next](../notes/b.md?x=1)");
+    showMd();
+    const site = await screen.findByRole("link", { name: "site" });
+    expect(site.getAttribute("target")).toBe("_blank");
+    expect(site.getAttribute("rel")).toBe("noreferrer");
+    expect(screen.queryByRole("link", { name: "next" })).toBeNull();
+    expect(screen.getByText("next").getAttribute("title")).toBe("/sdcard/notes/b.md");
+  });
+
+  it("相对路径的图片按 md 所在目录从设备读取", async () => {
+    markdown("![logo](img/a.png) ![remote](https://e.com/b.png)");
+    showMd();
+    expect((await screen.findByRole("img", { name: "logo" })).getAttribute("src")).toBe(
+      api.previewUrl(target, "/sdcard/docs/img/a.png"),
+    );
+    expect(screen.getByRole("img", { name: "remote" }).getAttribute("src")).toBe("https://e.com/b.png");
+  });
+
+  describe("代码块", () => {
+    const code = "```js\nconst a = 1;\n```";
+
+    it("按语言高亮，配色与源码视图一致", async () => {
+      markdown(code);
+      showMd();
+      const keyword = await screen.findByText("const");
+      await waitFor(() => expect(keyword.className).toBe(codeHighlight.style([tags.keyword])));
+      expect(screen.getByText("js")).toBeTruthy();
+    });
+
+    it("点击拷贝按钮写入剪贴板，随后显示已拷贝", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+      markdown(code);
+      showMd();
+      fireEvent.click(await screen.findByRole("button", { name: tz("viewer.copyCode") }));
+      expect(writeText).toHaveBeenCalledWith("const a = 1;");
+      expect(await screen.findByRole("button", { name: tz("viewer.copied") })).toBeTruthy();
+    });
+
+    it("自动换行开关对代码块生效", async () => {
+      markdown(code);
+      showMd();
+      const pre = (await screen.findByText("const")).closest("pre");
+      expect(pre?.classList.contains("whitespace-pre-wrap")).toBe(true);
+      fireEvent.click(button(tz("viewer.wrap")));
+      expect(pre?.classList.contains("whitespace-pre-wrap")).toBe(false);
+      expect(pre?.classList.contains("whitespace-pre")).toBe(true);
+    });
+  });
+
+  it("点击目录链接和脚注链接滚动到对应位置", async () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    markdown(["[go](#usage-guide)", "", "## Usage Guide", "", "note[^1]", "", "[^1]: the footnote"].join("\n"));
+    showMd();
+    fireEvent.click(await screen.findByRole("link", { name: "go" }));
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.contexts[0]).toBe(screen.getByRole("heading", { name: "Usage Guide" }));
+
+    fireEvent.click(screen.getByRole("link", { name: "1" }));
+    expect(scroll).toHaveBeenCalledTimes(2);
+    expect((scroll.mock.contexts[1] as HTMLElement).id).toBe("user-content-fn-1");
   });
 });
 

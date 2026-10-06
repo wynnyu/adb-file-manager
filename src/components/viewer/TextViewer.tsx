@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Info, WrapText } from "lucide-react";
+import { BookOpenText, FileText, Info, WrapText } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useT } from "../../i18n/index.tsx";
 import type { Target } from "../../lib/api.ts";
 import { formatSize } from "../../lib/format.ts";
+import { isMarkdown } from "../../lib/kinds.ts";
 import { usePref } from "../../lib/prefs.ts";
 import { textQuery } from "../../lib/queries.ts";
 import type { FileEntry } from "../../types.ts";
@@ -12,8 +13,10 @@ import { Spinner, Unsupported } from "./Unsupported.tsx";
 
 // CodeMirror 体积较大，第一次打开文本时才下载
 const CodeView = lazy(() => import("./CodeView.tsx").then((m) => ({ default: m.CodeView })));
+// Markdown 渲染链路同样按需加载，只在打开 .md 的预览时下载
+const MarkdownView = lazy(() => import("./MarkdownView.tsx").then((m) => ({ default: m.MarkdownView })));
 
-/** 文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览。经 CodeView 只读显示，按文件名语法高亮。自动换行可切换，设置在文件之间保持 */
+/** 文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览。经 CodeView 只读显示，按文件名语法高亮。Markdown 文件默认显示排版后的预览，可切回源码。自动换行和预览开关的设置在文件之间保持 */
 export function TextViewer({
   target,
   entry,
@@ -26,6 +29,8 @@ export function TextViewer({
   const t = useT();
   const { data, error } = useQuery(textQuery(target, entry.path));
   const [wrap, setWrap] = usePref("afm.textWrap", true);
+  const md = isMarkdown(entry.name);
+  const [preview, setPreview] = usePref("afm.markdownPreview", true);
 
   if (error) return <Unsupported entry={entry} text={error.message} onDownload={onDownload} />;
   if (!data) return <Spinner />;
@@ -52,17 +57,34 @@ export function TextViewer({
         </p>
       )}
       <Suspense fallback={<Spinner />}>
-        <CodeView text={data.text} name={entry.name} wrap={wrap} />
+        {md && preview ? (
+          <MarkdownView text={data.text} entry={entry} target={target} wrap={wrap} />
+        ) : (
+          <CodeView text={data.text} name={entry.name} wrap={wrap} />
+        )}
       </Suspense>
-      <IconButton
-        tone={wrap ? "accent" : "default"}
-        title={t("viewer.wrap")}
-        aria-pressed={wrap}
-        onClick={() => setWrap((v) => !v)}
-        className="absolute right-4 bottom-4 shadow-lg"
-      >
-        <WrapText className="size-5" />
-      </IconButton>
+      <div className="absolute right-4 bottom-4 flex flex-col gap-2">
+        {md && (
+          <IconButton
+            tone={preview ? "accent" : "default"}
+            title={t("viewer.markdownPreview")}
+            aria-pressed={preview}
+            onClick={() => setPreview((v) => !v)}
+            className="shadow-lg"
+          >
+            <BookOpenText className="size-5" />
+          </IconButton>
+        )}
+        <IconButton
+          tone={wrap ? "accent" : "default"}
+          title={t("viewer.wrap")}
+          aria-pressed={wrap}
+          onClick={() => setWrap((v) => !v)}
+          className="shadow-lg"
+        >
+          <WrapText className="size-5" />
+        </IconButton>
+      </div>
     </div>
   );
 }
