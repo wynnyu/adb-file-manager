@@ -70,23 +70,25 @@ flowchart TB
   app --> files["files.ts<br/>文件操作路由"]
   app --> transfer["transfer.ts<br/>上传、下载路由"]
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
+  app --> properties["properties.ts<br/>属性、递归统计、权限路由"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & preview & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
-  files --> guard["guard.ts<br/>受保护路径、源与目标关系"]
-  request & guard & files & transfer & preview --> adb["adb.ts<br/>adb 命令封装"]
+  files & transfer & preview & properties & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & properties --> guard["guard.ts<br/>受保护路径、源与目标关系"]
+  request & guard & files & transfer & preview & properties --> adb["adb.ts<br/>adb 命令封装"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件、设备相关的三个接口、三组路由、静态文件和统一的错误处理 |
+| `app.ts` | 注册中间件、设备相关的三个接口、四组路由、静态文件和统一的错误处理 |
 | `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
 | `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
+| `properties.ts` | `/api/stat`（属性、符号链接目标、所在分区）、`/api/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/chmod`、`/api/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
 | `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
-| `guard.ts` | 仅限本机访问；禁止删除或移动根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除，以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
+| `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
+| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown，以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
 ### 一次请求的处理过程
@@ -154,11 +156,12 @@ flowchart TB
 | `useClipboard` | 应用内剪贴板（剪切或拷贝的条目及其所属设备） | 无 |
 | `useBookmarks` | 书签列表及其对话框 | `afm.bookmarks` |
 | `useFileOps` | 上传、下载、粘贴，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
+| `useProperties` | 属性页要查看的条目 | 无 |
 | `useTransfers` | 传输队列 | 无 |
 | `useToast` | 顶部提示 | 无 |
 | `useViewer` | 查看器打开的文件、在可切换文件中的位置；切换时同步选中，掉线或切换设备后关闭 | 无 |
 | `useMediaPlayer` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
-| `useShortcuts` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单或查看器打开时不响应 | 无 |
+| `useShortcuts` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应 | 无 |
 | `useUploadPicker` / `useDropUpload` | 文件选择框、拖放上传 | 无 |
 
 `App.tsx` 中还用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`。
@@ -186,6 +189,7 @@ flowchart LR
     useDirectory
     useTree
     useFileOps
+    useProperties
     useClipboard
     useBookmarks
     useTransfers
@@ -266,7 +270,7 @@ flowchart LR
     toolbar["toolbar/<br/>Toolbar、Breadcrumbs、<br/>SelectionBar、StatusBar"]
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
-    overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>TransferQueue、DropOverlay、UsageTip"]
+    overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>Properties、TransferQueue、<br/>DropOverlay、UsageTip"]
     viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、Unsupported"]
     misc["NoDevice、UploadInputs"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
@@ -305,6 +309,7 @@ flowchart LR
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
 - `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
 - `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
+- `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `lib/queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
 - `overlays/Dialog.tsx` 内嵌 `bookmarks/BookmarkForm.tsx` 编辑书签，`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
 
 ## 主要流程

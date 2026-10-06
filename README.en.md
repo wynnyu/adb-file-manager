@@ -85,9 +85,15 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 **Organizing**
 
-- Context menu: open (folders are entered, files open in the viewer), download, cut / copy / paste, copy path, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
+- Context menu: open (folders are entered, files open in the viewer), download, cut / copy / paste, copy path, properties, rename and delete. Right-clicking empty space provides options to create a folder, upload to the current folder or switch views
 - Copying never overwrites existing files: on a name conflict, a number is appended (`photo 2.jpg`, `photo 3.jpg`, …). Renaming or moving onto an existing name results in an error
 - A folder cannot be moved or copied into itself
+
+**Properties**
+
+- Choose "Properties" in the context menu, or press `Cmd I` (Mac) or `Alt Enter` (other systems). The panel shows the path, size, modification time, status change time, symlink target (with a jump to the target), partition, inode, hard link count and SELinux context. The access time is not shown
+- The total size, file count and folder count of a folder are calculated automatically half a second after the panel opens, and the calculation is cancelled when the panel closes; items that cannot be read are reported as an incomplete total. A multiple selection shows a summary
+- Permissions (checkboxes or octal), owner and group can be changed, which usually requires root mode. For folders, the change can be applied to everything inside, with an extra confirmation. Protected paths and symbolic links are read-only
 
 **Devices and UI**
 
@@ -101,6 +107,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 | --- | --- |
 | `Enter` | Open a folder, or open a file in the viewer |
 | `F2` | Rename |
+| `Cmd I` / `Alt Enter` | Properties (`Cmd I` on Mac, `Alt Enter` on other systems) |
 | `Delete` / `Cmd Backspace` | Delete |
 | `Backspace` / `Alt` + Up Arrow | Up one level |
 | `Cmd/Ctrl A` | Select all |
@@ -151,7 +158,7 @@ This tool can read and write any file on the device, including system partitions
 - Listens only on `127.0.0.1`, so it is not reachable from other devices on the network
 - Rejects requests whose `Host` header is not localhost (DNS rebinding protection)
 - Checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
-- Resolves symlinks before deleting, renaming or moving, and refuses to operate on the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
+- Resolves symlinks before deleting, renaming, moving or changing permissions, and refuses to operate on the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
 - The viewer reads only common image, video and audio formats as media; other files are limited to the first 1 MB and shown as plain text. SVGs are rendered in a sandbox so that embedded scripts do not run
 
 Do not expose it to a local network or the internet through a reverse proxy or any other means.
@@ -180,6 +187,7 @@ server/
   adb.ts        adb wrapper: listing, push / pull, root detection, copy / move / delete
   app.ts        assembles the HTTP server; serves the frontend after a build
   files.ts      file operation endpoints: list, create, rename, delete, copy, move, preview
+  properties.ts property endpoints: stat, recursive folder usage, chmod and chown
   transfer.ts   upload and download endpoints, staged through a temporary directory on the computer
   guard.ts      security checks: local-only access, protected paths
   request.ts    request parameter parsing and root status cache
