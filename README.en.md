@@ -10,16 +10,20 @@ All operations are performed through adb (`adb push` / `adb pull` / `adb shell`)
 
 Requirements:
 
-- Node.js 20 or later
+- Node.js 20 or later, and [pnpm](https://pnpm.io/)
 - adb (Android SDK Platform-Tools), available on `PATH` or specified with `ADB_PATH`
 
   See [Installing Node.js and adb](#installing-nodejs-and-adb) below for installation instructions
 - USB debugging enabled on the device: under Settings, open About phone and tap "Build number" 7 times to enable Developer options, then enable "USB debugging" under "Developer options"
 
-Run the following command:
+Clone the repository and run the following commands:
 
 ```bash
-npx adb-file-manager
+git clone https://github.com/wynnyu/adb-file-manager.git
+cd adb-file-manager
+pnpm install
+pnpm build
+pnpm start
 ```
 
 Open <http://127.0.0.1:3001> in a browser, connect the device via USB, and tap **Allow** in the USB debugging authorization prompt on the device.
@@ -151,7 +155,7 @@ Configuration is done through environment variables:
 | `ADBFM_SU` | `su -c` | Privilege-escalation prefix used in root mode. Adjust it if su on the device expects different arguments, e.g. `ADBFM_SU="su 0 sh -c"` |
 
 ```bash
-PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
+PORT=8080 ADB_PATH=~/Android/platform-tools/adb pnpm start
 ```
 
 ## Security
@@ -219,7 +223,7 @@ docs/
   design.md        UI design guide
 ```
 
-Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend, which also serves as the npm package's `bin` entry.
+Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend.
 
 ## License
 

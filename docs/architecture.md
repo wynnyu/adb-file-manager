@@ -51,7 +51,7 @@ flowchart LR
     B1["浏览器"] -- ":5173" --> Vite["Vite 开发服务器"]
     Vite -- "代理 /api" --> API1["tsx watch server/index.ts<br/>:3001"]
   end
-  subgraph Prod["pnpm start / npx adb-file-manager"]
+  subgraph Prod["pnpm start"]
     direction LR
     B2["浏览器"] -- ":3001" --> API2["dist/server/index.js"]
     API2 -- "express.static" --> Web[("dist/web/")]

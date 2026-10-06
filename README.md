@@ -10,16 +10,20 @@
 
 环境要求：
 
-- Node.js 20 及以上
+- Node.js 20 及以上，以及 [pnpm](https://pnpm.io/)
 - adb（Android SDK Platform-Tools），需位于 `PATH` 中，或通过 `ADB_PATH` 指定路径
 
   安装方法见下文[安装 Node.js 和 adb](#安装-nodejs-和-adb)
 - 设备已开启 USB 调试：在“设置”的“关于手机”中连续点击“版本号”7 次以启用开发者选项，然后在“开发者选项”中开启“USB 调试”
 
-运行以下命令：
+克隆仓库并运行以下命令：
 
 ```bash
-npx adb-file-manager
+git clone https://github.com/wynnyu/adb-file-manager.git
+cd adb-file-manager
+pnpm install
+pnpm build
+pnpm start
 ```
 
 在浏览器中打开 <http://127.0.0.1:3001>，通过 USB 数据线连接设备，并在设备弹出的 USB 调试授权提示中点击 **允许**。
@@ -151,7 +155,7 @@ sudo dnf install android-tools
 | `ADBFM_SU` | `su -c` | root 模式下的提权命令前缀。如设备上 su 的参数格式不同，可修改此项，例如 `ADBFM_SU="su 0 sh -c"` |
 
 ```bash
-PORT=8080 ADB_PATH=~/Android/platform-tools/adb npx adb-file-manager
+PORT=8080 ADB_PATH=~/Android/platform-tools/adb pnpm start
 ```
 
 ## 安全
@@ -219,7 +223,7 @@ docs/
   design.md        界面设计说明
 ```
 
-构建产物：`dist/web/` 为前端，`dist/server/` 为编译后的后端，同时也是 npm 包的 `bin` 入口。
+构建产物：`dist/web/` 为前端，`dist/server/` 为编译后的后端。
 
 ## 许可证
 

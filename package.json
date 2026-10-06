@@ -1,6 +1,7 @@
 {
   "name": "adb-file-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "private": true,
   "description": "Web-based Android file manager over adb. Works even when USB is set to \"charging only\", no MTP needed",
   "keywords": [
     "adb",
@@ -21,12 +22,6 @@
     "url": "https://github.com/wynnyu/adb-file-manager/issues"
   },
   "type": "module",
-  "bin": {
-    "adb-file-manager": "dist/server/index.js"
-  },
-  "files": [
-    "dist"
-  ],
   "engines": {
     "node": ">=20"
   },
@@ -37,7 +32,6 @@
     "start": "node dist/server/index.js",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "prepublishOnly": "pnpm build",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
