@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { type ExecFileException, execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
 import type { ArchiveFormat, Device, ErrorCode, FileEntry, RootMethod, StorageInfo } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
@@ -18,22 +18,34 @@ export class AdbError extends Error {
   }
 }
 
-function run(args: string[], timeout = 0, signal?: AbortSignal): Promise<string> {
+/**
+ * 短命令的默认超时（毫秒）。设备无响应时 ls、root 检测这类命令不会一直挂着。
+ * 新增的长命令（传输、递归操作、大目录统计）必须显式传 timeout: 0 表示不限
+ */
+const QUICK_TIMEOUT = 30_000;
+
+/** 把 execFile 的失败转为 AdbError；到时被 SIGTERM 终止算超时，signal 取消（AbortError）不算 */
+export function execError(err: ExecFileException, output: string, timeout: number) {
+  if (err.killed && err.signal === "SIGTERM" && timeout > 0 && err.name !== "AbortError") {
+    return new AdbError(t("adbTimeout", { seconds: timeout / 1000 }), 504);
+  }
+  return new AdbError(cleanError((output || err.message).trim()));
+}
+
+function run(args: string[], timeout = QUICK_TIMEOUT, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(ADB, args, { maxBuffer: 64 * 1024 * 1024, timeout, signal }, (err, stdout, stderr) => {
-      if (err) {
-        const msg = (stderr || stdout || err.message).trim();
-        reject(new AdbError(cleanError(msg)));
-      } else resolve(stdout);
+      if (err) reject(execError(err, stderr || stdout, timeout));
+      else resolve(stdout);
     });
   });
 }
 
 /** 同 run，但以 Buffer 返回 stdout，用于读取文件内容 */
-function runBuffer(args: string[]): Promise<Buffer> {
+function runBuffer(args: string[], timeout = QUICK_TIMEOUT): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    execFile(ADB, args, { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) reject(new AdbError(cleanError((stderr.toString() || err.message).trim())));
+    execFile(ADB, args, { encoding: "buffer", maxBuffer: 64 * 1024 * 1024, timeout }, (err, stdout, stderr) => {
+      if (err) reject(execError(err, stderr.toString(), timeout));
       else resolve(stdout);
     });
   });
@@ -65,7 +77,7 @@ export interface Ctx {
   root: false | RootMethod;
 }
 
-/** 在设备上执行命令；给出 signal 时可中途取消，timeout 单位毫秒，0 为不限 */
+/** 在设备上执行命令；给出 signal 时可中途取消，timeout 单位毫秒，缺省为 QUICK_TIMEOUT，0 为不限 */
 export function shell(ctx: Ctx, cmd: string, opts: { signal?: AbortSignal; timeout?: number } = {}) {
   const full = ctx.root === "su" ? `${SU} ${q(cmd)}` : cmd;
   return run(["-s", ctx.serial, "shell", full], opts.timeout, opts.signal);
@@ -229,39 +241,39 @@ const stagingDir = () => `/data/local/tmp/adbfm-${Date.now().toString(36)}-${Mat
 
 export async function push(ctx: Ctx, locals: string[], remoteDir: string) {
   if (ctx.root !== "su") {
-    await run(["-s", ctx.serial, "push", ...locals, remoteDir + "/"]);
+    await run(["-s", ctx.serial, "push", ...locals, remoteDir + "/"], 0);
     return;
   }
   const stage = stagingDir();
   const user: Ctx = { serial: ctx.serial, root: false };
   try {
     await checked(user, `mkdir -p ${q(stage)}`);
-    await run(["-s", ctx.serial, "push", ...locals, stage + "/"]);
+    await run(["-s", ctx.serial, "push", ...locals, stage + "/"], 0);
     await checked(ctx, `mkdir -p ${q(remoteDir)} && cp -R ${q(stage)}/. ${q(remoteDir)}/`);
   } finally {
-    await shell(ctx, `rm -rf ${q(stage)}`).catch(() => {});
+    await shell(ctx, `rm -rf ${q(stage)}`, { timeout: 0 }).catch(() => {});
   }
 }
 
 export async function pull(ctx: Ctx, remote: string, local: string) {
   if (ctx.root !== "su") {
-    await run(["-s", ctx.serial, "pull", "-a", remote, local]);
+    await run(["-s", ctx.serial, "pull", "-a", remote, local], 0);
     return;
   }
   const stage = stagingDir();
   try {
     await checked(ctx, `mkdir -p ${q(stage)} && cp -R ${q(remote)} ${q(stage)}/ && chmod -R a+rX ${q(stage)}`);
-    await run(["-s", ctx.serial, "pull", "-a", `${stage}/${path.basename(remote)}`, local]);
+    await run(["-s", ctx.serial, "pull", "-a", `${stage}/${path.basename(remote)}`, local], 0);
   } finally {
-    await shell(ctx, `rm -rf ${q(stage)}`).catch(() => {});
+    await shell(ctx, `rm -rf ${q(stage)}`, { timeout: 0 }).catch(() => {});
   }
 }
 
-/** 执行命令并要求成功，返回去掉成功标记后的输出 */
-async function checked(ctx: Ctx, cmd: string) {
+/** 执行命令并要求成功，返回去掉成功标记后的输出；rm、cp、mv、解压和打包可能很耗时，默认不限时 */
+async function checked(ctx: Ctx, cmd: string, timeout = 0) {
   // 包进子 shell：2>&1 作用于整条命令；命令里的 exit 只退出子 shell，
   // 整体总是返回 0（新版 adb 会透传退出码，否则会在这里之前就报错，拿不到下面的标记）
-  const out = await shell(ctx, `(${cmd}) 2>&1 && echo __ADBFM_OK__; true`);
+  const out = await shell(ctx, `(${cmd}) 2>&1 && echo __ADBFM_OK__; true`, { timeout });
   if (out.includes("__ADBFM_EXISTS__")) throw new AdbError(t("targetExists"), 400);
   if (!out.includes("__ADBFM_OK__")) throw new AdbError(cleanError(out.trim()), 400);
   return out.replace("__ADBFM_OK__", "");
@@ -337,7 +349,7 @@ const EXIT_MARK = "__ADBFM_EXIT__";
 export async function listArchive(ctx: Ctx, p: string, format: ArchiveFormat) {
   const list = format === "zip" ? `unzip -lv ${q(p)}` : `tar -tv${TAR_FLAG[format]}f ${q(p)}`;
   // 标记写在命令之后：输出里可能含有文件名，退出码只能靠它之后的标记判断
-  const out = await shell(ctx, `${list} 2>&1; echo ${EXIT_MARK}$?`);
+  const out = await shell(ctx, `${list} 2>&1; echo ${EXIT_MARK}$?`, { timeout: 0 });
   const at = out.lastIndexOf(EXIT_MARK);
   const body = at < 0 ? out : out.slice(0, at);
   const code = at < 0 ? 1 : Number.parseInt(out.slice(at + EXIT_MARK.length), 10);
@@ -418,7 +430,7 @@ export async function pack(ctx: Ctx, base: string, names: string[], format: Arch
 
 /** 设备上 dir 下不重名的文件名（不创建文件），suffix 是 name 末尾的扩展名 */
 export async function uniqueName(ctx: Ctx, dir: string, name: string, suffix: string) {
-  const out = await checked(ctx, `${uniqueTarget(dir, name, "", suffix)}; echo ${PATH_MARK}"$t"`);
+  const out = await checked(ctx, `${uniqueTarget(dir, name, "", suffix)}; echo ${PATH_MARK}"$t"`, QUICK_TIMEOUT);
   return path.basename(markedPath(out));
 }
 
@@ -434,12 +446,14 @@ export function parseDu(out: string) {
 
 /** 这些路径合计占用的字节数，用于压缩前估算电脑上需要的空间 */
 export async function diskUsage(ctx: Ctx, paths: string[]) {
-  return parseDu(await shell(ctx, `du -sk ${paths.map(q).join(" ")} 2>/dev/null`));
+  return parseDu(await shell(ctx, `du -sk ${paths.map(q).join(" ")} 2>/dev/null`, { timeout: 0 }));
 }
 
 /** 路径之下 adb pull 会跳过的条目数：符号链接、套接字等既不是文件也不是目录的东西 */
 export async function countSkipped(ctx: Ctx, paths: string[]) {
-  const out = await shell(ctx, `find ${paths.map(q).join(" ")} ! -type d ! -type f 2>/dev/null | wc -l`);
+  const out = await shell(ctx, `find ${paths.map(q).join(" ")} ! -type d ! -type f 2>/dev/null | wc -l`, {
+    timeout: 0,
+  });
   return Number.parseInt(out.trim(), 10) || 0;
 }
 

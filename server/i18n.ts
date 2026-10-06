@@ -5,6 +5,7 @@ type Lang = "zh" | "en";
 
 const zh = {
   adbFailed: "adb 执行失败",
+  adbTimeout: "adb 命令在 {seconds} 秒内未完成，设备可能无响应。请检查连接后重试",
   pathNotAbsolute: "路径必须是绝对路径",
   noSu: "未找到 su，无法以 root 身份执行操作",
   suNotRoot: "su 未能切换到 root（uid={uid}）",
@@ -46,6 +47,8 @@ export type MsgKey = keyof typeof zh;
 
 const en: Record<MsgKey, string> = {
   adbFailed: "adb command failed",
+  adbTimeout:
+    "adb command did not finish within {seconds} seconds. The device may be unresponsive. Check the connection and try again",
   pathNotAbsolute: "Path must be absolute",
   noSu: "su not found. Operations cannot run as root",
   suNotRoot: "su did not switch to root (uid={uid})",

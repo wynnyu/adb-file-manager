@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { type ExecFileException, execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +10,7 @@ import {
   assertAbs,
   type ByteRange,
   catCmd,
+  execError,
   extractCmd,
   LINK_MARK,
   packCmd,
@@ -35,6 +36,30 @@ describe("q", () => {
     expect(q("a b")).toBe("'a b'");
     expect(q("it's")).toBe(`'it'\\''s'`);
     expect(q("$(rm -rf /)")).toBe("'$(rm -rf /)'");
+  });
+});
+
+describe("execError", () => {
+  const failure = (props: Partial<ExecFileException>) =>
+    Object.assign(new Error("Command failed"), props) as ExecFileException;
+
+  it.each([
+    ["超时被终止", failure({ killed: true, signal: "SIGTERM" }), "", 30_000, 504, "30 秒内未完成"],
+    [
+      "signal 取消不算超时",
+      failure({ killed: true, signal: "SIGTERM", name: "AbortError" }),
+      "",
+      30_000,
+      500,
+      "Command failed",
+    ],
+    ["未设超时时被终止不算超时", failure({ killed: true, signal: "SIGTERM" }), "", 0, 500, "Command failed"],
+    ["普通失败提取错误行", failure({ code: 1 }), "info\nadb: error: device offline\n", 30_000, 500, "device offline"],
+  ])("%s", (_name, err, output, timeout, status, text) => {
+    const e = execError(err, output, timeout);
+    expect(e).toBeInstanceOf(AdbError);
+    expect(e.status).toBe(status);
+    expect(e.message).toContain(text);
   });
 });
 
