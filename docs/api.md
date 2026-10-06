@@ -159,6 +159,18 @@ interface ExtractResult {
   path: string;
 }
 
+/** POST /api/compress 的请求；压缩包生成在所选项的公共父目录 */
+interface CompressRequest {
+  paths: string[];
+  format: ArchiveFormat;
+}
+
+/** POST /api/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
+interface CompressResult {
+  path: string;
+  skipped?: number;
+}
+
 /** 符号链接的信息；目标按跟随链接后的结果统计 */
 interface LinkInfo {
   /** 链接中保存的原始目标，可能是相对路径 */
@@ -256,6 +268,7 @@ interface ChownRequest {
 | GET | `/api/text` | 以文本读取文件开头 | `api.text(target, path)` |
 | GET | `/api/archive` | 列出压缩包内的条目 | `api.archive(target, path)` |
 | POST | `/api/extract` | 在设备上解压压缩包 | `api.extract(target, path)` |
+| POST | `/api/compress` | 把文件和文件夹压缩为 zip 或 tar 系压缩包 | `api.compress(target, paths, format)` |
 | GET | `/api/stat` | 读取属性 | `api.stat(target, path)` |
 | GET | `/api/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
 | POST | `/api/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
@@ -553,6 +566,34 @@ interface ChownRequest {
 
 错误：除上述外，与 `GET /api/archive` 相同。
 
+### POST /api/compress
+
+把一个或多个文件、文件夹压缩为压缩包，不覆盖已有内容。
+
+请求体：`{ serial, paths, format, root? }`，请求类型 `CompressRequest`。`paths` 为绝对路径列表，`format` 为 `zip`、`tar`、`tgz`、`tbz` 之一（界面目前只提供 `zip` 和 `tgz`）。响应：`CompressResult`
+
+```json
+{ "path": "/sdcard/Download/photos.zip", "skipped": 2 }
+```
+
+位置和命名同访达：
+
+- 压缩包生成在所选项的公共父目录，包内路径相对该目录。所选项在同一目录时就是该目录；跨目录时（例如列表视图中展开的子文件夹）取最近的公共祖先，包内保留相对层级（`archive.ts` 的 `packBase`）
+- 重复项以及被其他所选项包含的项会先去掉，所以公共父目录必然在所有所选项之外，压缩包不会落进它自己的源里
+- 单项命名为“名字加扩展名”，文件保留原扩展名（`a.jpg` 为 `a.jpg.zip`）；多项命名为 `Archive.zip`、`Archive.tar.gz`
+- 重名时依次改为“名字 2.zip”“名字 3.zip”，复合扩展名不拆开（`a 2.tar.gz`），从不覆盖
+
+两种生成方式：
+
+| 格式 | 生成位置 | 做法 |
+| --- | --- | --- |
+| `tar`、`tgz`、`tbz` | 设备端 | `tar -cf`、`tar -czf`、`tar -cjf` 先写到所在目录下的暂存文件 `.adbfm-pack-<随机>`，成功后改为最终名字，失败时删除暂存文件，不留下半个压缩包。toybox 的 tar 只认最后一个 `-C`，所以所有名称以同一个基准目录为准，并以 `--` 与选项隔开。root 模式下压缩包会交给所在目录的所有者，避免生成 root 属主的文件 |
+| `zip` | 电脑端 | 设备上没有 `zip` 命令。先估算空间（需要源大小的两倍，不足时返回 `507`），再 `adb pull` 到电脑临时目录，用 `archiver` 打包，最后 `adb push` 回设备，临时目录无论成败都会删除（`zip.ts` 的 `compressZip`）。已压缩的格式（图片、视频、音频、压缩包等）以存储方式写入，其余用 deflate |
+
+`adb pull` 会跳过符号链接、套接字等既不是文件也不是目录的条目，所以 zip 里没有它们，数量记在响应的 `skipped` 中，前端据此提示。tar 系格式保留符号链接，不会有 `skipped`。
+
+错误：路径不存在时 `404`；`format` 不受支持时 `415`；压缩根目录时 `400`；无读取权限或所在目录不可写时 `403`；zip 所需的电脑临时空间不足时 `507`；其他命令执行失败时 `400`。任一源出错则整体失败，设备上不留下压缩包。
+
 ## 属性
 
 以下接口均接受[公共参数](#公共参数)中的 `serial` 和 `root`。
@@ -718,6 +759,7 @@ interface Target {
 | `text(target, path)` | `Promise<TextPreview>` | 通常经 `lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
 | `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
 | `extract(target, path)` | `Promise<ExtractResult>` | 耗时随压缩包大小而定，没有进度 |
+| `compress(target, paths, format)` | `Promise<CompressResult>` | zip 需经电脑中转，耗时随大小而定，没有进度 |
 | `download(target, paths)` | `Promise<void>` | 调用 `/api/pull` 后创建临时 `<a download>` 指向 `/api/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
@@ -736,7 +778,7 @@ interface Target {
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `ls` | `lib/queries.ts`，由 `hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `hooks/useTree.ts` 使用 |
-| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`upload`、`download` | `hooks/useFileOps.ts` |
+| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download` | `hooks/useFileOps.ts` |
 | `previewUrl` | `components/views/ColumnView.tsx`、`components/views/GalleryView.tsx`、`components/viewer/Viewer.tsx` |
 | `text` | `lib/queries.ts`，由 `components/viewer/TextViewer.tsx` 使用 |
 | `archive` | `lib/queries.ts`，由 `components/viewer/ArchiveView.tsx` 使用 |

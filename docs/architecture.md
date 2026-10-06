@@ -38,7 +38,7 @@ flowchart LR
 
 - 后端只监听 `127.0.0.1`，并通过 `guard.ts` 中的 `localOnly` 校验 Host、Origin 和 Sec-Fetch-Site，拒绝来自其他主机或其他网页的请求
 - 列目录、新建、重命名、删除、复制、移动均通过 `adb shell` 在设备端执行；路径在拼接进命令前经过单引号转义（`adb.ts` 中的 `q`）
-- 上传和下载经电脑临时目录中转：上传先由 multer 接收到临时目录，再 `adb push`；下载先 `adb pull` 到临时目录，再由浏览器取回
+- 上传和下载经电脑临时目录中转：上传先由 multer 接收到临时目录，再 `adb push`；下载先 `adb pull` 到临时目录，再由浏览器取回。压缩为 zip 同样经临时目录：拉取、打包后推回设备；压缩为 tar 系格式则直接在设备上完成
 - 预览（含 Range 分段读取）使用 `adb exec-out` 直接以字节流返回，不经过临时目录；文本预览读取文件开头 1 MB
 - root 模式下，若 adbd 本身以 root 运行则直接执行；否则以 `su -c`（可由 `ADBFM_SU` 修改）包装命令。su 模式下 `adb push` / `adb pull` 本身没有 root 权限，因此再经设备上的 `/data/local/tmp` 中转一次
 
@@ -71,11 +71,13 @@ flowchart TB
   app --> transfer["transfer.ts<br/>上传、下载路由"]
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> properties["properties.ts<br/>属性、递归统计、权限路由"]
-  app --> archive["archive.ts<br/>压缩包预览、解压路由"]
+  app --> archive["archive.ts<br/>压缩包预览、解压、压缩路由"]
+  archive --> zip["zip.ts<br/>电脑端生成 zip"]
+  zip & transfer --> tmp["tmp.ts<br/>临时目录"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
   files & transfer & preview & properties & archive & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files & properties --> guard["guard.ts<br/>受保护路径、源与目标关系"]
-  request & guard & files & transfer & preview & properties & archive --> adb["adb.ts<br/>adb 命令封装"]
+  request & guard & files & transfer & preview & properties & archive & zip --> adb["adb.ts<br/>adb 命令封装"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
@@ -86,11 +88,13 @@ flowchart TB
 | `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
 | `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `properties.ts` | `/api/stat`（属性、符号链接目标、所在分区）、`/api/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/chmod`、`/api/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
-| `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目 |
+| `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）、`/api/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
+| `zip.ts` | zip 的电脑端生成：`compressZip` 依次预估空间、`adb pull`、打包、`adb push`，`buildZip` 用 `archiver` 写出 zip，已压缩的格式直接存储 |
+| `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用 |
 | `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown、压缩包的列出和解压（`listArchive`、`extract`，重名编号与复制共用 `uniqueTarget`），以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
+| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`，重名编号与复制共用 `uniqueTarget`，压缩包的复合扩展名不拆开），以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
 ### 一次请求的处理过程
@@ -159,7 +163,7 @@ flowchart TB
 | `useTree` | 列表视图中展开的文件夹及展开后的行 | 无 |
 | `useClipboard` | 应用内剪贴板（剪切或拷贝的条目及其所属设备） | 无 |
 | `useBookmarks` | 书签列表及其对话框 | `afm.bookmarks` |
-| `useFileOps` | 上传、下载、粘贴，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
+| `useFileOps` | 上传、下载、粘贴、解压、压缩，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
 | `useProperties` | 属性页要查看的条目 | 无 |
 | `useTransfers` | 传输队列 | 无 |
 | `useToast` | 顶部提示 | 无 |
@@ -404,6 +408,36 @@ sequenceDiagram
 ```
 
 解压失败时（含安全检查不通过）任务显示错误，并刷新当前目录，因为中途失败时可能已经解出了一部分。
+
+### 压缩
+
+```mermaid
+sequenceDiagram
+  participant F as useFileOps
+  participant A as lib/api.ts
+  participant S as /api/compress
+  participant T as 电脑临时目录
+  participant P as 设备
+  F->>F: startTransfer（compressing）
+  F->>A: api.compress(target, paths, format)
+  A->>S: POST { serial, paths, format, root? }
+  S->>S: packBase：去重、取公共父目录、得到相对名称
+  S->>P: 确认各项存在
+  alt tar、tgz、tbz
+    S->>P: tar 写入 .adbfm-pack-*，成功后改为不重名的最终名字，失败时删除
+  else zip
+    S->>P: du 估算大小，find 统计会被跳过的条目
+    S->>T: adb pull 各项，按相对路径落盘
+    S->>T: archiver 打包为 zip
+    S->>P: 算出不重名的名字，adb push 到公共父目录
+    S->>T: 删除临时目录（失败时也删除）
+  end
+  S-->>A: { path, skipped? }
+  A-->>F: resolve
+  F->>F: patchTransfer（done，有 skipped 时带说明），刷新存储空间和当前目录
+```
+
+压缩失败时任务显示错误，并刷新当前目录。zip 有被跳过的条目时，传输卡片显示说明且不会自动消失。
 
 ### root 模式
 
