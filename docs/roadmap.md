@@ -27,10 +27,10 @@
 
 ### S1 稳定性打磨（与 S2 到 S3 无依赖，可先做）
 
-- [ ] `adb.ts` 的 `run()` 增加默认超时，root 检测、`ls`、`stat`、`realpaths` 等短命令使用；push、pull、复制等长命令保持不限时。超时报错走 `msg()`
-- [ ] 服务启动时清理电脑临时目录 `os.tmpdir()/adb-file-manager` 下的旧 `job-*`；设备首次连接时清理 `/data/local/tmp/adbfm-*`
-- [ ] 单个文件下载改为 `exec-out cat` 流式返回（复用 `preview.ts` 的做法），不再先 pull 到电脑；文件夹和多选仍走 pull 加 zip
-- [ ] `vitest.config.ts` 尝试 `pool: "vmThreads"`，对比测试耗时
+- [x] `adb.ts` 的 `run()` 增加默认超时，root 检测、`ls`、`stat`、`realpaths` 等短命令使用；push、pull、复制等长命令保持不限时。超时报错走 `msg()`
+- [x] 服务启动时清理电脑临时目录 `os.tmpdir()/adb-file-manager` 下的旧 `job-*`；设备首次连接时清理 `/data/local/tmp/adbfm-*`
+- [x] 单个文件下载改为 `exec-out cat` 流式返回（复用 `preview.ts` 的做法），不再先 pull 到电脑；文件夹和多选仍走 pull 加 zip
+- [x] `vitest.config.ts` 尝试 `pool: "vmThreads"`，对比测试耗时
 
 关键文件：`server/adb.ts`、`server/transfer.ts`、`server/preview.ts`、`server/tmp.ts`、`server/index.ts`、`src/lib/api.ts`
 
@@ -107,3 +107,11 @@
 ## 备注
 
 （各会话完成后在此记录影响后续会话的决定，例如最终的目录结构、产品名称、任务接口格式）
+
+### S1
+
+- `run()` 和 `runBuffer()` 的默认超时是 `QUICK_TIMEOUT`（30 秒），超时返回 `504` 和 `adbTimeout` 文案。新增的长命令（传输、递归操作、解压、打包、大目录统计）必须显式传 `timeout: 0`；`checked()` 默认不限时，短命令需要时传第三个参数。S2 拆分 `adb.ts` 时保留这一约定
+- 设备端暂存目录命名为 `/data/local/tmp/adbfm-<BOOT>-<时间>-<随机>`，`BOOT` 是每个进程启动时生成的随机串。`stageCleanupCmd(BOOT)` 只删除其他进程留下的目录，因此任何时候执行都安全。`cleanStagesOnce` 按设备和 root 方式各执行一次：设备首次出现时以普通用户清理，su 检测成功后再以 su 清理（pull 的暂存目录归 root），避免每次启动都弹出 root 授权
+- 解压、打包放在目标目录里的 `.adbfm-extract-*`、`.adbfm-pack-*` 暂存目录位置不固定，不在启动清理范围内
+- 单个文件下载不再经过电脑临时目录，`PullJob` 分为 `stream` 和 `zip` 两种；下载的接口形态不变
+- `vitest.config.ts` 两个 project 都改用 `pool: "vmThreads"`：`pnpm test` 三次 Duration 为 10.85、10.96、10.86 秒，改后为 6.85、7.60、7.12 秒，全部 704 个测试通过，已保留
