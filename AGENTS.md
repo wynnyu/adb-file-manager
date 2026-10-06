@@ -36,7 +36,7 @@ README 和 CHANGELOG 使用书面语，避免口语化表达：
 
 ## 技术栈与命令
 
-pnpm + Node.js 20 以上。前端 React 19、Vite 8、TailwindCSS 4、TanStack Query 5、Motion、lucide-react；后端 Express 5、multer、archiver；TypeScript 7 严格模式；Biome 2 负责格式化和 lint；Vitest 5 + Testing Library + jsdom 负责测试。整体结构见 `docs/architecture.md`，接口见 `docs/api.md`。
+pnpm + Node.js 20 以上。前端 React 19、Vite 8、TailwindCSS 4、TanStack Query 5、Motion、lucide-react、CodeMirror 6；后端 Express 5、multer、archiver；TypeScript 7 严格模式；Biome 2 负责格式化和 lint；Vitest 5 + Testing Library + jsdom 负责测试。整体结构见 `docs/architecture.md`，接口见 `docs/api.md`。
 
 - `pnpm dev`：Vite（5173）和 `tsx watch server/index.ts`（3001）同时启动，`/api` 由 Vite 代理
 - `pnpm check` / `pnpm fix`：Biome 检查 / 自动修复（格式、lint、import 排序）

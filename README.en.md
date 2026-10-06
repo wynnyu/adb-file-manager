@@ -159,7 +159,7 @@ This tool can read and write any file on the device, including system partitions
 - Rejects requests whose `Host` header is not localhost (DNS rebinding protection)
 - Checks `Origin` and `Sec-Fetch-Site` and rejects cross-site requests from other web pages (CSRF protection)
 - Resolves symlinks before deleting, renaming, moving or changing permissions, and refuses to operate on the root directory, top-level directories (`/system`, `/data`, `/sdcard`, …) and the root of each storage volume
-- The viewer reads only common image, video and audio formats as media; other files are limited to the first 1 MB and shown as plain text, and the **Word wrap** button at the bottom right of the viewer toggles line wrapping. SVGs are rendered in a sandbox so that embedded scripts do not run
+- The viewer reads only common image, video and audio formats as media; other files are shown read-only with syntax highlighting chosen by file name and line numbers, and Cmd+F (Ctrl+F on other systems) searches within the file; only UTF-8 is supported and the display is limited to the first 1 MB. The **Word wrap** button at the bottom right of the viewer toggles line wrapping. SVGs are rendered in a sandbox so that embedded scripts do not run
 
 Do not expose it to a local network or the internet through a reverse proxy or any other means.
 

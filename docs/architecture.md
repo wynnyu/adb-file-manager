@@ -271,7 +271,7 @@ flowchart LR
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
     overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>Properties、TransferQueue、<br/>DropOverlay、UsageTip"]
-    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、Unsupported"]
+    viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>CodeView、Unsupported"]
     misc["NoDevice、UploadInputs"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
@@ -307,7 +307,7 @@ flowchart LR
 说明：
 
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
-- `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
+- `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取，再由 `CodeView`（CodeMirror 6，只读，首次打开文本时懒加载）显示，语言识别和主题配色在 `lib/code.ts`。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
 - `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
 - `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `lib/queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
 - `overlays/Dialog.tsx` 内嵌 `bookmarks/BookmarkForm.tsx` 编辑书签，`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
