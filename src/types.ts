@@ -4,6 +4,8 @@ export type {
   ArchiveEntry,
   ArchiveFormat,
   ArchiveListing,
+  CompressRequest,
+  CompressResult,
   Device,
   DirUsage,
   ErrorCode,

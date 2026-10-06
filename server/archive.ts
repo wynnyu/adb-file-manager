@@ -1,9 +1,10 @@
 import posix from "node:path/posix";
 import { Router } from "express";
-import type { ArchiveEntry, ArchiveFormat, ArchiveListing, ExtractResult } from "../shared/types.d.ts";
+import type { ArchiveEntry, ArchiveFormat, ArchiveListing, CompressResult, ExtractResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { msg } from "./i18n.ts";
-import { ctxOf, wrap } from "./request.ts";
+import { ctxOf, pathsOf, wrap } from "./request.ts";
+import { compressZip } from "./zip.ts";
 
 /** 预览最多返回的条目数，超出的部分截断 */
 const LIST_LIMIT = 20000;
@@ -23,6 +24,39 @@ export function archiveFormat(name: string): ArchiveFormat | null {
 export function extractName(name: string) {
   const base = name.replace(/\.(tar\.gz|tar\.bz2|tgz|tbz2?|tar|zip|apk|apks|xapk|jar|aar)$/i, "");
   return base || name;
+}
+
+/** 校验请求里的压缩格式 */
+function formatOf(v: unknown): ArchiveFormat {
+  if (typeof v !== "string" || !Object.hasOwn(adb.ARCHIVE_EXT, v)) throw new adb.AdbError(msg("notArchive"), 415);
+  return v as ArchiveFormat;
+}
+
+/** 压缩包放在哪里、包里的路径是什么 */
+export interface PackPlan {
+  /** 压缩包所在的目录，也是包内路径的起点 */
+  base: string;
+  /** 相对 base 的路径，没有重复，也没有互相包含 */
+  names: string[];
+}
+
+/**
+ * 规划压缩：去掉重复项和被其他所选项包含的项，以剩下各项的公共父目录为 base。
+ * 公共父目录必然在所有所选项之外，压缩包不会落进它自己的源里。根目录没有可放压缩包的父目录，直接拒绝
+ */
+export function packBase(paths: string[]): PackPlan {
+  const clean = [...new Set(paths.map((p) => p.replace(/\/+$/, "") || "/"))];
+  if (clean.includes("/")) throw new adb.AdbError(msg("packRoot"), 400);
+  const tops = clean.filter((p) => !clean.some((o) => o !== p && p.startsWith(`${o}/`)));
+  const parents = tops.map((p) => posix.dirname(p).split("/").filter(Boolean));
+  const common = parents[0].filter((seg, i) => parents.every((parts) => parts[i] === seg));
+  const base = `/${common.join("/")}`;
+  return { base, names: tops.map((p) => posix.relative(base, p)) };
+}
+
+/** 压缩包的文件名：单项沿用其名字（a.jpg 为 a.jpg.zip），多项统一为 Archive */
+export function packName(names: string[], format: ArchiveFormat) {
+  return `${names.length === 1 ? posix.basename(names[0]) : "Archive"}${adb.ARCHIVE_EXT[format]}`;
 }
 
 /** 去掉开头的 ./ 和末尾的 /；空串和 . 表示压缩包根，返回 null */
@@ -111,7 +145,7 @@ async function listEntries(ctx: adb.Ctx, p: string, format: ArchiveFormat) {
   return format === "zip" ? parseZipList(out) : parseTarList(out);
 }
 
-/** 压缩包：预览内容、在设备上解压 */
+/** 压缩包：预览内容、在设备上解压、压缩 */
 export function archiveRoutes() {
   const router = Router();
 
@@ -145,6 +179,24 @@ export function archiveRoutes() {
       assertSafeEntries(entries);
       const result = await adb.extract(ctx, p, format, topLevelSingle(entries), extractName(posix.basename(p)));
       res.json({ path: result } satisfies ExtractResult);
+    }),
+  );
+
+  router.post(
+    "/api/compress",
+    wrap(async (req, res) => {
+      const paths = pathsOf(req.body.paths);
+      const format = formatOf(req.body.format);
+      const ctx = await ctxOf(req);
+      const { base, names } = packBase(paths);
+      // 先确认都存在，不存在时给出明确的 404，而不是工具的报错
+      for (const n of names) await adb.isDir(ctx, posix.join(base, n));
+      const name = packName(names, format);
+      const result: CompressResult =
+        format === "zip"
+          ? await compressZip(ctx, base, names, name)
+          : { path: await adb.pack(ctx, base, names, format, name) };
+      res.json(result.skipped ? result : ({ path: result.path } satisfies CompressResult));
     }),
   );
 

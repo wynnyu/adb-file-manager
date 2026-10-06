@@ -304,11 +304,17 @@ export function parseOwnerInput(v: unknown): string | undefined {
 
 /**
  * 在 shell 中把变量 t 设为 destDir 下不重名的路径：重名时依次改成“名字 2.扩展名”“名字 3.扩展名”……。
- * src 是要放进去的源，为目录时名字里的点不算扩展名（com.example.app 不该变成 com.example 2.app）
+ * src 是要放进去的源，为目录时名字里的点不算扩展名（com.example.app 不该变成 com.example 2.app）。
+ * 给出 suffix 时以它作为扩展名，用于 .tar.gz 这类复合扩展名（a.tar.gz 重名后是 a 2.tar.gz）
  */
-function uniqueTarget(destDir: string, name: string, src: string) {
+function uniqueTarget(destDir: string, name: string, src: string, suffix?: string) {
   const dot = name.lastIndexOf(".");
-  const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+  const [base, ext] =
+    suffix !== undefined && name.endsWith(suffix)
+      ? [name.slice(0, name.length - suffix.length), suffix]
+      : dot > 0
+        ? [name.slice(0, dot), name.slice(dot)]
+        : [name, ""];
   // 悬空的符号链接 -e 为假，但同样会挡住 cp 和 mv，要一并避开
   return (
     `b=${q(base)}; e=${q(ext)}; [ -d ${q(src)} ] && { b=${q(name)}; e=; }; ` +
@@ -359,13 +365,82 @@ export function extractCmd(p: string, format: ArchiveFormat, single: string | nu
   );
 }
 
-/** 解压压缩包，返回解出的文件夹或文件的路径；single 是压缩包里唯一的顶层项目名，没有则为 null */
-export async function extract(ctx: Ctx, p: string, format: ArchiveFormat, single: string | null, wrapper: string) {
-  const stage = path.join(path.dirname(p), `.adbfm-extract-${Math.random().toString(36).slice(2, 10)}`);
-  const out = await checked(ctx, extractCmd(p, format, single, wrapper, stage));
+/** 取出命令输出里由 PATH_MARK 标记的路径 */
+function markedPath(out: string) {
   const line = out.split("\n").find((l) => l.startsWith(PATH_MARK));
   if (!line) throw new AdbError(t("adbFailed"));
   return line.slice(PATH_MARK.length).replace(/\r$/, "");
+}
+
+/** 解压压缩包，返回解出的文件夹或文件的路径；single 是压缩包里唯一的顶层项目名，没有则为 null */
+export async function extract(ctx: Ctx, p: string, format: ArchiveFormat, single: string | null, wrapper: string) {
+  const stage = path.join(path.dirname(p), `.adbfm-extract-${Math.random().toString(36).slice(2, 10)}`);
+  return markedPath(await checked(ctx, extractCmd(p, format, single, wrapper, stage)));
+}
+
+/** 压缩包的扩展名，与前端 lib/kinds.ts 的 archiveFormat 识别的格式一致 */
+export const ARCHIVE_EXT: Record<ArchiveFormat, string> = { zip: ".zip", tar: ".tar", tgz: ".tar.gz", tbz: ".tar.bz2" };
+
+/**
+ * tar 系格式压缩的设备端命令。先写到 base 下的暂存文件 stage，成功后按不重名的名字改名为 name，
+ * 失败时删除暂存文件，不留下半个压缩包。names 是相对 base 的路径；toybox 的 tar 只认最后一个 -C，
+ * 所以所有名称都以同一个 base 为准。chown 为 true 时把压缩包交给 base 的所有者，root 模式下避免生成 root 属主的文件
+ */
+export function packCmd(
+  base: string,
+  names: string[],
+  format: ArchiveFormat,
+  name: string,
+  stage: string,
+  chown: boolean,
+) {
+  const create = `tar -c${TAR_FLAG[format]}f ${q(stage)} -C ${q(base)} -- ${names.map(q).join(" ")}`;
+  return (
+    `r=1; if ${create}; then ${uniqueTarget(base, name, stage, ARCHIVE_EXT[format])}; mv ${q(stage)} "$t"; r=$?; fi; ` +
+    `rm -f ${q(stage)}; ` +
+    (chown ? `[ $r = 0 ] && chown "$(stat -c %u:%g ${q(base)})" "$t" 2>/dev/null; ` : "") +
+    `[ $r = 0 ] && echo ${PATH_MARK}"$t"; exit $r`
+  );
+}
+
+/** 在设备上把 base 下的 names 压缩为 tar 系格式，返回生成的压缩包路径 */
+export async function pack(ctx: Ctx, base: string, names: string[], format: ArchiveFormat, name: string) {
+  const stage = path.join(base, `.adbfm-pack-${Math.random().toString(36).slice(2, 10)}`);
+  try {
+    return markedPath(await checked(ctx, packCmd(base, names, format, name, stage, Boolean(ctx.root))));
+  } catch (e) {
+    if (e instanceof AdbError && /permission denied|read-only/i.test(e.message)) {
+      throw new AdbError(t(ctx.root ? "packDeniedRoot" : "packDenied"), 403);
+    }
+    throw e;
+  }
+}
+
+/** 设备上 dir 下不重名的文件名（不创建文件），suffix 是 name 末尾的扩展名 */
+export async function uniqueName(ctx: Ctx, dir: string, name: string, suffix: string) {
+  const out = await checked(ctx, `${uniqueTarget(dir, name, "", suffix)}; echo ${PATH_MARK}"$t"`);
+  return path.basename(markedPath(out));
+}
+
+/** 解析 du -sk 的输出，返回各项占用的字节数之和；读不了的项没有输出，不计入 */
+export function parseDu(out: string) {
+  let kb = 0;
+  for (const line of out.split("\n")) {
+    const m = /^(\d+)\s/.exec(line);
+    if (m) kb += Number(m[1]);
+  }
+  return kb * 1024;
+}
+
+/** 这些路径合计占用的字节数，用于压缩前估算电脑上需要的空间 */
+export async function diskUsage(ctx: Ctx, paths: string[]) {
+  return parseDu(await shell(ctx, `du -sk ${paths.map(q).join(" ")} 2>/dev/null`));
+}
+
+/** 路径之下 adb pull 会跳过的条目数：符号链接、套接字等既不是文件也不是目录的东西 */
+export async function countSkipped(ctx: Ctx, paths: string[]) {
+  const out = await shell(ctx, `find ${paths.map(q).join(" ")} ! -type d ! -type f 2>/dev/null | wc -l`);
+  return Number.parseInt(out.trim(), 10) || 0;
 }
 
 /** exec-out 的参数：su 模式下包上提权前缀；exec-out 不经过 pty，二进制内容不会被改写 */

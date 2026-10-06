@@ -12,6 +12,8 @@ import {
   catCmd,
   extractCmd,
   LINK_MARK,
+  packCmd,
+  parseDu,
   parseLs,
   pickAuthRetries,
   q,
@@ -226,5 +228,86 @@ describe("pickAuthRetries", () => {
     expect(state.has("A")).toBe(false);
     expect(pickAuthRetries(un, 200_000, state)).toEqual([]);
     expect(pickAuthRetries(un, 200_000 + AUTH_RETRY_DELAY, state)).toEqual(["A"]);
+  });
+});
+
+describe("packCmd", () => {
+  const stage = "/sdcard/.adbfm-pack-x";
+
+  it("路径、名称和暂存文件都经过转义，名称前有 -- 防止被当成选项", () => {
+    const cmd = packCmd("/sdcard/it's", ["-rf", "a b"], "tgz", "x.tar.gz", stage, false);
+    expect(cmd).toContain(`tar -czf '${stage}' -C '/sdcard/it'\\''s' -- '-rf' 'a b'`);
+  });
+
+  it.each([
+    ["tar", "tar -cf"],
+    ["tgz", "tar -czf"],
+    ["tbz", "tar -cjf"],
+  ] as const)("%s 格式使用 %s", (format, expected) => {
+    expect(packCmd("/sdcard", ["a"], format, "a", stage, false)).toContain(expected);
+  });
+
+  it("成功后移到不重名的位置，失败时删除暂存文件并返回 tar 的退出码", () => {
+    const cmd = packCmd("/sdcard", ["a"], "zip", "a.zip", stage, false);
+    expect(cmd).toContain(`mv '${stage}' "$t"`);
+    expect(cmd).toContain(`rm -f '${stage}'`);
+    expect(cmd.endsWith(`exit $r`)).toBe(true);
+    expect(cmd.indexOf("tar -c")).toBeLessThan(cmd.indexOf(`mv '${stage}'`));
+  });
+
+  it("复合扩展名放在最后，重名时是“名字 2.tar.gz”", () => {
+    const cmd = packCmd("/sdcard", ["a"], "tgz", "photos.tar.gz", stage, false);
+    expect(cmd).toContain(`b='photos'; e='.tar.gz'`);
+  });
+
+  it("只有 root 时才改属主", () => {
+    expect(packCmd("/sdcard", ["a"], "tgz", "a.tar.gz", stage, false)).not.toContain("chown");
+    expect(packCmd("/data/x", ["a"], "tgz", "a.tar.gz", stage, true)).toContain(
+      `chown "$(stat -c %u:%g '/data/x')" "$t"`,
+    );
+  });
+});
+
+describe("parseDu", () => {
+  it("把各项的 KB 相加并换算为字节，忽略没有数字开头的行", () => {
+    expect(parseDu("12\t/sdcard/a\n8\t/sdcard/b c\n")).toBe(20 * 1024);
+    expect(parseDu("du: /x: Permission denied\n4\t/y\n")).toBe(4 * 1024);
+    expect(parseDu("")).toBe(0);
+  });
+});
+
+// 在本机 sh 中执行 packCmd 生成的命令，检查暂存、重名编号和失败清理。设备上是 toybox，这里只验证命令的流程
+describe.skipIf(process.platform === "win32")("packCmd 在 shell 中执行", () => {
+  let root: string;
+  beforeAll(() => {
+    root = mkdtempSync(path.join(tmpdir(), "adbfm-pack-"));
+    mkdirSync(path.join(root, "src"));
+    writeFileSync(path.join(root, "src", "a b.txt"), "hello");
+  });
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  const run = (names: string[], format: "tar" | "tgz", name: string) =>
+    execFileSync("sh", ["-c", packCmd(root, names, format, name, path.join(root, ".stage"), false)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  const ls = (...args: string[]) =>
+    execFileSync("ls", ["-A", ...args, root], { encoding: "utf8" })
+      .trim()
+      .split("\n");
+
+  it("生成压缩包并输出路径，暂存文件不留下，重名时编号而不覆盖", () => {
+    expect(run(["src"], "tgz", "src.tar.gz").trim()).toBe(`__ADBFM_PATH__${root}/src.tar.gz`);
+    expect(run(["src"], "tgz", "src.tar.gz").trim()).toBe(`__ADBFM_PATH__${root}/src 2.tar.gz`);
+    expect(run(["src"], "tgz", "src.tar.gz").trim()).toBe(`__ADBFM_PATH__${root}/src 3.tar.gz`);
+    expect(ls()).toEqual(["src", "src 2.tar.gz", "src 3.tar.gz", "src.tar.gz"]);
+    const list = execFileSync("tar", ["-tzf", path.join(root, "src.tar.gz")], { encoding: "utf8" });
+    expect(list).toContain("src/a b.txt");
+  });
+
+  it("源不存在时失败，退出码非 0，且不留下暂存文件和压缩包", () => {
+    const before = ls();
+    expect(() => run(["missing"], "tar", "missing.tar")).toThrow();
+    expect(ls()).toEqual(before);
   });
 });

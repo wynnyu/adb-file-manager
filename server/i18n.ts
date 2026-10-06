@@ -36,6 +36,10 @@ const zh = {
   notArchive: "不支持的压缩包格式",
   archiveToolMissing: "设备上没有 {tool} 命令，无法处理此压缩包",
   unsafeArchive: "压缩包含有指向目录之外的路径，已拒绝解压",
+  packRoot: "无法压缩根目录",
+  packDenied: "部分文件无读取权限，或所在目录无写入权限。可开启 root 模式后重试",
+  packDeniedRoot: "部分文件无读取权限，或所在目录无写入权限",
+  hostNoSpace: "电脑上的临时空间不足，无法生成 zip。可改用 tar.gz，在设备上直接压缩",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -73,6 +77,11 @@ const en: Record<MsgKey, string> = {
   notArchive: "Unsupported archive format",
   archiveToolMissing: "The {tool} command is not available on the device, so this archive cannot be processed",
   unsafeArchive: "The archive contains paths that point outside the target folder. Extraction was rejected",
+  packRoot: "The root directory cannot be compressed",
+  packDenied: "Some files are not readable, or the folder is not writable. Enable root mode and try again",
+  packDeniedRoot: "Some files are not readable, or the folder is not writable",
+  hostNoSpace:
+    "Not enough temporary space on the computer to create a zip. Use tar.gz instead, which compresses on the device",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

@@ -88,6 +88,18 @@ export interface ExtractResult {
   path: string;
 }
 
+/** POST /api/compress 的请求；压缩包生成在所选项的公共父目录 */
+export interface CompressRequest {
+  paths: string[];
+  format: ArchiveFormat;
+}
+
+/** POST /api/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
+export interface CompressResult {
+  path: string;
+  skipped?: number;
+}
+
 /** 符号链接的信息；目标按跟随链接后的结果统计 */
 export interface LinkInfo {
   /** 链接中保存的原始目标，可能是相对路径 */

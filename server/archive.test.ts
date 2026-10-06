@@ -5,6 +5,8 @@ import {
   archiveFormat,
   assertSafeEntries,
   extractName,
+  packBase,
+  packName,
   parseTarList,
   parseZipList,
   topLevelSingle,
@@ -165,5 +167,60 @@ describe("topLevelSingle", () => {
     ["空压缩包", [], null],
   ])("%s", (_name, entries, expected) => {
     expect(topLevelSingle(entries)).toBe(expected);
+  });
+});
+
+describe("packBase", () => {
+  it("单项以其父目录为基准", () => {
+    expect(packBase(["/sdcard/DCIM/Camera"])).toEqual({ base: "/sdcard/DCIM", names: ["Camera"] });
+  });
+
+  it("同目录多项以该目录为基准，忽略路径末尾的斜杠", () => {
+    expect(packBase(["/sdcard/a.txt", "/sdcard/b/"])).toEqual({ base: "/sdcard", names: ["a.txt", "b"] });
+  });
+
+  it("跨目录时取公共父目录，包内路径保留相对层级", () => {
+    expect(packBase(["/sdcard/x/a.txt", "/sdcard/y/z/b.txt"])).toEqual({
+      base: "/sdcard",
+      names: ["x/a.txt", "y/z/b.txt"],
+    });
+  });
+
+  it("按路径段比较，/sdcard/ab 与 /sdcard/a 的公共父目录是 /sdcard", () => {
+    expect(packBase(["/sdcard/ab/f", "/sdcard/a/f"]).base).toBe("/sdcard");
+  });
+
+  it("去掉重复项和被其他所选项包含的项", () => {
+    expect(packBase(["/sdcard/a", "/sdcard/a/b.txt", "/sdcard/a", "/sdcard/c"])).toEqual({
+      base: "/sdcard",
+      names: ["a", "c"],
+    });
+  });
+
+  it("名字相同但路径不同的项不算包含", () => {
+    expect(packBase(["/sdcard/a", "/sdcard/a.txt"]).names).toEqual(["a", "a.txt"]);
+  });
+
+  it("所选项直接位于根目录下时基准是根目录", () => {
+    expect(packBase(["/data"])).toEqual({ base: "/", names: ["data"] });
+  });
+
+  it("根目录被拒绝", () => {
+    expect(() => packBase(["/"])).toThrow(AdbError);
+    expect(() => packBase(["/sdcard/a", "/"])).toThrow(AdbError);
+  });
+});
+
+describe("packName", () => {
+  it.each([
+    [["a.jpg"], "zip", "a.jpg.zip"],
+    [["Download"], "tgz", "Download.tar.gz"],
+    [["x/y"], "zip", "y.zip"],
+    [["a", "b"], "zip", "Archive.zip"],
+    [["a", "b"], "tgz", "Archive.tar.gz"],
+    [["a"], "tbz", "a.tar.bz2"],
+    [["a"], "tar", "a.tar"],
+  ] as const)("%j 压缩为 %s 时命名为 %s", (names, format, expected) => {
+    expect(packName([...names], format)).toBe(expected);
   });
 });
