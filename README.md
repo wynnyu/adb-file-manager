@@ -173,7 +173,7 @@ pnpm start    # 运行构建产物：http://127.0.0.1:3001
 pnpm test     # 运行单元测试
 ```
 
-整体架构、主要流程和模块依赖图见[架构说明](docs/architecture.md)，前后端接口见 [API 文档](docs/api.md)。
+整体架构、主要流程和模块依赖图见[架构说明](docs/architecture.md)，前后端接口见 [API 文档](docs/api.md)，界面的配色、组件、动效和交互规则见[设计说明](docs/design.md)。
 
 技术栈：
 
@@ -213,6 +213,7 @@ src/
 docs/
   architecture.md  架构说明和模块依赖图
   api.md           前后端接口说明
+  design.md        界面设计说明
 ```
 
 构建产物：`dist/web/` 为前端，`dist/server/` 为编译后的后端，同时也是 npm 包的 `bin` 入口。

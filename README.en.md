@@ -173,7 +173,7 @@ pnpm start    # run the build: http://127.0.0.1:3001
 pnpm test     # run unit tests
 ```
 
-The [architecture overview](docs/architecture.md) covers the overall structure, main flows and module dependency graphs, and the [API reference](docs/api.md) describes the backend endpoints and the frontend client. Both documents are written in Chinese.
+The [architecture overview](docs/architecture.md) covers the overall structure, main flows and module dependency graphs, the [API reference](docs/api.md) describes the backend endpoints and the frontend client, and the [design guide](docs/design.md) covers colors, components, motion and interaction rules. These documents are written in Chinese.
 
 Tech stack:
 
@@ -213,6 +213,7 @@ src/
 docs/
   architecture.md  architecture overview and module dependency graphs
   api.md           backend endpoints and the frontend API client
+  design.md        UI design guide
 ```
 
 Build output: `dist/web/` contains the frontend and `dist/server/` contains the compiled backend, which also serves as the npm package's `bin` entry.

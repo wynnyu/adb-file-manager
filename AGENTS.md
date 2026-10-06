@@ -36,7 +36,7 @@ README 和 CHANGELOG 使用书面语，避免口语化表达：
 
 ## 技术栈与命令
 
-pnpm + Node.js 20 以上。前端 React 19、Vite 8、TailwindCSS 4、TanStack Query 5、Motion、lucide-react、CodeMirror 6；后端 Express 5、multer、archiver；TypeScript 7 严格模式；Biome 2 负责格式化和 lint；Vitest 5 + Testing Library + jsdom 负责测试。整体结构见 `docs/architecture.md`，接口见 `docs/api.md`。
+pnpm + Node.js 20 以上。前端 React 19、Vite 8、TailwindCSS 4、TanStack Query 5、Motion、lucide-react、CodeMirror 6；后端 Express 5、multer、archiver；TypeScript 7 严格模式；Biome 2 负责格式化和 lint；Vitest 5 + Testing Library + jsdom 负责测试。整体结构见 `docs/architecture.md`，接口见 `docs/api.md`，界面设计见 `docs/design.md`。
 
 - `pnpm dev`：Vite（5173）和 `tsx watch server/index.ts`（3001）同时启动，`/api` 由 Vite 代理
 - `pnpm check` / `pnpm fix`：Biome 检查 / 自动修复（格式、lint、import 排序）
@@ -103,6 +103,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - 条件类名用模板字符串拼接完整类名，不拼接类名片段（如 `` `bg-${color}` ``），否则 Tailwind 扫描不到
 - 除主题和少量全局规则外不写自定义 CSS
 
+- 调整颜色角色、圆角、按钮外观、弹簧参数或交互规则后，同步更新 `docs/design.md`
 ### Express
 
 - `app.ts` 的 `createApp()` 只组装应用不监听端口，`index.ts` 负责启动；测试和其他入口复用 `createApp()`
