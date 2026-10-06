@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Info } from "lucide-react";
+import { FileText, Info, WrapText } from "lucide-react";
 import { useT } from "../../i18n/index.tsx";
 import type { Target } from "../../lib/api.ts";
 import { formatSize } from "../../lib/format.ts";
+import { usePref } from "../../lib/prefs.ts";
 import { textQuery } from "../../lib/queries.ts";
 import type { FileEntry } from "../../types.ts";
+import { IconButton } from "../ui.tsx";
 import { Spinner, Unsupported } from "./Unsupported.tsx";
 
-/** 纯文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览 */
+/** 纯文本查看：仅支持 UTF-8，最多显示开头 1 MB；不是文本时提示不支持预览。自动换行可切换，设置在文件之间保持 */
 export function TextViewer({
   target,
   entry,
@@ -19,6 +21,7 @@ export function TextViewer({
 }) {
   const t = useT();
   const { data, error } = useQuery(textQuery(target, entry.path));
+  const [wrap, setWrap] = usePref("afm.textWrap", true);
 
   if (error) return <Unsupported entry={entry} text={error.message} onDownload={onDownload} />;
   if (!data) return <Spinner />;
@@ -37,16 +40,29 @@ export function TextViewer({
     );
   }
   return (
-    <div className="flex size-full flex-col overflow-hidden rounded-[1.75rem] bg-mantle ring-1 ring-surface0">
+    <div className="relative flex size-full flex-col overflow-hidden rounded-[1.75rem] bg-mantle ring-1 ring-surface0">
       {data.truncated && (
         <p className="flex shrink-0 items-center gap-2 bg-peach/15 px-5 py-2 text-sm font-semibold text-peach">
           <Info className="size-4 shrink-0" />
           {t("viewer.truncated", { size: formatSize(data.limit) })}
         </p>
       )}
-      <pre className="min-h-0 flex-1 overflow-auto px-5 py-4 font-mono text-sm leading-relaxed whitespace-pre-wrap wrap-break-word text-text select-text">
+      <pre
+        className={`min-h-0 flex-1 overflow-auto px-5 py-4 font-mono text-sm leading-relaxed text-text select-text ${
+          wrap ? "whitespace-pre-wrap wrap-break-word" : "whitespace-pre"
+        }`}
+      >
         {data.text}
       </pre>
+      <IconButton
+        tone={wrap ? "accent" : "default"}
+        title={t("viewer.wrap")}
+        aria-pressed={wrap}
+        onClick={() => setWrap((v) => !v)}
+        className="absolute right-4 bottom-4 shadow-lg"
+      >
+        <WrapText className="size-5" />
+      </IconButton>
     </div>
   );
 }

@@ -97,6 +97,23 @@ describe("TextViewer", () => {
     expect(screen.queryByText(tz("viewer.truncated", { size: "1.0 MB" }))).toBeNull();
   });
 
+  it("默认自动换行，可关闭，设置会被记住", async () => {
+    text({ kind: "text", text: "a long line", truncated: false, limit: 1024 });
+    const first = show();
+    const pre = await screen.findByText("a long line");
+    expect(pre.className).toContain("whitespace-pre-wrap");
+    expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(button(tz("viewer.wrap")));
+    expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByText("a long line").className).not.toContain("whitespace-pre-wrap");
+
+    first.unmount();
+    show();
+    expect((await screen.findByText("a long line")).className).not.toContain("whitespace-pre-wrap");
+    expect(button(tz("viewer.wrap")).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("截断时提示只显示了开头", async () => {
     text({ kind: "text", text: "line", truncated: true, limit: 1024 * 1024 });
     show();

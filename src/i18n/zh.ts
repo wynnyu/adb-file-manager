@@ -277,6 +277,7 @@ export const zh = {
   "viewer.cannotShow": "浏览器无法显示此图片",
   "viewer.truncated": "文件较大，仅显示前 {size}",
   "viewer.empty": "空文件",
+  "viewer.wrap": "自动换行",
   "viewer.loading": "正在加载……",
 } as const;
 

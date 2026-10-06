@@ -293,5 +293,6 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "viewer.cannotShow": "The browser cannot display this image",
   "viewer.truncated": "Large file. Only the first {size} is shown",
   "viewer.empty": "Empty file",
+  "viewer.wrap": "Word wrap",
   "viewer.loading": "Loading…",
 };
