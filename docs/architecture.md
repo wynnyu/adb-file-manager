@@ -470,6 +470,8 @@ sequenceDiagram
 | `server` | `server/**/*.test.ts` | Node.js |
 | `web` | `src/**/*.test.{ts,tsx}` | jsdom，加载 `src/test/setup.ts` |
 
+两个项目都使用 `vmThreads` 池，每个 worker 只创建一次 jsdom，同时保留文件级隔离，全量测试耗时约从 11 秒降到 7 秒。
+
 前端测试的约定：
 
 - 测试文件与被测模块放在同一目录，命名为 `*.test.ts`（hooks）或 `*.test.tsx`（组件）

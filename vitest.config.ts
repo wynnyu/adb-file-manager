@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     projects: [
       {
-        test: { name: "server", include: ["server/**/*.test.ts"], environment: "node" },
+        test: { name: "server", include: ["server/**/*.test.ts"], environment: "node", pool: "vmThreads" },
       },
       {
         plugins: [react()],
@@ -13,6 +13,7 @@ export default defineConfig({
           name: "web",
           include: ["src/**/*.test.{ts,tsx}"],
           environment: "jsdom",
+          pool: "vmThreads",
           setupFiles: ["src/test/setup.ts"],
         },
       },
