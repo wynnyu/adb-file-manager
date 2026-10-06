@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { arrange, type Sort } from "../lib/entries.ts";
+import { arrange, IS_MAC, type Sort } from "../lib/entries.ts";
 import { parentPath } from "../lib/format.ts";
 import type { Clip, FileEntry, Listing, ViewMode } from "../types.ts";
 import { scrollToEntry } from "./useSelection.ts";
@@ -28,6 +28,8 @@ export interface ShortcutContext {
   open: (entry: FileEntry) => void;
   askRename: (entry: FileEntry) => void;
   askDelete: (targets: FileEntry[]) => void;
+  askProperties: (entries: FileEntry[]) => void;
+  askDirProperties: (dir: string) => void;
 }
 
 /** 全局快捷键。监听只注册一次，按键时通过 ref 读取最新的状态 */
@@ -93,6 +95,11 @@ function handleKey(e: KeyboardEvent, c: ShortcutContext) {
     const sub = c.dirs.get(one.path);
     if (sub && (sub.error || !arrange(sub.entries ?? [], c.sort, c.showHidden).length)) return;
     c.navigate(one.path, true);
+  } else if (IS_MAC ? e.metaKey && e.key === "i" : e.altKey && e.key === "Enter") {
+    // 选中了条目看条目，没有选中则看当前目录
+    e.preventDefault();
+    if (selectedEntries.length) c.askProperties(selectedEntries);
+    else c.askDirProperties(path);
   } else if (e.key === "Delete" || (e.metaKey && e.key === "Backspace")) c.askDelete(selectedEntries);
   // 焦点在按钮上时回车由按钮自己处理，不再打开选中项
   else if (e.key === "Enter" && one && !(e.target as HTMLElement).closest("button")) c.open(one);

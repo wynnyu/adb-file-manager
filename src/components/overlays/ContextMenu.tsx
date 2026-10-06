@@ -42,7 +42,7 @@ const KEY_ICONS: Partial<Record<Key, ReactNode>> = {
   }),
 };
 
-const KEY_TEXT: Partial<Record<Key, string>> = { mod: "Ctrl+", shift: "Shift+" };
+const KEY_TEXT: Partial<Record<Key, string>> = { mod: "Ctrl+", shift: "Shift+", alt: "Alt+" };
 
 function Shortcut({ keys }: { keys: Key[] }) {
   return (

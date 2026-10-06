@@ -1,5 +1,6 @@
 import { fireEvent, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { IS_MAC } from "../lib/entries.ts";
 import { file, folder } from "../test/utils.tsx";
 import type { FileEntry, Listing } from "../types.ts";
 import { type ShortcutContext, useShortcuts } from "./useShortcuts.ts";
@@ -31,6 +32,8 @@ function context(patch: Partial<ShortcutContext> = {}): ShortcutContext {
     open: vi.fn(),
     askRename: vi.fn(),
     askDelete: vi.fn(),
+    askProperties: vi.fn(),
+    askDirProperties: vi.fn(),
     ...patch,
   };
 }
@@ -183,6 +186,20 @@ describe("useShortcuts", () => {
     press({ key: "Backspace", metaKey: true });
     expect(vi.mocked(ctx.askDelete).mock.calls).toEqual([[sel], [sel]]);
     expect(ctx.navigate).not.toHaveBeenCalled();
+  });
+
+  it("属性快捷键：有选中项看选中项，没有则看当前目录，回车不会同时打开", () => {
+    const keys: KeyboardEventInit = IS_MAC ? { key: "i", metaKey: true } : { key: "Enter", altKey: true };
+    const withSelection = setup({ selectedEntries: [txt, dir] });
+    press(keys);
+    expect(withSelection.ctx.askProperties).toHaveBeenCalledWith([txt, dir]);
+    expect(withSelection.ctx.open).not.toHaveBeenCalled();
+    withSelection.unmount();
+
+    const none = setup();
+    press(keys);
+    expect(none.ctx.askDirProperties).toHaveBeenCalledWith("/sdcard");
+    expect(none.ctx.askProperties).not.toHaveBeenCalled();
   });
 
   it("回车打开、F2 重命名，只对单个选中项生效", () => {

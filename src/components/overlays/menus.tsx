@@ -7,6 +7,7 @@ import {
   FolderOpen,
   FolderPlus,
   FolderUp,
+  Info,
   Link,
   Pencil,
   RotateCw,
@@ -21,6 +22,9 @@ import { IS_MAC } from "../../lib/entries.ts";
 import type { Clip, FileEntry, ViewMode } from "../../types.ts";
 import { VIEWS } from "../views/ViewSwitch.tsx";
 import type { MenuItem } from "./ContextMenu.tsx";
+
+/** 属性页的快捷键：Mac 上同访达的显示简介，其他系统用 Alt+Enter */
+export const PROPERTIES_KEYS = IS_MAC ? ["mod", "I"] : ["alt", "enter"];
 
 /** 右键菜单用到的状态和操作 */
 export interface MenuActions {
@@ -42,6 +46,8 @@ export interface MenuActions {
   askRename: (entry: FileEntry) => void;
   askDelete: (targets: FileEntry[]) => void;
   askMkdir: (dir?: string) => void;
+  askProperties: (entries: FileEntry[]) => void;
+  askDirProperties: (dir: string) => void;
   pickUpload: (kind: "files" | "folder", dest: string | null) => void;
   selectAll: () => void;
   reload: (keepSelection?: boolean) => Promise<void>;
@@ -104,6 +110,12 @@ export function itemMenu(targets: FileEntry[], a: MenuActions): MenuItem[] {
       icon: <Link className="size-4" />,
       onSelect: () => a.copyText(targets.map((x) => x.path).join("\n")),
     },
+    {
+      label: t("menu.properties"),
+      icon: <Info className="size-4" />,
+      shortcut: PROPERTIES_KEYS,
+      onSelect: () => a.askProperties(targets),
+    },
     "sep",
   );
   if (single)
@@ -144,6 +156,7 @@ export function backgroundMenu(dir: string, a: MenuActions): MenuItem[] {
       onSelect: () => void a.paste(dir),
     },
     { label: t("menu.copyPath"), icon: <Link className="size-4" />, onSelect: () => a.copyText(dir) },
+    { label: t("menu.properties"), icon: <Info className="size-4" />, onSelect: () => a.askDirProperties(dir) },
     "sep",
   ];
   if (dir === a.path) {

@@ -22,6 +22,8 @@ function actions(patch: Partial<MenuActions> = {}): MenuActions {
     askRename: vi.fn(),
     askDelete: vi.fn(),
     askMkdir: vi.fn(),
+    askProperties: vi.fn(),
+    askDirProperties: vi.fn(),
     pickUpload: vi.fn(),
     selectAll: vi.fn(),
     reload: vi.fn(async () => {}),
@@ -54,6 +56,7 @@ describe("itemMenu", () => {
       tz("menu.cut"),
       tz("menu.copy"),
       tz("menu.copyPath"),
+      tz("menu.properties"),
       "---",
       tz("menu.rename"),
       tz("menu.delete"),
@@ -74,6 +77,14 @@ describe("itemMenu", () => {
     find(items, tz("menu.open")).onSelect();
     expect(act.open).toHaveBeenCalledWith(a);
     expect(act.navigate).not.toHaveBeenCalled();
+  });
+
+  it("属性作用于全部目标，单项和多项都有", () => {
+    const act = actions();
+    find(itemMenu([a], act), tz("menu.properties")).onSelect();
+    expect(act.askProperties).toHaveBeenLastCalledWith([a]);
+    find(itemMenu([a, b], act), tz("menu.properties")).onSelect();
+    expect(act.askProperties).toHaveBeenLastCalledWith([a, b]);
   });
 
   it("指向文件的符号链接同样可以打开", () => {
@@ -123,6 +134,12 @@ describe("backgroundMenu", () => {
     find(items, tz("menu.uploadFolder")).onSelect();
     expect(act.askMkdir).toHaveBeenCalledWith("/sdcard/Music");
     expect(act.pickUpload).toHaveBeenCalledWith("folder", "/sdcard/Music");
+  });
+
+  it("属性查看所点的目录", () => {
+    const act = actions();
+    find(backgroundMenu("/sdcard/Music", act), tz("menu.properties")).onSelect();
+    expect(act.askDirProperties).toHaveBeenCalledWith("/sdcard/Music");
   });
 
   it("只有当前目录有“全选”，没有条目时不可用", () => {

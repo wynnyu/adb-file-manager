@@ -7,6 +7,7 @@ import { ContextMenu, type MenuState } from "./components/overlays/ContextMenu.t
 import { Dialog, type DialogState } from "./components/overlays/Dialog.tsx";
 import { DropOverlay } from "./components/overlays/DropOverlay.tsx";
 import { backgroundMenu, bookmarkMenu, itemMenu } from "./components/overlays/menus.tsx";
+import { Properties } from "./components/overlays/Properties.tsx";
 import { Toast } from "./components/overlays/Toast.tsx";
 import { TransferQueue } from "./components/overlays/TransferQueue.tsx";
 import { UsageTip } from "./components/overlays/UsageTip.tsx";
@@ -27,6 +28,7 @@ import { useDirectory, useListings } from "./hooks/useDirectory.ts";
 import { useDropUpload } from "./hooks/useDropUpload.ts";
 import { useFileOps } from "./hooks/useFileOps.ts";
 import { useMediaPlayer } from "./hooks/useMediaPlayer.ts";
+import { useProperties } from "./hooks/useProperties.ts";
 import { useRootMode } from "./hooks/useRootMode.ts";
 import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
@@ -112,6 +114,8 @@ export default function App() {
     openDialog: setDialog,
   });
 
+  const { propertiesEntries, askProperties, askDirProperties, closeProperties } = useProperties();
+
   const viewer = useViewer({ selectable, selectOnly, target, online });
   const { openFile } = viewer;
   const media = useMediaPlayer(viewer.entry?.path ?? null);
@@ -127,7 +131,7 @@ export default function App() {
   // ---------- 快捷键和右键菜单 ----------
   const actions = {
     t,
-    blocked: !!dialog || !!menu || !!viewer.entry,
+    blocked: !!dialog || !!menu || !!viewer.entry || !!propertiesEntries,
     path,
     view,
     sort,
@@ -155,6 +159,8 @@ export default function App() {
     askRename,
     askDelete,
     askMkdir,
+    askProperties,
+    askDirProperties,
     askBookmark,
     askDeleteBookmark,
     pickUpload: picker.pick,
@@ -367,6 +373,19 @@ export default function App() {
 
       <AnimatePresence>
         {menu && <ContextMenu key={`${menu.x},${menu.y}`} menu={menu} onClose={closeMenu} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {propertiesEntries && target && (
+          <Properties
+            entries={propertiesEntries}
+            target={target}
+            onClose={closeProperties}
+            onNavigate={navigate}
+            onCopy={copyText}
+            flash={flash}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
