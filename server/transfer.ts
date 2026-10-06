@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream, mkdirSync } from "node:fs";
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import posix from "node:path/posix";
 import { ZipArchive } from "archiver";
@@ -11,12 +10,7 @@ import type { PullResult, UploadResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { msg } from "./i18n.ts";
 import { ctxOf, pathsOf, uploadPathsOf, wrap } from "./request.ts";
-
-const TMP = path.join(os.tmpdir(), "adb-file-manager");
-
-async function tmpDir() {
-  return fs.mkdtemp(path.join(TMP, "job-"));
-}
+import { TMP, tmpDir } from "./tmp.ts";
 
 interface PullJob {
   dir: string;
@@ -37,7 +31,6 @@ function dropJob(token: string) {
 
 /** 上传和下载：文件都先落到电脑临时目录，再 adb push / pull */
 export function transferRoutes() {
-  mkdirSync(TMP, { recursive: true });
   const router = Router();
   const upload = multer({ dest: TMP });
 
