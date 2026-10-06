@@ -26,7 +26,7 @@ function countRows(widths: number[], width: number) {
   return rows;
 }
 
-const badge = "relative grid size-6 shrink-0 place-items-center rounded-[50%] bg-crust/60";
+const badge = "relative grid size-6 shrink-0 place-items-center rounded-circle bg-crust/60";
 
 function ChipBody({ b, label }: { b: Bookmark; label: string }) {
   return (

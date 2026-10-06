@@ -140,7 +140,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
       style={{ left: pos.left, top: pos.top, originX: pos.originX, originY: pos.originY }}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={onKeyDown}
-      className="fixed z-50 flex max-h-[calc(100dvh-1rem)] min-w-56 flex-col overflow-y-auto rounded-[1.5rem] bg-mantle/95 p-1.5 shadow-2xl shadow-crust ring-1 ring-surface0 outline-none backdrop-blur-md"
+      className="fixed z-50 flex max-h-[calc(100dvh-1rem)] min-w-56 flex-col overflow-y-auto rounded-3xl bg-mantle/95 p-1.5 shadow-2xl shadow-crust ring-1 ring-surface0 outline-none backdrop-blur-md"
     >
       {menu.items.map((item, i) =>
         item === "sep" ? (

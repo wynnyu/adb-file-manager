@@ -92,20 +92,23 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 | 对话框标题 | `text-lg font-extrabold` |
 | 按钮、菜单项、正文 | `text-sm`，按钮和菜单项为 `font-bold` 或 `font-semibold` |
 | 列标题、提示、快捷键 | `text-xs`，颜色 `muted` |
-| 传输进度百分比 | `font-mono text-[11px]` |
+| 传输进度百分比、图标视图的文件大小、设备序列号、主题选择器中的口味说明 | `text-2xs`（11px，`@theme static` 中定义） |
 
 ## 形状与层次
 
 界面以圆形和胶囊为主，大容器使用大圆角：
 
-| 元素 | 圆角 |
-| --- | --- |
-| 图标按钮、图标底座、复选框 | `rounded-[50%]` 正圆 |
-| 胶囊按钮、输入框、菜单项、列表行、Toast、传输任务 | `rounded-full` |
-| 主面板、对话框 | `rounded-[2.5rem]` |
-| 分栏视图、画廊视图、查看器、顶栏下拉面板 | `rounded-[1.75rem]` |
-| 右键菜单、首次使用提示 | `rounded-[1.5rem]` |
-| 对话框内的错误信息 | `rounded-2xl` |
+| 元素 | 类名 | 取值 |
+| --- | --- | --- |
+| 图标按钮、图标底座、复选框 | `rounded-circle` | 50%，正方形元素为正圆 |
+| 胶囊按钮、输入框、菜单项、列表行、Toast、传输任务 | `rounded-full` | 胶囊 |
+| 主面板、对话框、属性页、音频播放器 | `rounded-panel` | 2.5rem |
+| 主面板内的拖放覆盖层、未连接设备页的说明卡片 | `rounded-4xl` | 2rem |
+| 分栏视图、画廊视图、查看器、顶栏下拉面板、图标视图的条目 | `rounded-card` | 1.75rem |
+| 右键菜单、首次使用提示 | `rounded-3xl` | 1.5rem |
+| 对话框内的错误信息 | `rounded-2xl` | 1rem |
+
+`rounded-circle`、`rounded-card`、`rounded-panel` 是 `index.css` 的 `@theme static` 中定义的 `--radius-*` 变量，其余为 Tailwind 自带的刻度。嵌套的圆角容器按同心关系取值：内层圆角等于外层圆角减去两者的间距，例如拖放覆盖层距主面板边缘 0.5rem，圆角取 2.5rem 减 0.5rem，即 2rem。新增圆角时先从这张表中选择，不使用 `rounded-[...]` 任意值。
 
 层次通过底色、描边和阴影区分：
 

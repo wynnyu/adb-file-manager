@@ -37,7 +37,7 @@ export function IconButton({ tone = "default", className = "", title, ...rest }:
       title={title}
       aria-label={title}
       {...press}
-      className={`inline-grid size-10 shrink-0 place-items-center rounded-[50%] transition-colors disabled:pointer-events-none disabled:opacity-40 ${tones[tone]} ${className}`}
+      className={`inline-grid size-10 shrink-0 place-items-center rounded-circle transition-colors disabled:pointer-events-none disabled:opacity-40 ${tones[tone]} ${className}`}
       {...rest}
     />
   );

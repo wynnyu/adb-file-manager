@@ -70,7 +70,7 @@ export function ThemePicker() {
         aria-expanded={open}
         {...press}
         onClick={() => setOpen((o) => !o)}
-        className="grid size-12 place-items-center rounded-[50%] bg-surface0 text-accent transition-colors hover:bg-surface1"
+        className="grid size-12 place-items-center rounded-circle bg-surface0 text-accent transition-colors hover:bg-surface1"
       >
         <Palette className="size-5" />
       </motion.button>
@@ -83,7 +83,7 @@ export function ThemePicker() {
             exit={{ opacity: 0, scale: 0.92, y: -6, transition: { duration: 0.12 } }}
             transition={spring}
             style={{ originX: 1, originY: 0 }}
-            className="absolute right-0 z-30 mt-2 flex w-64 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
+            className="absolute right-0 z-30 mt-2 flex w-64 flex-col gap-1 rounded-card bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
           >
             <p className="px-3 pt-1.5 pb-0.5 text-xs font-bold text-muted">{t("theme.flavor")}</p>
             {FLAVORS.map((f) => {
@@ -101,13 +101,13 @@ export function ThemePicker() {
                   {/* data-flavor 让这颗预览球内部取该口味的配色 */}
                   <span
                     data-flavor={f.id}
-                    className="grid size-9 shrink-0 place-items-center rounded-[50%] bg-base ring-1 ring-surface1"
+                    className="grid size-9 shrink-0 place-items-center rounded-circle bg-base ring-1 ring-surface1"
                   >
-                    <span className="size-3.5 rounded-[50%]" style={{ background: `var(--color-${theme.accent})` }} />
+                    <span className="size-3.5 rounded-circle" style={{ background: `var(--color-${theme.accent})` }} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-bold">{f.name}</span>
-                    <span className="block text-[11px] text-muted">{t(`theme.${f.id}`)}</span>
+                    <span className="block text-2xs text-muted">{t(`theme.${f.id}`)}</span>
                   </span>
                   {active && <Check className="size-4 text-accent" strokeWidth={3} />}
                 </button>
@@ -130,7 +130,7 @@ export function ThemePicker() {
                     {...pressSmall}
                     onClick={(e) => pick({ accent: a.id }, e)}
                     style={{ background: `var(--color-${a.id})` }}
-                    className={`grid size-9 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-mantle transition-shadow ${
+                    className={`grid size-9 place-items-center rounded-circle text-crust ring-offset-2 ring-offset-mantle transition-shadow ${
                       active ? "ring-2 ring-text" : "hover:ring-2 hover:ring-surface2"
                     }`}
                   >

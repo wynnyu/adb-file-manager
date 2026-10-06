@@ -49,7 +49,7 @@ export function Properties({
         exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12 } }}
         transition={spring}
         onMouseDown={(e) => e.stopPropagation()}
-        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col items-center gap-4 overflow-y-auto rounded-[2.5rem] bg-mantle px-6 pt-7 pb-6 shadow-2xl ring-1 ring-surface0"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col items-center gap-4 overflow-y-auto rounded-panel bg-mantle px-6 pt-7 pb-6 shadow-2xl ring-1 ring-surface0"
       >
         {single ? (
           <PropertiesSingle

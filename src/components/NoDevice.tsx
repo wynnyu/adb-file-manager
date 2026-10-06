@@ -24,8 +24,8 @@ export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: s
       transition={spring}
       className="flex flex-col items-center gap-8 px-2 py-12 text-center"
     >
-      <div className="grid size-28 place-items-center rounded-[50%] bg-accent/10">
-        <span className="grid size-20 place-items-center rounded-[50%] bg-accent/20 text-accent">
+      <div className="grid size-28 place-items-center rounded-circle bg-accent/10">
+        <span className="grid size-20 place-items-center rounded-circle bg-accent/20 text-accent">
           <Smartphone className="size-9" />
         </span>
       </div>
@@ -75,10 +75,10 @@ export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: s
       </div>
       <ol className="grid w-full max-w-4xl gap-3 md:grid-cols-3">
         {steps.map(({ Icon, title, text }, i) => (
-          <li key={title} className="flex flex-col items-center gap-3 rounded-[2rem] bg-base p-6">
-            <span className="relative grid size-14 place-items-center rounded-[50%] bg-surface0 text-lavender">
+          <li key={title} className="flex flex-col items-center gap-3 rounded-4xl bg-base p-6">
+            <span className="relative grid size-14 place-items-center rounded-circle bg-surface0 text-lavender">
               <Icon className="size-6" />
-              <span className="absolute -top-1 -right-1 grid size-6 place-items-center rounded-[50%] bg-accent text-xs font-extrabold text-on-accent">
+              <span className="absolute -top-1 -right-1 grid size-6 place-items-center rounded-circle bg-accent text-xs font-extrabold text-on-accent">
                 {i + 1}
               </span>
             </span>

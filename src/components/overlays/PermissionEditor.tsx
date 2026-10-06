@@ -133,7 +133,7 @@ export function PermissionEditor({
                     disabled={!!lock || busy}
                     onClick={() => setBits(mode ^ bit)}
                     {...press}
-                    className={`mx-auto grid size-8 place-items-center rounded-[50%] transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                    className={`mx-auto grid size-8 place-items-center rounded-circle transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                       on ? "bg-accent text-on-accent" : "bg-surface0 text-transparent hover:bg-surface1"
                     }`}
                   >
@@ -209,7 +209,7 @@ export function PermissionEditor({
           className="flex items-center gap-3 self-center rounded-full bg-base py-1.5 pr-5 pl-1.5 text-sm font-semibold text-subtext1 transition-colors hover:bg-surface0 disabled:opacity-50"
         >
           <span
-            className={`grid size-7 place-items-center rounded-[50%] ring-2 transition-colors ${
+            className={`grid size-7 place-items-center rounded-circle ring-2 transition-colors ${
               recursive ? "bg-peach text-crust ring-peach" : "text-transparent ring-surface2"
             }`}
           >

@@ -59,7 +59,7 @@ export const colorVar = (c: BookmarkColor) => `var(--color-${c})`;
  */
 export function BookmarkGlyph({ icon, color, className }: { icon: string; color: BookmarkColor; className: string }) {
   if (isImageIcon(icon))
-    return <img src={icon} alt="" className="absolute inset-0 size-full rounded-[50%] object-cover" />;
+    return <img src={icon} alt="" className="absolute inset-0 size-full rounded-circle object-cover" />;
   const Icon = ICON_LIBRARY[icon] ?? Bookmark;
   return <Icon className={className} style={{ color: colorVar(color) }} />;
 }

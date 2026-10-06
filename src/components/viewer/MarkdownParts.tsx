@@ -127,7 +127,7 @@ export function TaskCheck({ checked }: { checked: boolean }) {
       role="checkbox"
       aria-checked={checked}
       aria-readonly="true"
-      className={`mt-1.5 grid size-[1.125rem] shrink-0 place-items-center rounded-[50%] ring-2 ${
+      className={`mt-1.5 grid size-[1.125rem] shrink-0 place-items-center rounded-circle ring-2 ${
         checked ? "bg-accent text-on-accent ring-accent" : "ring-surface2"
       }`}
     >

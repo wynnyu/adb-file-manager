@@ -23,7 +23,7 @@ export function PropertiesSummary({ entries, target }: { entries: FileEntry[]; t
   return (
     <>
       <div className="flex w-full items-center gap-4 text-left">
-        <span className="grid size-16 shrink-0 place-items-center rounded-[50%] bg-accent/15 text-accent">
+        <span className="grid size-16 shrink-0 place-items-center rounded-circle bg-accent/15 text-accent">
           <Files className="size-7" />
         </span>
         <h2 className="text-lg font-extrabold">{t("props.itemsTitle", { n: entries.length })}</h2>

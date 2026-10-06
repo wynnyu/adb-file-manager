@@ -40,6 +40,14 @@
   /* 次要小字（提示、列标题、序列号）。Overlay 0/1 在深色口味里对 Mantle 只有 3.6:1 到 4.1:1，取 Overlay 2 保证不低于 4.5:1 */
   --color-muted: var(--color-overlay2);
 
+  /* 自带刻度没有的圆角：circle 用于图标按钮等正方形元素，card 用于视图区、查看器和下拉面板，panel 用于主面板和对话框 */
+  --radius-circle: 50%;
+  --radius-card: 1.75rem;
+  --radius-panel: 2.5rem;
+
+  /* 比 text-xs 更小的字号：传输进度百分比等 */
+  --text-2xs: 11px;
+
   --font-sans: "MiSans VF", "MiSans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "Maple Mono", "MiSans VF", ui-monospace, "SF Mono", Menlo, monospace;
 }

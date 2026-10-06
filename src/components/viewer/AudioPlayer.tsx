@@ -31,12 +31,12 @@ export function AudioPlayer({
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={spring}
-        className="flex w-full max-w-md flex-col items-center gap-6 rounded-[2.5rem] bg-mantle px-5 pt-10 pb-5 shadow-2xl shadow-crust/40 ring-1 ring-surface0"
+        className="flex w-full max-w-md flex-col items-center gap-6 rounded-panel bg-mantle px-5 pt-10 pb-5 shadow-2xl shadow-crust/40 ring-1 ring-surface0"
       >
         <motion.span
           animate={player.playing ? { scale: [1, 1.05, 1] } : { scale: 1 }}
           transition={player.playing ? { duration: 2.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" } : spring}
-          className={`grid size-40 place-items-center rounded-[50%] bg-accent/15 text-accent ${player.loading ? "opacity-60" : ""}`}
+          className={`grid size-40 place-items-center rounded-circle bg-accent/15 text-accent ${player.loading ? "opacity-60" : ""}`}
         >
           <Music className="size-16" strokeWidth={1.8} />
         </motion.span>

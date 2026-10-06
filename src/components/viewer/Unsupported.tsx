@@ -37,7 +37,7 @@ export function Spinner() {
       animate={{ opacity: 1, transition: { delay: 0.15 } }}
       className="pointer-events-none absolute inset-0 grid place-items-center text-subtext0"
     >
-      <span className="grid size-14 place-items-center rounded-[50%] bg-crust/60 backdrop-blur-sm">
+      <span className="grid size-14 place-items-center rounded-circle bg-crust/60 backdrop-blur-sm">
         <Loader2 className="size-7 animate-spin" />
       </span>
     </motion.div>

@@ -30,7 +30,7 @@ export function Header({
   return (
     <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-12 shrink-0 place-items-center rounded-[50%] bg-accent text-on-accent shadow-lg shadow-accent/20">
+        <span className="grid size-12 shrink-0 place-items-center rounded-circle bg-accent text-on-accent shadow-lg shadow-accent/20">
           <FolderUp className="size-6" strokeWidth={2.4} />
         </span>
         <div className="min-w-0">
@@ -62,7 +62,7 @@ export function Header({
             aria-pressed={rootMode}
             {...press}
             onClick={onToggleRoot}
-            className={`grid size-12 place-items-center rounded-[50%] transition-colors ${
+            className={`grid size-12 place-items-center rounded-circle transition-colors ${
               rootMode
                 ? "bg-red/15 text-red ring-2 ring-red/60 hover:bg-red hover:text-crust"
                 : "bg-surface0 text-accent hover:bg-surface1"

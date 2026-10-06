@@ -125,13 +125,13 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
           e.preventDefault();
           void submit();
         }}
-        className={`flex w-full max-h-[calc(100dvh-2rem)] max-w-md flex-col overflow-y-auto items-center gap-5 rounded-[2.5rem] bg-mantle px-6 pt-8 pb-6 text-center shadow-2xl ring-1 ${styles.ring}`}
+        className={`flex w-full max-h-[calc(100dvh-2rem)] max-w-md flex-col overflow-y-auto items-center gap-5 rounded-panel bg-mantle px-6 pt-8 pb-6 text-center shadow-2xl ring-1 ${styles.ring}`}
       >
         {bookmark ? (
           <BookmarkPreview value={bookmark} />
         ) : (
           state.kind !== "bookmark" && (
-            <span className={`grid size-16 place-items-center rounded-[50%] ${styles.badge}`}>
+            <span className={`grid size-16 place-items-center rounded-circle ${styles.badge}`}>
               <state.icon className="size-7" />
             </span>
           )
@@ -168,7 +168,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             className="flex items-center gap-3 rounded-full bg-base py-1.5 pr-5 pl-1.5 text-sm font-semibold text-subtext1 transition-colors hover:bg-surface0"
           >
             <span
-              className={`grid size-7 place-items-center rounded-[50%] ring-2 transition-colors ${
+              className={`grid size-7 place-items-center rounded-circle ring-2 transition-colors ${
                 checked ? "bg-peach text-crust ring-peach" : "ring-surface2"
               }`}
             >

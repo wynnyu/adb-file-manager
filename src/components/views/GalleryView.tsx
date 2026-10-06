@@ -68,7 +68,7 @@ export function GalleryView(props: Props) {
   return (
     <div
       data-entry=""
-      className="flex h-[min(68vh,44rem)] min-h-96 overflow-hidden rounded-[1.75rem] bg-base/60 ring-1 ring-surface0"
+      className="flex h-[min(68vh,44rem)] min-h-96 overflow-hidden rounded-card bg-base/60 ring-1 ring-surface0"
     >
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center p-6">

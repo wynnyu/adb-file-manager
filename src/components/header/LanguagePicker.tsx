@@ -30,7 +30,7 @@ export function LanguagePicker() {
         aria-expanded={open}
         {...press}
         onClick={() => setOpen((o) => !o)}
-        className="grid size-12 place-items-center rounded-[50%] bg-surface0 text-accent transition-colors hover:bg-surface1"
+        className="grid size-12 place-items-center rounded-circle bg-surface0 text-accent transition-colors hover:bg-surface1"
       >
         <Languages className="size-5" />
       </motion.button>
@@ -43,7 +43,7 @@ export function LanguagePicker() {
             exit={{ opacity: 0, scale: 0.92, y: -6, transition: { duration: 0.12 } }}
             transition={spring}
             style={{ originX: 1, originY: 0 }}
-            className="absolute right-0 z-30 mt-2 flex w-44 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
+            className="absolute right-0 z-30 mt-2 flex w-44 flex-col gap-1 rounded-card bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
           >
             {LANGS.map((l) => (
               <button

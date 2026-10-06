@@ -106,7 +106,7 @@ export function Placeholder({
       transition={{ duration: 0.15 }}
       className="flex flex-col items-center gap-3 py-20 text-center"
     >
-      <span className={`grid size-16 place-items-center rounded-[50%] ${tone}`}>{icon}</span>
+      <span className={`grid size-16 place-items-center rounded-circle ${tone}`}>{icon}</span>
       <p className="max-w-md font-semibold">{text}</p>
     </motion.div>
   );
@@ -160,7 +160,7 @@ export function FileList(props: Props) {
         >
           <span className="flex min-w-0 items-center gap-3">
             <span className="-mr-2 w-4 shrink-0" />
-            <span className="grid size-10 shrink-0 place-items-center rounded-[50%] bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent group-focus-visible:bg-accent/15 group-focus-visible:text-accent">
+            <span className="grid size-10 shrink-0 place-items-center rounded-circle bg-surface0 text-subtext0 transition-colors group-hover:bg-accent/15 group-hover:text-accent group-focus-visible:bg-accent/15 group-focus-visible:text-accent">
               <CornerLeftUp className="size-[45%]" strokeWidth={2.4} />
             </span>
             <span className="font-mono font-semibold text-subtext1">..</span>
@@ -263,7 +263,7 @@ export function FileList(props: Props) {
                     >
                       <FileIcon entry={entry} />
                       {!isSel && (
-                        <span className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent/80 text-on-accent opacity-0 transition-opacity hover:opacity-70">
+                        <span className="absolute inset-0 grid place-items-center rounded-circle bg-accent/80 text-on-accent opacity-0 transition-opacity hover:opacity-70">
                           <Check className="size-5" strokeWidth={3} />
                         </span>
                       )}
@@ -274,7 +274,7 @@ export function FileList(props: Props) {
                             animate={{ scale: 1, rotate: 0 }}
                             exit={{ scale: 0, rotate: 90, transition: { duration: 0.15 } }}
                             transition={springPop}
-                            className="absolute inset-0 grid place-items-center rounded-[50%] bg-accent text-on-accent"
+                            className="absolute inset-0 grid place-items-center rounded-circle bg-accent text-on-accent"
                           >
                             <Check className="size-5" strokeWidth={3} />
                           </motion.span>

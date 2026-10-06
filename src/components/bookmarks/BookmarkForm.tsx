@@ -17,7 +17,7 @@ const field =
   "h-12 w-full rounded-full bg-base px-5 text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-accent";
 
 const tile = (active: boolean) =>
-  `relative grid size-9 place-items-center overflow-hidden rounded-[50%] ring-offset-2 ring-offset-base transition-[background-color,box-shadow] ${
+  `relative grid size-9 place-items-center overflow-hidden rounded-circle ring-offset-2 ring-offset-base transition-[background-color,box-shadow] ${
     active ? "bg-surface1 ring-2 ring-text" : "hover:bg-surface0 hover:ring-2 hover:ring-surface2"
   }`;
 
@@ -36,7 +36,7 @@ function Section({ label, children, dim }: { label: string; children: ReactNode;
 export function BookmarkPreview({ value }: { value: BookmarkFields }) {
   return (
     <span
-      className="relative grid size-16 place-items-center rounded-[50%]"
+      className="relative grid size-16 place-items-center rounded-circle"
       style={{ background: `color-mix(in oklab, ${colorVar(value.color)} 15%, transparent)` }}
     >
       <BookmarkGlyph icon={value.icon} color={value.color} className="size-7" />
@@ -116,14 +116,14 @@ export function BookmarkForm({
         {...pressSmall}
         onClick={() => set({ color: c })}
         style={{ background: colorVar(c) }}
-        className={`relative grid size-8 shrink-0 place-items-center rounded-[50%] text-crust ring-offset-2 ring-offset-base transition-shadow ${
+        className={`relative grid size-8 shrink-0 place-items-center rounded-circle text-crust ring-offset-2 ring-offset-base transition-shadow ${
           active ? "ring-2 ring-text" : "hover:ring-2 hover:ring-surface2"
         }`}
       >
         {active && <Check className="size-4" strokeWidth={3} />}
         {/* 角标表示这一格跟随主题主色 */}
         {c === "accent" && (
-          <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-[50%] bg-base text-text">
+          <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-circle bg-base text-text">
             <Palette className="size-2.5" strokeWidth={2.5} />
           </span>
         )}
@@ -149,7 +149,7 @@ export function BookmarkForm({
                     active ? "bg-surface1 text-text" : "bg-base text-subtext0 hover:bg-surface0 hover:text-text"
                   }`}
                 >
-                  <span className="relative grid size-6 place-items-center rounded-[50%] bg-crust/60">
+                  <span className="relative grid size-6 place-items-center rounded-circle bg-crust/60">
                     <BookmarkGlyph icon={tpl.icon} color={tpl.color} className="size-3.5" />
                   </span>
                   {bookmarkName(tpl, t)}
@@ -181,7 +181,7 @@ export function BookmarkForm({
       </label>
 
       <Section label={t("bookmark.icon")}>
-        <div className="grid grid-cols-8 justify-items-center gap-y-2 rounded-[1.75rem] bg-base p-2.5">
+        <div className="grid grid-cols-8 justify-items-center gap-y-2 rounded-card bg-base p-2.5">
           {Object.entries(ICON_LIBRARY).map(([name, Icon]) => (
             <motion.button
               key={name}
@@ -234,7 +234,7 @@ export function BookmarkForm({
 
       <Section label={t("bookmark.color")} dim={usingImage}>
         {/* 主色单独放在左边，和同色的固定色区分开；其余 14 个固定色正好排满两行 */}
-        <div aria-disabled={usingImage} className="flex items-center gap-2.5 rounded-[1.75rem] bg-base p-2.5">
+        <div aria-disabled={usingImage} className="flex items-center gap-2.5 rounded-card bg-base p-2.5">
           {swatch("accent")}
           <span className="h-14 w-px shrink-0 bg-surface1" />
           <div className="grid flex-1 grid-cols-7 justify-items-center gap-y-2">

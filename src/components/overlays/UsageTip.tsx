@@ -21,10 +21,10 @@ export function UsageTip() {
           animate={{ opacity: 1, x: 0, scale: 1, transition: { ...spring, delay: 0.6 } }}
           exit={{ opacity: 0, x: 80, scale: 0.9, transition: { duration: 0.2 } }}
           transition={spring}
-          className="rounded-[1.5rem] bg-surface0 p-4 pt-3 shadow-xl shadow-crust/60 ring-1 ring-surface1"
+          className="rounded-3xl bg-surface0 p-4 pt-3 shadow-xl shadow-crust/60 ring-1 ring-surface1"
         >
           <div className="flex items-center gap-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-[50%] bg-yellow/20 text-yellow">
+            <span className="grid size-7 shrink-0 place-items-center rounded-circle bg-yellow/20 text-yellow">
               <Lightbulb className="size-4" />
             </span>
             <span className="flex-1 text-sm font-bold">{t("tip.title")}</span>
@@ -36,7 +36,7 @@ export function UsageTip() {
                 savePref(KEY, true);
                 setShow(false);
               }}
-              className="-mr-1.5 grid size-8 shrink-0 place-items-center rounded-[50%] text-muted hover:bg-surface1 hover:text-text"
+              className="-mr-1.5 grid size-8 shrink-0 place-items-center rounded-circle text-muted hover:bg-surface1 hover:text-text"
             >
               <X className="size-4" />
             </button>

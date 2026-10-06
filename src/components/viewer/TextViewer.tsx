@@ -37,7 +37,7 @@ export function TextViewer({
     return (
       <div className="grid size-full place-items-center">
         <div className="flex flex-col items-center gap-3 text-subtext0">
-          <span className="grid size-16 place-items-center rounded-[50%] bg-surface0">
+          <span className="grid size-16 place-items-center rounded-circle bg-surface0">
             <FileText className="size-7" />
           </span>
           <p className="text-sm font-semibold">{t("viewer.empty")}</p>
@@ -46,7 +46,7 @@ export function TextViewer({
     );
   }
   return (
-    <div className="relative flex size-full flex-col overflow-hidden rounded-[1.75rem] bg-mantle ring-1 ring-surface0">
+    <div className="relative flex size-full flex-col overflow-hidden rounded-card bg-mantle ring-1 ring-surface0">
       {data.truncated && (
         <p className="flex shrink-0 items-center gap-2 bg-peach/15 px-5 py-2 text-sm font-semibold text-peach">
           <Info className="size-4 shrink-0" />

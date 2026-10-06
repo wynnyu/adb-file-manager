@@ -25,10 +25,10 @@ function Dot({ state }: { state: string }) {
       {state === "device" && (
         <span
           key={state}
-          className={`absolute inset-0 animate-ping rounded-[50%] opacity-60 [animation-iteration-count:1] ${color}`}
+          className={`absolute inset-0 animate-ping rounded-circle opacity-60 [animation-iteration-count:1] ${color}`}
         />
       )}
-      <span className={`relative size-2.5 rounded-[50%] ${color}`} />
+      <span className={`relative size-2.5 rounded-circle ${color}`} />
     </span>
   );
 }
@@ -65,11 +65,11 @@ export function DeviceSelect({
         aria-label={current?.name ?? t("device.none")}
         className="flex h-12 items-center gap-2 rounded-full bg-surface0 py-1 pr-3 pl-1 transition-colors hover:bg-surface1 sm:gap-3 sm:pr-4"
       >
-        <span className="relative grid size-10 place-items-center rounded-[50%] bg-accent/20 text-accent">
+        <span className="relative grid size-10 place-items-center rounded-circle bg-accent/20 text-accent">
           <Smartphone className="size-5" />
           {/* 窄屏只留图标，连接状态改用角标 */}
           {current && (
-            <span className="absolute right-0 bottom-0 flex rounded-[50%] ring-2 ring-surface0 sm:hidden">
+            <span className="absolute right-0 bottom-0 flex rounded-circle ring-2 ring-surface0 sm:hidden">
               <Dot state={current.state} />
             </span>
           )}
@@ -110,7 +110,7 @@ export function DeviceSelect({
             exit={{ opacity: 0, scale: 0.92, y: -6, transition: { duration: 0.12 } }}
             transition={spring}
             style={{ originX: 1, originY: 0 }}
-            className="absolute right-0 z-30 mt-2 flex w-72 flex-col gap-1 rounded-[1.75rem] bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
+            className="absolute right-0 z-30 mt-2 flex w-72 flex-col gap-1 rounded-card bg-mantle p-2 shadow-2xl shadow-crust ring-1 ring-surface0"
           >
             {devices.length === 0 && (
               <div className="rounded-full px-4 py-3 text-sm text-subtext0">{t("device.noneDetected")}</div>
@@ -127,12 +127,12 @@ export function DeviceSelect({
                   d.serial === serial ? "bg-surface0" : ""
                 }`}
               >
-                <span className="grid size-9 place-items-center rounded-[50%] bg-surface1 text-subtext1">
+                <span className="grid size-9 place-items-center rounded-circle bg-surface1 text-subtext1">
                   <Smartphone className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold">{d.name}</span>
-                  <span className="block truncate font-mono text-[11px] text-muted">{d.serial}</span>
+                  <span className="block truncate font-mono text-2xs text-muted">{d.serial}</span>
                 </span>
                 <Dot state={d.state} />
               </button>

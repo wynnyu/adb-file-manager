@@ -73,7 +73,7 @@ export function FileIcon({
   const { Icon, color } = classify(entry);
   return (
     <span
-      className={`grid ${size} shrink-0 place-items-center rounded-[50%] ${onAccent ? "bg-on-accent/15 text-on-accent" : color}`}
+      className={`grid ${size} shrink-0 place-items-center rounded-circle ${onAccent ? "bg-on-accent/15 text-on-accent" : color}`}
     >
       <Icon className="size-[45%]" strokeWidth={stroke} />
     </span>

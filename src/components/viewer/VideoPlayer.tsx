@@ -71,7 +71,7 @@ export function VideoPlayer({
       onMouseMove={wake}
       onPointerDown={wake}
       onKeyDown={wake}
-      className={`relative size-full overflow-hidden rounded-[1.75rem] bg-crust ${hidden ? "cursor-none" : ""}`}
+      className={`relative size-full overflow-hidden rounded-card bg-crust ${hidden ? "cursor-none" : ""}`}
     >
       {/* biome-ignore lint/a11y/useMediaCaption: 设备上的视频没有字幕文件 */}
       <video

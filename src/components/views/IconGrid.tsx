@@ -59,12 +59,12 @@ export function IconGrid({ dir, entries, loading, error, selected, cut, onSelect
                 onDoubleClick={() => onOpen(entry)}
                 onContextMenu={(e) => onContextMenu(e, entry)}
                 title={`${entry.name}\n${kindLabel(entry, t)}${entry.isDir ? "" : `\n${formatSize(entry.size)}`}\n${formatDate(entry.mtime, lang, t)}`}
-                className={`group flex cursor-default flex-col items-center gap-1.5 rounded-[1.75rem] px-2 pt-3 pb-2.5 select-none ${
+                className={`group flex cursor-default flex-col items-center gap-1.5 rounded-card px-2 pt-3 pb-2.5 select-none ${
                   cut.has(entry.path) ? "opacity-50" : ""
                 }`}
               >
                 <span
-                  className={`grid place-items-center rounded-[1.5rem] p-1.5 transition-colors ${
+                  className={`grid place-items-center rounded-3xl p-1.5 transition-colors ${
                     isSel ? "bg-surface1/80" : "group-hover:bg-surface0/70"
                   }`}
                 >
@@ -77,7 +77,7 @@ export function IconGrid({ dir, entries, loading, error, selected, cut, onSelect
                 >
                   {entry.name}
                 </span>
-                {!entry.isDir && <span className="font-mono text-[11px] text-muted">{formatSize(entry.size)}</span>}
+                {!entry.isDir && <span className="font-mono text-2xs text-muted">{formatSize(entry.size)}</span>}
               </motion.div>
             );
           })}

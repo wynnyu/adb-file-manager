@@ -67,7 +67,7 @@ export function ColumnView(props: Props) {
   return (
     <div
       ref={scroller}
-      className="flex h-[min(68vh,44rem)] min-h-80 overflow-x-auto overflow-y-hidden rounded-[1.75rem] bg-base/60 ring-1 ring-surface0"
+      className="flex h-[min(68vh,44rem)] min-h-80 overflow-x-auto overflow-y-hidden rounded-card bg-base/60 ring-1 ring-surface0"
     >
       {/* 下一栏和其他栏放在同一个数组里，进入它时同一个组件接着用，不会重新淡入 */}
       {(child ? [...columns, child] : columns).map((dir, i, all) => {

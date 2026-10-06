@@ -14,10 +14,10 @@ export function DropOverlay({ show, path }: { show: boolean; path: string }) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
           transition={spring}
-          className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[2.25rem] border-2 border-dashed border-accent bg-accent/10 backdrop-blur-[2px]"
+          className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-4xl border-2 border-dashed border-accent bg-accent/10 backdrop-blur-[2px]"
         >
           <div className="flex flex-col items-center gap-3">
-            <span className="grid size-20 place-items-center rounded-[50%] bg-accent text-on-accent shadow-xl shadow-accent/30">
+            <span className="grid size-20 place-items-center rounded-circle bg-accent text-on-accent shadow-xl shadow-accent/30">
               <Upload className="size-9" />
             </span>
             <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">

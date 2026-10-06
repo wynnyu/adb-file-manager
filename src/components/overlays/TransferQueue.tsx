@@ -66,7 +66,7 @@ export function TransferQueue({
               className="flex items-center gap-3 rounded-full bg-surface0 py-1.5 pr-2 pl-1.5 shadow-xl shadow-crust/60 ring-1 ring-surface1"
             >
               <span
-                className={`relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-[50%] transition-colors duration-300 ${tint}`}
+                className={`relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-circle transition-colors duration-300 ${tint}`}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
@@ -89,7 +89,7 @@ export function TransferQueue({
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm font-bold">{item.label}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-subtext1">{pct != null ? `${pct}%` : ""}</span>
+                  <span className="shrink-0 font-mono text-2xs text-subtext1">{pct != null ? `${pct}%` : ""}</span>
                 </div>
                 {busy ? (
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-crust/70">
@@ -114,7 +114,7 @@ export function TransferQueue({
                 <button
                   type="button"
                   onClick={() => onDismiss(item.id)}
-                  className="grid size-8 shrink-0 place-items-center rounded-[50%] text-muted hover:bg-surface1 hover:text-text"
+                  className="grid size-8 shrink-0 place-items-center rounded-circle text-muted hover:bg-surface1 hover:text-text"
                   title={t("common.close")}
                   aria-label={t("common.close")}
                 >

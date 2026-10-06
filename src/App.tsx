@@ -206,7 +206,7 @@ export default function App() {
         />
 
         {/* 主面板 */}
-        <main className="relative rounded-[2.5rem] bg-mantle p-3 shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-surface0)_60%,transparent)] sm:p-5">
+        <main className="relative rounded-panel bg-mantle p-3 shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-surface0)_60%,transparent)] sm:p-5">
           <AnimatePresence mode="wait" initial={false}>
             {!online ? (
               <NoDevice key="none" devices={devices} adbError={adbError} />

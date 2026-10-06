@@ -98,12 +98,13 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 - 使用 Tailwind 4，配置写在 `src/index.css` 的 `@theme static` 中，没有 `tailwind.config.*`
 - 颜色只用主题中的 Catppuccin 变量：`text`、`subtext0`、`muted`、`base`、`mantle`、`crust`、`surface0` 到 `surface2`、`accent`、`on-accent`、`red`、`peach` 等，透明度用 `/15` 这样的写法。不使用 Tailwind 默认色板（`gray-500` 等）和十六进制任意值，主题色需随 `data-flavor`、`data-accent` 切换
-- 新增设计变量加到 `@theme static` 并为每种 flavor 补齐取值
+- 新增设计变量加到 `@theme static`；颜色变量还需为每种 flavor 补齐取值
+- 圆角、字号、阴影等设计值优先使用 Tailwind 自带的刻度（`rounded-3xl`、`text-xs`）。自带刻度中没有、且在多处使用的值，在 `@theme static` 中定义为变量后使用对应的类名，例如 `rounded-circle`、`rounded-card`、`rounded-panel`、`text-2xs`，不重复书写 `rounded-[1.75rem]` 这样的任意值。任意值仅用于一次性的、与具体布局相关的尺寸，例如 `h-[min(68vh,44rem)]`
 - 不使用 `!important`（`!` 前缀）覆盖样式。按钮的不同外观通过 `ui.tsx` 中的 `tone` 实现，需要新外观时扩展 `tones`
 - 条件类名用模板字符串拼接完整类名，不拼接类名片段（如 `` `bg-${color}` ``），否则 Tailwind 扫描不到
 - 除主题和少量全局规则外不写自定义 CSS
-
 - 调整颜色角色、圆角、按钮外观、弹簧参数或交互规则后，同步更新 `docs/design.md`
+
 ### Express
 
 - `app.ts` 的 `createApp()` 只组装应用不监听端口，`index.ts` 负责启动；测试和其他入口复用 `createApp()`
