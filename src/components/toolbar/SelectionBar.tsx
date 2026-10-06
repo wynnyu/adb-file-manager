@@ -52,11 +52,25 @@ export function SelectionBar({
           <PillButton tone="accent" icon={<Download className="size-4" />} onClick={onDownload}>
             {t("selection.download")}
           </PillButton>
-          <PillButton icon={<Package className="size-4" />} onClick={onCompress}>
-            {t("selection.compress")}
+          {/* 窄屏时压缩和删除只显示图标，否则操作条会超出屏幕 */}
+          <PillButton
+            icon={<Package className="size-4" />}
+            title={t("selection.compress")}
+            aria-label={t("selection.compress")}
+            className="max-sm:w-10 max-sm:justify-center max-sm:px-0"
+            onClick={onCompress}
+          >
+            <span className="max-sm:hidden">{t("selection.compress")}</span>
           </PillButton>
-          <PillButton tone="danger" icon={<Trash2 className="size-4" />} onClick={onDelete}>
-            {t("selection.delete")}
+          <PillButton
+            tone="danger"
+            icon={<Trash2 className="size-4" />}
+            title={t("selection.delete")}
+            aria-label={t("selection.delete")}
+            className="max-sm:w-10 max-sm:justify-center max-sm:px-0"
+            onClick={onDelete}
+          >
+            <span className="max-sm:hidden">{t("selection.delete")}</span>
           </PillButton>
           <IconButton tone="ghost" title={t("selection.cancel")} onClick={onClear}>
             <X className="size-5" />
