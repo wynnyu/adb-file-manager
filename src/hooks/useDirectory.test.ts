@@ -1,9 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type Target } from "../lib/api.ts";
-import type { Sort } from "../lib/entries.ts";
-import { lsQuery } from "../lib/queries.ts";
+import type { Sort } from "../lib/index.ts";
+import { api, lsQuery, type Target } from "../lib/index.ts";
 import { deferred, file, folder, newQueryClient, providers } from "../test/utils.tsx";
 import type { FileEntry } from "../types.ts";
 import { useDirectory, useListings } from "./useDirectory.ts";

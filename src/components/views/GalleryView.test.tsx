@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { api } from "../../lib/api.ts";
+import { api } from "../../lib/index.ts";
 import { file, folder, providers, tz } from "../../test/utils.tsx";
 import { GalleryView } from "./GalleryView.tsx";
 

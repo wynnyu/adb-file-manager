@@ -1,7 +1,7 @@
 import { Maximize, Minimize, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
-import type { MediaPlayer } from "../../hooks/useMediaPlayer.ts";
+import type { MediaPlayer } from "../../hooks/index.ts";
 import { useT } from "../../i18n/index.tsx";
-import { formatDuration } from "../../lib/format.ts";
+import { formatDuration } from "../../lib/index.ts";
 import { IconButton } from "../ui.tsx";
 
 /** 音频和视频共用的控制条：播放 / 暂停、进度、时间、静音和音量，视频另有全屏 */

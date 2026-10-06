@@ -2,7 +2,7 @@ import { ChevronDown, Columns3, GalleryThumbnails, LayoutGrid, List } from "luci
 import { motion } from "motion/react";
 import { useT } from "../../i18n/index.tsx";
 import type { ViewMode } from "../../types.ts";
-import type { MenuState } from "../overlays/ContextMenu.tsx";
+import type { MenuState } from "../overlays/index.ts";
 import { press, spring } from "../ui.tsx";
 
 export const VIEWS: { id: ViewMode; Icon: typeof List }[] = [

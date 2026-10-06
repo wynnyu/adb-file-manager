@@ -16,11 +16,11 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { T } from "../../i18n/translate.ts";
-import type { Bookmark } from "../../lib/bookmarks.ts";
-import { IS_MAC } from "../../lib/entries.ts";
+import type { T } from "../../i18n/index.tsx";
+import type { Bookmark } from "../../lib/index.ts";
+import { IS_MAC } from "../../lib/index.ts";
 import type { Clip, FileEntry, ViewMode } from "../../types.ts";
-import { VIEWS } from "../views/ViewSwitch.tsx";
+import { VIEWS } from "../views/index.ts";
 import type { MenuItem } from "./ContextMenu.tsx";
 
 /** 属性页的快捷键：Mac 上同访达的显示简介，其他系统用 Alt+Enter */

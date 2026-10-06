@@ -1,7 +1,7 @@
 import { FolderUp, Shield, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useT } from "../../i18n/index.tsx";
-import { formatSize } from "../../lib/format.ts";
+import { formatSize } from "../../lib/index.ts";
 import type { Device, StorageInfo } from "../../types.ts";
 import { press, springPop, springSlow } from "../ui.tsx";
 import { DeviceSelect } from "./DeviceSelect.tsx";

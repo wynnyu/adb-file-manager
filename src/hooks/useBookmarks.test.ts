@@ -1,8 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { DialogState } from "../components/overlays/Dialog.tsx";
-import { type Bookmark, PRESETS } from "../lib/bookmarks.ts";
-import { loadPref } from "../lib/prefs.ts";
+import type { DialogState } from "../components/overlays/index.ts";
+import { type Bookmark, loadPref, PRESETS } from "../lib/index.ts";
 import { providers, tz } from "../test/utils.tsx";
 import { useBookmarks } from "./useBookmarks.ts";
 

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type Target } from "../lib/api.ts";
-import type { Sort } from "../lib/entries.ts";
+import type { Sort } from "../lib/index.ts";
+import { api, type Target } from "../lib/index.ts";
 import { deferred, file, folder, newQueryClient, providers } from "../test/utils.tsx";
 import type { FileEntry, TreeRow } from "../types.ts";
 import { useTree } from "./useTree.ts";

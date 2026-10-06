@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../../lib/api.ts";
+import { api } from "../../lib/index.ts";
 import { deferred, file, folder, newQueryClient, providers, tz } from "../../test/utils.tsx";
 import type { DirUsage, FileStat } from "../../types.ts";
 import { Properties } from "./Properties.tsx";

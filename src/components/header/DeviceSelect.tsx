@@ -1,8 +1,8 @@
 import { ChevronDown, Smartphone } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import type { MessageKey } from "../../i18n/index.tsx";
 import { useT } from "../../i18n/index.tsx";
-import type { MessageKey } from "../../i18n/zh.ts";
 import type { Device } from "../../types.ts";
 import { pressLarge, spring } from "../ui.tsx";
 

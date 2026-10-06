@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type BookmarkFields, imageToIcon, PRESETS, presetFields } from "../../lib/bookmarks.ts";
+import { type BookmarkFields, imageToIcon, PRESETS, presetFields } from "../../lib/index.ts";
 import { providers, tz } from "../../test/utils.tsx";
 import { BookmarkForm } from "./BookmarkForm.tsx";
 

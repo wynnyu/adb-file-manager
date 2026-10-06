@@ -1,7 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useT } from "../../i18n/index.tsx";
-import { MOD } from "../../lib/entries.ts";
-import { formatSize } from "../../lib/format.ts";
+import { formatSize, MOD } from "../../lib/index.ts";
 import type { FileEntry, StorageInfo } from "../../types.ts";
 
 /** 状态栏，同访达窗口底部：项目数、隐藏文件开关和剩余空间 */

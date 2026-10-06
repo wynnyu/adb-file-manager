@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Bookmark, PRESETS, presetFields } from "../../lib/bookmarks.ts";
+import { type Bookmark, PRESETS, presetFields } from "../../lib/index.ts";
 import { providers, tz } from "../../test/utils.tsx";
-import type { MenuItem, MenuState } from "../overlays/ContextMenu.tsx";
+import type { MenuItem, MenuState } from "../overlays/index.ts";
 import { QuickLinks } from "./QuickLinks.tsx";
 
 /** 7 个内置书签，名称为空，显示当前语言的默认名称 */

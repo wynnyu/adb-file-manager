@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Target } from "../lib/api.ts";
-import { arrange, type Sort } from "../lib/entries.ts";
+import type { Target } from "../lib/index.ts";
+import { arrange, type Sort } from "../lib/index.ts";
 import type { FileEntry, TreeRow } from "../types.ts";
 import { useListings } from "./useDirectory.ts";
 

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { api } from "../lib/api.ts";
+import { api } from "../lib/index.ts";
 
 export type ReauthorizeAction = "reconnect" | "restart";
 

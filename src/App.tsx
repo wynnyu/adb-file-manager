@@ -1,48 +1,51 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { QuickLinks } from "./components/bookmarks/QuickLinks.tsx";
-import { Header } from "./components/header/Header.tsx";
+import { QuickLinks } from "./components/bookmarks/index.ts";
+import { Header } from "./components/header/index.ts";
 import { NoDevice } from "./components/NoDevice.tsx";
-import { ContextMenu, type MenuState } from "./components/overlays/ContextMenu.tsx";
-import { Dialog, type DialogState } from "./components/overlays/Dialog.tsx";
-import { DropOverlay } from "./components/overlays/DropOverlay.tsx";
-import { backgroundMenu, bookmarkMenu, itemMenu } from "./components/overlays/menus.tsx";
-import { Properties } from "./components/overlays/Properties.tsx";
-import { Toast } from "./components/overlays/Toast.tsx";
-import { TransferQueue } from "./components/overlays/TransferQueue.tsx";
-import { UsageTip } from "./components/overlays/UsageTip.tsx";
-import { SelectionBar } from "./components/toolbar/SelectionBar.tsx";
-import { StatusBar } from "./components/toolbar/StatusBar.tsx";
-import { Toolbar } from "./components/toolbar/Toolbar.tsx";
+import {
+  backgroundMenu,
+  bookmarkMenu,
+  ContextMenu,
+  Dialog,
+  type DialogState,
+  DropOverlay,
+  itemMenu,
+  type MenuState,
+  Properties,
+  Toast,
+  TransferQueue,
+  UsageTip,
+} from "./components/overlays/index.ts";
+import { SelectionBar, StatusBar, Toolbar } from "./components/toolbar/index.ts";
 import { UploadInputs } from "./components/UploadInputs.tsx";
 import { spring } from "./components/ui.tsx";
-import { Viewer } from "./components/viewer/Viewer.tsx";
-import { ColumnView } from "./components/views/ColumnView.tsx";
-import { FileList } from "./components/views/FileList.tsx";
-import { GalleryView } from "./components/views/GalleryView.tsx";
-import { IconGrid } from "./components/views/IconGrid.tsx";
-import { useBookmarks } from "./hooks/useBookmarks.ts";
-import { useClipboard } from "./hooks/useClipboard.ts";
-import { useDevices, useStorage } from "./hooks/useDevices.ts";
-import { useDirectory, useListings } from "./hooks/useDirectory.ts";
-import { useDropUpload } from "./hooks/useDropUpload.ts";
-import { useFileOps } from "./hooks/useFileOps.ts";
-import { useMediaPlayer } from "./hooks/useMediaPlayer.ts";
-import { useProperties } from "./hooks/useProperties.ts";
-import { useRootMode } from "./hooks/useRootMode.ts";
-import { useSelection, useSelectionActions } from "./hooks/useSelection.ts";
-import { useShortcuts } from "./hooks/useShortcuts.ts";
-import { useToast } from "./hooks/useToast.ts";
-import { useTransfers } from "./hooks/useTransfers.ts";
-import { useTree } from "./hooks/useTree.ts";
-import { useUploadPicker } from "./hooks/useUploadPicker.ts";
-import { useViewer } from "./hooks/useViewer.ts";
+import { Viewer } from "./components/viewer/index.ts";
+import { ColumnView, FileList, GalleryView, IconGrid } from "./components/views/index.ts";
+import {
+  useBookmarks,
+  useClipboard,
+  useDevices,
+  useDirectory,
+  useDropUpload,
+  useFileOps,
+  useListings,
+  useMediaPlayer,
+  useProperties,
+  useRootMode,
+  useSelection,
+  useSelectionActions,
+  useShortcuts,
+  useStorage,
+  useToast,
+  useTransfers,
+  useTree,
+  useUploadPicker,
+  useViewer,
+} from "./hooks/index.ts";
 import { useT } from "./i18n/index.tsx";
-import type { Target } from "./lib/api.ts";
-import type { Bookmark } from "./lib/bookmarks.ts";
-import type { Sort, SortKey } from "./lib/entries.ts";
-import { parentPath } from "./lib/format.ts";
-import { usePref } from "./lib/prefs.ts";
+import type { Bookmark, Sort, SortKey, Target } from "./lib/index.ts";
+import { parentPath, usePref } from "./lib/index.ts";
 import type { FileEntry, ViewMode } from "./types.ts";
 
 export default function App() {

@@ -140,6 +140,8 @@ flowchart TB
 
 实线表示运行时依赖，虚线表示仅导入类型（`import type`），编译后不产生依赖。`lib/` 不依赖 `hooks/` 和 `components/`。
 
+图中的 `hooks/`、`lib/` 和 `components/` 的各子目录都有 `index.ts` 桶文件，目录外的模块从桶文件导入，例如 `../lib/index.ts`。桶文件仅重导出被目录外使用的模块，`viewer/` 中懒加载的 `CodeView` 和 `MarkdownView` 不在其中，以保持分包。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入。
+
 ### 状态归属
 
 | hook | 管理的状态 | 持久化（localStorage） |

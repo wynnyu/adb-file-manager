@@ -1,12 +1,10 @@
 import { FolderPlus, Pencil, Skull, Trash2 } from "lucide-react";
 import { useCallback } from "react";
-import type { DialogState } from "../components/overlays/Dialog.tsx";
+import type { DialogState } from "../components/overlays/index.ts";
+import type { T } from "../i18n/index.tsx";
 import { useT } from "../i18n/index.tsx";
-import type { T } from "../i18n/translate.ts";
-import { api, type Target } from "../lib/api.ts";
-import type { UploadItem } from "../lib/drop.ts";
-import { joinPath, parentPath } from "../lib/format.ts";
-import { loadPref, savePref } from "../lib/prefs.ts";
+import type { UploadItem } from "../lib/index.ts";
+import { api, joinPath, loadPref, parentPath, savePref, type Target } from "../lib/index.ts";
 import type { Clip, FileEntry } from "../types.ts";
 import type { Directory } from "./useDirectory.ts";
 import type { Transfers } from "./useTransfers.ts";

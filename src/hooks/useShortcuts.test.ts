@@ -1,6 +1,6 @@
 import { fireEvent, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { IS_MAC } from "../lib/entries.ts";
+import { IS_MAC } from "../lib/index.ts";
 import { file, folder } from "../test/utils.tsx";
 import type { FileEntry, Listing } from "../types.ts";
 import { type ShortcutContext, useShortcuts } from "./useShortcuts.ts";

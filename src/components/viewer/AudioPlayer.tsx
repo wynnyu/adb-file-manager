@@ -1,6 +1,6 @@
 import { Music } from "lucide-react";
 import { motion } from "motion/react";
-import type { MediaPlayer } from "../../hooks/useMediaPlayer.ts";
+import type { MediaPlayer } from "../../hooks/index.ts";
 import { useT } from "../../i18n/index.tsx";
 import type { FileEntry } from "../../types.ts";
 import { spring } from "../ui.tsx";

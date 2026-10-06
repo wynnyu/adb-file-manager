@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePref } from "../lib/prefs.ts";
+import { usePref } from "../lib/index.ts";
 
 /** 元数据加载完成后等这么久再自动播放 */
 export const AUTOPLAY_DELAY = 1000;

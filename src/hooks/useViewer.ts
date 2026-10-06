@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Target } from "../lib/api.ts";
+import type { Target } from "../lib/index.ts";
 import type { FileEntry } from "../types.ts";
 import { scrollToEntry } from "./useSelection.ts";
 

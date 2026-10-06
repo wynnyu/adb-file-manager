@@ -1,8 +1,8 @@
 import { Cable, Loader2, RefreshCw, RotateCw, ShieldCheck, Smartphone } from "lucide-react";
 import { motion } from "motion/react";
-import { useReauthorize } from "../hooks/useReauthorize.ts";
+import { useReauthorize } from "../hooks/index.ts";
+import type { MessageKey } from "../i18n/index.tsx";
 import { useT } from "../i18n/index.tsx";
-import type { MessageKey } from "../i18n/zh.ts";
 import type { Device } from "../types.ts";
 import { PillButton, spring } from "./ui.tsx";
 

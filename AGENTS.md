@@ -52,6 +52,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 - 格式以 Biome 为准：2 空格缩进、双引号、分号、尾随逗号、行宽 120。不要手动调整格式，运行 `pnpm fix`
 - 全部使用 ES Module。相对导入写明扩展名（`./adb.ts`、`./App.tsx`），后端编译依赖 `rewriteRelativeImportExtensions`；不使用路径别名
+- 前端的 `hooks/`、`lib/` 和 `components/` 各子目录用 `index.ts` 作为桶文件，目录外一律从桶文件导入（`../lib/index.ts`），目录内部的模块之间仍直接导入。`i18n/` 的出口是已有的 `index.tsx`。桶文件只重导出被目录外使用的模块；`viewer/` 的 `CodeView`、`MarkdownView` 是懒加载分包，不得加入桶文件。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入，避免循环依赖。后端模块平铺在 `server/`，不设桶文件
 - 开启了 `verbatimModuleSyntax`：只用作类型的导入必须写 `import type` 或 `import { type X }`
 - 不使用 `any`、`enum`。取值有限的字段用字面量联合类型，按取值映射用 `Record<联合类型, ...>` 常量；对象结构一般用 `interface`，联合类型用 `type`
 - 用 `satisfies` 检查对象字面量的类型，例如 `res.json({ method } satisfies RootCheckResult)`

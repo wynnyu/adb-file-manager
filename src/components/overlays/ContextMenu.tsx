@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { IS_MAC } from "../../lib/entries.ts";
+import { IS_MAC } from "../../lib/index.ts";
 import { spring } from "../ui.tsx";
 
 export type MenuItem =

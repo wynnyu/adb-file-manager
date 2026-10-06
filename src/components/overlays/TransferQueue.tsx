@@ -1,8 +1,8 @@
 import { ArrowDownToLine, ArrowUpFromLine, Check, Copy, FolderInput, type LucideIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
+import type { MessageKey } from "../../i18n/index.tsx";
 import { useT } from "../../i18n/index.tsx";
-import type { MessageKey } from "../../i18n/zh.ts";
 import type { Transfer } from "../../types.ts";
 import { spring, springPop } from "../ui.tsx";
 

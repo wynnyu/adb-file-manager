@@ -14,9 +14,7 @@ import {
   useState,
 } from "react";
 import { useT } from "../../i18n/index.tsx";
-import { api, type Target } from "../../lib/api.ts";
-import { highlightLines, languageForFence, type Token } from "../../lib/code.ts";
-import { resolveLink } from "../../lib/markdown.ts";
+import { api, highlightLines, languageForFence, resolveLink, type Target, type Token } from "../../lib/index.ts";
 import { IconButton } from "../ui.tsx";
 
 /** 代码块是否自动换行。经 context 传递而不是写进 components：components 变化会让整棵渲染树重新挂载，滚动位置随之丢失 */

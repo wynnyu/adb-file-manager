@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { providers, tz } from "../../test/utils.tsx";
-import type { MenuItem, MenuState } from "../overlays/ContextMenu.tsx";
+import type { MenuItem, MenuState } from "../overlays/index.ts";
 import { Toolbar } from "./Toolbar.tsx";
 
 type Props = ComponentProps<typeof Toolbar>;

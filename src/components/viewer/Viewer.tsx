@@ -1,14 +1,12 @@
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
-import type { MediaPlayer } from "../../hooks/useMediaPlayer.ts";
+import type { MediaPlayer } from "../../hooks/index.ts";
 import { useT } from "../../i18n/index.tsx";
-import { api, type Target } from "../../lib/api.ts";
-import { formatSize } from "../../lib/format.ts";
-import { viewerKind } from "../../lib/kinds.ts";
+import { api, formatSize, type Target, viewerKind } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { IconButton, spring } from "../ui.tsx";
-import { FileIcon } from "../views/FileIcon.tsx";
+import { FileIcon } from "../views/index.ts";
 import { AudioPlayer } from "./AudioPlayer.tsx";
 import { ImageViewer } from "./ImageViewer.tsx";
 import { TextViewer } from "./TextViewer.tsx";

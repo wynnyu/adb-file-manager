@@ -4,9 +4,9 @@ import { search, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
 import { useEffect, useRef } from "react";
+import type { T } from "../../i18n/index.tsx";
 import { useT } from "../../i18n/index.tsx";
-import type { T } from "../../i18n/translate.ts";
-import { codeHighlight, codeTheme, languageFor } from "../../lib/code.ts";
+import { codeHighlight, codeTheme, languageFor } from "../../lib/index.ts";
 
 const wrapC = new Compartment();
 const languageC = new Compartment();

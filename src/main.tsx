@@ -9,8 +9,7 @@ import "@fontsource/maple-mono/600.css";
 import "./index.css";
 import App from "./App.tsx";
 import { I18nProvider } from "./i18n/index.tsx";
-import { queryClient } from "./lib/queries.ts";
-import { syncFavicon } from "./lib/theme.ts";
+import { queryClient, syncFavicon } from "./lib/index.ts";
 
 syncFavicon();
 

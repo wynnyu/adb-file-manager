@@ -1,8 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DialogState } from "../components/overlays/Dialog.tsx";
-import { api, type Target } from "../lib/api.ts";
-import { loadPref } from "../lib/prefs.ts";
+import type { DialogState } from "../components/overlays/index.ts";
+import { api, loadPref, type Target } from "../lib/index.ts";
 import { file, folder, providers, tz } from "../test/utils.tsx";
 import type { Clip } from "../types.ts";
 import { useFileOps } from "./useFileOps.ts";

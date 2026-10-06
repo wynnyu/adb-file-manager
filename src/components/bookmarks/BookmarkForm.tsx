@@ -9,7 +9,7 @@ import {
   bookmarkName,
   imageToIcon,
   isImageIcon,
-} from "../../lib/bookmarks.ts";
+} from "../../lib/index.ts";
 import { press, pressSmall } from "../ui.tsx";
 import { BookmarkGlyph, colorVar, ICON_LIBRARY } from "./BookmarkIcon.tsx";
 

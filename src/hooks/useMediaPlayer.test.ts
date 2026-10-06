@@ -1,6 +1,6 @@
 import { act, fireEvent, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPref } from "../lib/prefs.ts";
+import { loadPref } from "../lib/index.ts";
 import { AUTOPLAY_DELAY, useMediaPlayer } from "./useMediaPlayer.ts";
 
 let el: HTMLVideoElement;

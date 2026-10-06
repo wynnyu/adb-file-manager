@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Bookmark } from "../../lib/bookmarks.ts";
+import type { Bookmark } from "../../lib/index.ts";
 import { file, folder, tz } from "../../test/utils.tsx";
 import type { MenuItem } from "./ContextMenu.tsx";
 import { backgroundMenu, bookmarkMenu, itemMenu, type MenuActions } from "./menus.tsx";

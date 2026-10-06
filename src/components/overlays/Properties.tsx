@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect } from "react";
 import { useT } from "../../i18n/index.tsx";
-import type { Target } from "../../lib/api.ts";
+import type { Target } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { PillButton, spring } from "../ui.tsx";
 import { PropertiesSingle } from "./PropertiesSingle.tsx";

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { arrange, IS_MAC, type Sort } from "../lib/entries.ts";
-import { parentPath } from "../lib/format.ts";
+import { arrange, IS_MAC, parentPath, type Sort } from "../lib/index.ts";
 import type { Clip, FileEntry, Listing, ViewMode } from "../types.ts";
 import { scrollToEntry } from "./useSelection.ts";
 

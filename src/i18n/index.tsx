@@ -2,6 +2,9 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { changeLang, format, initLang, type Lang, type Params, type T } from "./translate.ts";
 import type { MessageKey } from "./zh.ts";
 
+export * from "./translate.ts";
+export type { MessageKey } from "./zh.ts";
+
 type Tags = Record<string, (children: string) => ReactNode>;
 
 /** 把 `<b>文字</b>` 这样的标记交给 tags 渲染；其余部分原样输出 */

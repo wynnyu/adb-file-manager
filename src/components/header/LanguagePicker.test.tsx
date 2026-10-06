@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { format } from "../../i18n/translate.ts";
+import { format } from "../../i18n/index.tsx";
 import { providers, tz } from "../../test/utils.tsx";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 

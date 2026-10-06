@@ -13,9 +13,8 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import type { MouseEvent, ReactNode } from "react";
 import { useI18n } from "../../i18n/index.tsx";
-import type { Sort, SortKey } from "../../lib/entries.ts";
-import { formatDate, formatSize } from "../../lib/format.ts";
-import { kindLabel } from "../../lib/kinds.ts";
+import type { Sort, SortKey } from "../../lib/index.ts";
+import { formatDate, formatSize, kindLabel } from "../../lib/index.ts";
 import type { FileEntry, TreeRow } from "../../types.ts";
 import { IconButton, spring, springPop } from "../ui.tsx";
 import { FileIcon } from "./FileIcon.tsx";

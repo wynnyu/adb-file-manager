@@ -2,8 +2,8 @@ import { Ellipsis, type LucideIcon, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { type MouseEvent, type ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../../i18n/index.tsx";
-import { type Bookmark, bookmarkName } from "../../lib/bookmarks.ts";
-import type { MenuState } from "../overlays/ContextMenu.tsx";
+import { type Bookmark, bookmarkName } from "../../lib/index.ts";
+import type { MenuState } from "../overlays/index.ts";
 import { press, spring } from "../ui.tsx";
 import { BookmarkGlyph } from "./BookmarkIcon.tsx";
 

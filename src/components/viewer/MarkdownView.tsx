@@ -4,9 +4,8 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { useT } from "../../i18n/index.tsx";
-import type { Target } from "../../lib/api.ts";
-import { codeHighlightCss } from "../../lib/code.ts";
-import { SANITIZE_SCHEMA, slugger } from "../../lib/markdown.ts";
+import type { Target } from "../../lib/index.ts";
+import { codeHighlightCss, SANITIZE_SCHEMA, slugger } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { CodeBlock, MdImage, MdLink, TaskCheck, WrapContext } from "./MarkdownParts.tsx";
 

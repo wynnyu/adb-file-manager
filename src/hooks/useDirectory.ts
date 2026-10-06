@@ -1,10 +1,7 @@
 import { type UseQueryResult, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Target } from "../lib/api.ts";
-import { arrange, type Sort } from "../lib/entries.ts";
-import { parentPath } from "../lib/format.ts";
-import { usePref } from "../lib/prefs.ts";
-import { lsDeviceKey, lsQuery } from "../lib/queries.ts";
+import type { Target } from "../lib/index.ts";
+import { arrange, lsDeviceKey, lsQuery, parentPath, type Sort, usePref } from "../lib/index.ts";
 import type { FileEntry, Listing } from "../types.ts";
 import type { Selection } from "./useSelection.ts";
 

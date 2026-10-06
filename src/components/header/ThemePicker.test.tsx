@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ACCENTS, FLAVORS } from "../../lib/theme.ts";
+import { ACCENTS, FLAVORS } from "../../lib/index.ts";
 import { providers, tz } from "../../test/utils.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 

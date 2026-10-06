@@ -1,12 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { useI18n } from "../../i18n/index.tsx";
-import type { Target } from "../../lib/api.ts";
-import { basename, formatDate, formatSize, parentPath } from "../../lib/format.ts";
-import { kindLabel } from "../../lib/kinds.ts";
-import { statQuery, usageQuery } from "../../lib/queries.ts";
+import type { Target } from "../../lib/index.ts";
+import { basename, formatDate, formatSize, kindLabel, parentPath, statQuery, usageQuery } from "../../lib/index.ts";
 import type { FileEntry, FileStat } from "../../types.ts";
-import { FileIcon } from "../views/FileIcon.tsx";
+import { FileIcon } from "../views/index.ts";
 import { PermissionEditor } from "./PermissionEditor.tsx";
 import { Hint, Row, Section } from "./PropertiesParts.tsx";
 

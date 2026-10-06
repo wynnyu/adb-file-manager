@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { basename } from "../lib/format.ts";
+import { basename } from "../lib/index.ts";
 import type { FileEntry } from "../types.ts";
 
 /** 属性页：记录要查看的条目，条目为空时不显示 */

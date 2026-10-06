@@ -1,10 +1,8 @@
 import { ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DialogState } from "../components/overlays/Dialog.tsx";
+import type { DialogState } from "../components/overlays/index.ts";
 import { useT } from "../i18n/index.tsx";
-import { api, onRootLost } from "../lib/api.ts";
-import { setRootFavicon } from "../lib/favicon.ts";
-import { loadPref, savePref } from "../lib/prefs.ts";
+import { api, loadPref, onRootLost, savePref, setRootFavicon } from "../lib/index.ts";
 import type { Flash } from "./useToast.ts";
 
 /**

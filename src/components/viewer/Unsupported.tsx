@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useT } from "../../i18n/index.tsx";
 import type { FileEntry } from "../../types.ts";
 import { PillButton, spring } from "../ui.tsx";
-import { FileIcon } from "../views/FileIcon.tsx";
+import { FileIcon } from "../views/index.ts";
 
 /** 无法在页面内查看时的提示：文件图标、原因和下载按钮 */
 export function Unsupported({ entry, text, onDownload }: { entry: FileEntry; text: string; onDownload: () => void }) {

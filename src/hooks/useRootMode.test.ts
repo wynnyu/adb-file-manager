@@ -1,9 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { DialogState } from "../components/overlays/Dialog.tsx";
-import { api } from "../lib/api.ts";
-import { ROOT_ICON } from "../lib/favicon.ts";
-import { loadPref } from "../lib/prefs.ts";
+import type { DialogState } from "../components/overlays/index.ts";
+import { api, loadPref, ROOT_ICON } from "../lib/index.ts";
 import { providers, tz } from "../test/utils.tsx";
 import { useRootMode } from "./useRootMode.ts";
 

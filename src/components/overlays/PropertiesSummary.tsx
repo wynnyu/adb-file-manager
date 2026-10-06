@@ -1,9 +1,8 @@
 import { useQueries } from "@tanstack/react-query";
 import { Files, Loader2, TriangleAlert } from "lucide-react";
 import { useI18n } from "../../i18n/index.tsx";
-import type { Target } from "../../lib/api.ts";
-import { formatSize, parentPath } from "../../lib/format.ts";
-import { usageQuery } from "../../lib/queries.ts";
+import type { Target } from "../../lib/index.ts";
+import { formatSize, parentPath, usageQuery } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { Hint, Row, Section } from "./PropertiesParts.tsx";
 

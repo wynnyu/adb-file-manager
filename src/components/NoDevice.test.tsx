@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api } from "../lib/api.ts";
+import { api } from "../lib/index.ts";
 import { providers, tz } from "../test/utils.tsx";
 import type { Device } from "../types.ts";
 import { NoDevice } from "./NoDevice.tsx";

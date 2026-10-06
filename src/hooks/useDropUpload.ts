@@ -1,5 +1,5 @@
 import { type DragEvent, useCallback, useMemo, useRef, useState } from "react";
-import { collectDropped, type UploadItem } from "../lib/drop.ts";
+import { collectDropped, type UploadItem } from "../lib/index.ts";
 
 type Upload = (items: UploadItem[], dest?: string) => Promise<void>;
 

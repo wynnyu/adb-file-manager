@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { Target } from "../lib/api.ts";
+import type { Target } from "../lib/index.ts";
 import { file, folder } from "../test/utils.tsx";
 import type { FileEntry } from "../types.ts";
 import { useViewer } from "./useViewer.ts";

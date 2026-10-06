@@ -1,8 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { I18nProvider } from "../i18n/index.tsx";
-import { format, type Params } from "../i18n/translate.ts";
-import type { MessageKey } from "../i18n/zh.ts";
+import type { MessageKey } from "../i18n/index.tsx";
+import { format, I18nProvider, type Params } from "../i18n/index.tsx";
 import type { FileEntry } from "../types.ts";
 
 /** 中文界面上的文案；测试里的期望值从词典取，改文案时不用跟着改测试 */
