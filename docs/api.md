@@ -702,7 +702,7 @@ interface ChownRequest {
 
 ### POST /api/pull
 
-下载的第一步：把设备上的内容 `adb pull` 到电脑临时目录，返回一次性 token。
+下载的第一步：登记一次性 token。只选了一个文件时，先确认文件存在且可读（不存在为 `404`，无读取权限为 `403`），不落盘；目录和多选则 `adb pull` 到电脑临时目录。
 
 ```json
 { "serial": "R5CT1234", "root": false, "paths": ["/sdcard/DCIM/Camera"] }
@@ -722,16 +722,16 @@ interface ChownRequest {
 | 单个目录 | `目录名.zip`，根目录为 `root.zip` |
 | 多项 | `第一项所在目录名.zip`，取不到时为 `files.zip` |
 
-token 30 分钟内有效，过期后临时文件被删除。
+token 30 分钟内有效，过期后临时文件（若有）被删除。
 
 ### GET /api/fetch/:token
 
 下载的第二步：返回 `POST /api/pull` 准备好的内容，`Content-Disposition` 为 attachment。
 
-- 单个文件原样返回，带 `Content-Length`
+- 单个文件不经过电脑临时目录，用 `adb exec-out cat` 流式返回（root 为 su 方式时由 su 提权读取），带 `Content-Length`，浏览器立即开始下载。取回时重新读取文件大小，文件已被删除则返回 `404`
 - 目录或多项打包为 zip 流式返回（压缩级别 1），不带 `Content-Length`
 
-每个 token 只能使用一次：响应结束（包括客户端中途断开）后临时文件即被删除。token 不存在或已过期时返回 `404`。
+每个 token 只能使用一次：响应结束（包括客户端中途断开）后任务即被删除，打包用的临时目录一并清除。token 不存在或已过期时返回 `404`。
 
 ## 前端封装（src/lib/api.ts）
 

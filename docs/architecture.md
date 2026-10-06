@@ -18,7 +18,7 @@ flowchart LR
     Tmp[("临时目录<br/>os.tmpdir()/adb-file-manager")]
     ADB["adb 客户端<br/>ADB_PATH"]
     Express -- "execFile / spawn" --> ADB
-    Express <-->|上传、下载中转| Tmp
+    Express <-->|上传、zip 中转| Tmp
     ADB <-->|push / pull| Tmp
   end
 
@@ -38,7 +38,7 @@ flowchart LR
 
 - 后端只监听 `127.0.0.1`，并通过 `guard.ts` 中的 `localOnly` 校验 Host、Origin 和 Sec-Fetch-Site，拒绝来自其他主机或其他网页的请求
 - 列目录、新建、重命名、删除、复制、移动均通过 `adb shell` 在设备端执行；路径在拼接进命令前经过单引号转义（`adb.ts` 中的 `q`）
-- 上传和下载经电脑临时目录中转：上传先由 multer 接收到临时目录，再 `adb push`；下载先 `adb pull` 到临时目录，再由浏览器取回。压缩为 zip 同样经临时目录：拉取、打包后推回设备；压缩为 tar 系格式则直接在设备上完成
+- 上传经电脑临时目录中转：先由 multer 接收到临时目录，再 `adb push`。下载单个文件时用 `adb exec-out cat` 直接流式返回，不落盘；目录和多选先 `adb pull` 到临时目录再打包为 zip。压缩为 zip 同样经临时目录：拉取、打包后推回设备；压缩为 tar 系格式则直接在设备上完成
 - 预览（含 Range 分段读取）使用 `adb exec-out` 直接以字节流返回，不经过临时目录；文本预览读取文件开头 1 MB
 - root 模式下，若 adbd 本身以 root 运行则直接执行；否则以 `su -c`（可由 `ADBFM_SU` 修改）包装命令。su 模式下 `adb push` / `adb pull` 本身没有 root 权限，因此再经设备上的 `/data/local/tmp` 中转一次
 
@@ -91,7 +91,7 @@ flowchart TB
 | `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）、`/api/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
 | `zip.ts` | zip 的电脑端生成：`compressZip` 依次预估空间、`adb pull`、打包、`adb push`，`buildZip` 用 `archiver` 写出 zip，已压缩的格式直接存储 |
 | `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例） |
-| `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务和临时目录 |
+| `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
 | `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`，重名编号与复制共用 `uniqueTarget`，压缩包的复合扩展名不拆开），以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
@@ -384,7 +384,7 @@ sequenceDiagram
 
 ### 下载
 
-下载分两步：先由后端 `adb pull` 到临时目录并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/fetch/:token` 取回。单个文件原样返回，目录或多项打包为 zip。响应结束后临时目录即被删除；未取回的任务 30 分钟后清理。
+下载分两步：先由后端登记任务并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/fetch/:token` 取回。单个文件在第一步只确认存在且可读，取回时用 `adb exec-out cat` 流式返回，不经过电脑临时目录，浏览器立即开始下载；目录或多项在第一步 `adb pull` 到临时目录，取回时打包为 zip，响应结束后临时目录即被删除。未取回的任务 30 分钟后清理。
 
 ### 解压
 
