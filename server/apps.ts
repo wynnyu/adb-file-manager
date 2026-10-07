@@ -327,7 +327,8 @@ const APP_OPS: Record<string, AppOp> = {
 
 /** 包的全部 APK 路径：分包应用有多个。pm path 取不到时（已为用户卸载的系统应用）退回 pm list 里的主 APK */
 async function apkPaths(ctx: adb.Ctx, pkg: string): Promise<string[]> {
-  const paths = (await adb.shell(ctx, `pm path ${adb.q(pkg)}`))
+  // 找不到包时 pm path 以非零退出，补一个 true 让它走到下面的退路
+  const paths = (await adb.shell(ctx, `pm path ${adb.q(pkg)}; true`))
     .split("\n")
     .map((l) => /^package:(.+\.apk)\s*$/.exec(l.replace(/\r$/, ""))?.[1])
     .filter((p): p is string => !!p);
