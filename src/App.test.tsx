@@ -17,7 +17,7 @@ function setup() {
   );
 }
 
-const phone: Device = { serial: "A", state: "device", model: "Pixel", name: "A" };
+const phone: Device = { serial: "A", transport: "adb", mode: "system", model: "Pixel", name: "A" };
 
 describe("App", () => {
   beforeEach(() => {
@@ -43,14 +43,14 @@ describe("App", () => {
   });
 
   it("没有设备时显示连接提示，标题是产品名", async () => {
-    vi.spyOn(api, "devices").mockResolvedValue([]);
+    vi.spyOn(api, "devices").mockResolvedValue({ devices: [] });
     setup();
     expect(await screen.findByText(tz("nodevice.connect"))).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: tz("app.name") })).toBeTruthy();
   });
 
   it("有在线设备时显示文件页的工具栏", async () => {
-    vi.spyOn(api, "devices").mockResolvedValue([phone]);
+    vi.spyOn(api, "devices").mockResolvedValue({ devices: [phone] });
     vi.spyOn(api, "storage").mockResolvedValue({ total: 100, free: 40 });
     const ls = vi.spyOn(api, "ls").mockResolvedValue([file("/sdcard/a.txt")]);
     setup();

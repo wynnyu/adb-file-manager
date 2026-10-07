@@ -2,10 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../lib/index.ts";
 import { providers, tz } from "../test/utils.tsx";
-import type { Device } from "../types.ts";
+import type { Device, DeviceMode } from "../types.ts";
 import { NoDevice } from "./NoDevice.tsx";
 
-const dev = (state: string): Device => ({ serial: "A", state, model: "", name: "A" });
+const dev = (mode: DeviceMode): Device => ({ serial: "A", transport: "adb", mode, model: "", name: "A" });
 
 function setup(devices: Device[]) {
   render(<NoDevice devices={devices} adbError={null} />, { wrapper: providers() });

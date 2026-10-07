@@ -1,7 +1,7 @@
 import { type ChildProcessByStdio, type ExecFileException, execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
 import type { Readable } from "node:stream";
-import type { Device, ErrorCode, RootMethod } from "../shared/types.d.ts";
+import type { Device, DeviceMode, ErrorCode, RootMethod } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
@@ -105,6 +105,9 @@ export async function rootMethod(serial: string): Promise<RootMethod> {
 
 const nameCache = new Map<string, string>();
 
+/** 已缓存的设备名称，供 fastboot 模块复用（设备进 bootloader 后 adb 取不到名称） */
+export const cachedName = (serial: string) => nameCache.get(serial);
+
 /** 持续 unauthorized 多久后自动重新握手一次，留出时间让第一次弹窗正常显示和点击 */
 export const AUTH_RETRY_DELAY = 8_000;
 
@@ -117,8 +120,8 @@ export interface AuthWatch {
  * 根据当前设备列表更新 unauthorized 的计时记录，返回本次需要重新握手的 serial。
  * 状态变化或设备消失时清除记录，重新插拔后会再重试一次。
  */
-export function pickAuthRetries(list: Pick<Device, "serial" | "state">[], now: number, state: Map<string, AuthWatch>) {
-  const pending = new Set(list.filter((d) => d.state === "unauthorized").map((d) => d.serial));
+export function pickAuthRetries(list: Pick<Device, "serial" | "mode">[], now: number, state: Map<string, AuthWatch>) {
+  const pending = new Set(list.filter((d) => d.mode === "unauthorized").map((d) => d.serial));
   for (const serial of state.keys()) if (!pending.has(serial)) state.delete(serial);
   const retry: string[] = [];
   for (const serial of pending) {
@@ -145,17 +148,48 @@ export async function restartServer() {
   await run(["start-server"], 15_000);
 }
 
-export async function devices(): Promise<Device[]> {
-  const out = await run(["devices", "-l"], 10_000);
-  const list: Device[] = [];
+/** adb devices 的状态转为设备模式：未列出的状态（offline、authorizing、connecting、no permissions、host 等）一律视为 offline */
+export function adbMode(state: string): DeviceMode {
+  switch (state) {
+    case "device":
+      return "system";
+    case "recovery":
+    case "sideload":
+    case "bootloader":
+    case "unauthorized":
+      return state;
+    default:
+      return "offline";
+  }
+}
+
+export interface AdbDeviceLine {
+  serial: string;
+  state: string;
+  model: string;
+}
+
+/** 解析 adb devices -l 的输出；状态可能含空格（no permissions），因此只取 serial 后的第一个词作为状态 */
+export function parseAdbDevices(out: string): AdbDeviceLine[] {
+  const list: AdbDeviceLine[] = [];
   for (const line of out.split("\n").slice(1)) {
     const m = line.trim().match(/^(\S+)\s+(\S+)(.*)$/);
     if (!m) continue;
     const [, serial, state, rest] = m;
     const model = (rest.match(/model:(\S+)/)?.[1] ?? "").replace(/_/g, " ");
-    if (state === "device") cleanStagesOnce({ serial, root: false });
+    list.push({ serial, state, model });
+  }
+  return list;
+}
+
+export async function devices(): Promise<Device[]> {
+  const out = await run(["devices", "-l"], 10_000);
+  const list: Device[] = [];
+  for (const { serial, state, model } of parseAdbDevices(out)) {
+    const mode = adbMode(state);
+    if (mode === "system") cleanStagesOnce({ serial, root: false });
     let name = nameCache.get(serial);
-    if (!name && state === "device") {
+    if (!name && mode === "system") {
       try {
         const props = await shell(
           { serial, root: false },
@@ -168,7 +202,7 @@ export async function devices(): Promise<Device[]> {
         /* 忽略，使用 model */
       }
     }
-    list.push({ serial, state, model, name: name || model || serial });
+    list.push({ serial, transport: "adb", mode, model, name: name || model || serial });
   }
   if (pickAuthRetries(list, Date.now(), authWatch).length) reconnectOffline().catch(() => {});
   return list;

@@ -24,7 +24,7 @@ describe("useShell", () => {
 
 describe("useShellState", () => {
   it("没有设备时不在线，target 为 null", async () => {
-    vi.spyOn(api, "devices").mockResolvedValue([]);
+    vi.spyOn(api, "devices").mockResolvedValue({ devices: [] });
     const { result } = renderHook(() => useShellState(), { wrapper: providers() });
     await vi.waitFor(() => expect(api.devices).toHaveBeenCalled());
     expect(result.current.online).toBe(false);
@@ -32,7 +32,7 @@ describe("useShellState", () => {
   });
 
   it("closeDialog 传入已被替换的对话框时不关闭当前对话框", () => {
-    vi.spyOn(api, "devices").mockResolvedValue([]);
+    vi.spyOn(api, "devices").mockResolvedValue({ devices: [] });
     const { result } = renderHook(() => useShellState(), { wrapper: providers() });
     const first = dialog("first");
     const second = dialog("second");

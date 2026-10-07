@@ -3,28 +3,27 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { MessageKey } from "../../i18n/index.tsx";
 import { useT } from "../../i18n/index.tsx";
-import type { Device } from "../../types.ts";
+import type { Device, DeviceMode } from "../../types.ts";
 import { pressLarge, spring } from "../ui.tsx";
 
-type KnownState = "device" | "unauthorized" | "offline";
-
-const stateStyle: Record<KnownState, [MessageKey, string]> = {
-  device: ["device.device", "bg-green"],
-  unauthorized: ["device.unauthorized", "bg-yellow"],
-  offline: ["device.offline", "bg-red"],
+const stateStyle: Record<DeviceMode, [MessageKey, string]> = {
+  system: ["device.mode.system", "bg-green"],
+  unauthorized: ["device.mode.unauthorized", "bg-yellow"],
+  offline: ["device.mode.offline", "bg-red"],
+  recovery: ["device.mode.recovery", "bg-peach"],
+  sideload: ["device.mode.sideload", "bg-peach"],
+  bootloader: ["device.mode.bootloader", "bg-blue"],
+  fastbootd: ["device.mode.fastbootd", "bg-blue"],
 };
 
-/** adb 还会报告 bootloader、recovery 等状态，只有常见的几种有专门的文案和颜色 */
-const isKnownState = (state: string): state is KnownState => Object.hasOwn(stateStyle, state);
-
-/** 连上时 ping 一次提示状态变化；key 跟着 state 走，状态不变就不重放 */
-function Dot({ state }: { state: string }) {
-  const color = isKnownState(state) ? stateStyle[state][1] : "bg-overlay0";
+/** 连上时 ping 一次提示状态变化；key 跟着 mode 走，模式不变就不重放 */
+function Dot({ mode }: { mode: DeviceMode }) {
+  const color = stateStyle[mode][1];
   return (
     <span className="relative flex size-2.5">
-      {state === "device" && (
+      {mode === "system" && (
         <span
-          key={state}
+          key={mode}
           className={`absolute inset-0 animate-ping rounded-circle opacity-60 [animation-iteration-count:1] ${color}`}
         />
       )}
@@ -70,7 +69,7 @@ export function DeviceSelect({
           {/* 窄屏只留图标，连接状态改用角标 */}
           {current && (
             <span className="absolute right-0 bottom-0 flex rounded-circle ring-2 ring-surface0 sm:hidden">
-              <Dot state={current.state} />
+              <Dot mode={current.mode} />
             </span>
           )}
         </span>
@@ -89,8 +88,8 @@ export function DeviceSelect({
           <span className="flex items-center gap-1.5 text-xs text-subtext1">
             {current ? (
               <>
-                <Dot state={current.state} />
-                {isKnownState(current.state) ? t(stateStyle[current.state][0]) : current.state}
+                <Dot mode={current.mode} />
+                {t(stateStyle[current.mode][0])}
               </>
             ) : (
               t("device.waiting")
@@ -132,9 +131,13 @@ export function DeviceSelect({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold">{d.name}</span>
-                  <span className="block truncate font-mono text-2xs text-muted">{d.serial}</span>
+                  <span className="flex items-center gap-1.5 text-2xs text-muted">
+                    <span className="truncate font-mono">{d.serial}</span>
+                    <span className="shrink-0">|</span>
+                    <span className="shrink-0">{t(stateStyle[d.mode][0])}</span>
+                  </span>
                 </span>
-                <Dot state={d.state} />
+                <Dot mode={d.mode} />
               </button>
             ))}
           </motion.div>

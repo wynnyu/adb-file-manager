@@ -14,7 +14,7 @@ const steps: { Icon: typeof Smartphone; title: MessageKey; text: MessageKey }[] 
 
 export function NoDevice({ devices, adbError }: { devices: Device[]; adbError: string | null }) {
   const t = useT();
-  const unauthorized = devices.some((d) => d.state === "unauthorized");
+  const unauthorized = devices.some((d) => d.mode === "unauthorized");
   const { pending, error, reconnect, restart } = useReauthorize();
   return (
     <motion.div

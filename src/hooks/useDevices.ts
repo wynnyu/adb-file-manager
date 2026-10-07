@@ -14,11 +14,11 @@ export function useDevices() {
       try {
         const list = await api.devices();
         if (!alive) return;
-        setAdbError(null);
-        setDevices(list);
+        setAdbError(list.adbError ?? null);
+        setDevices(list.devices);
         setSerial((cur) => {
-          if (cur && list.some((d) => d.serial === cur)) return cur;
-          return (list.find((d) => d.state === "device") ?? list[0])?.serial ?? cur;
+          if (cur && list.devices.some((d) => d.serial === cur)) return cur;
+          return (list.devices.find((d) => d.mode === "system") ?? list.devices[0])?.serial ?? cur;
         });
       } catch (e) {
         if (alive) setAdbError((e as Error).message);

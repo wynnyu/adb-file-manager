@@ -4,8 +4,10 @@ import {
   AdbError,
   AUTH_RETRY_DELAY,
   type AuthWatch,
+  adbMode,
   assertAbs,
   execError,
+  parseAdbDevices,
   pickAuthRetries,
   q,
   stageCleanupCmd,
@@ -68,8 +70,8 @@ describe("stageCleanupCmd", () => {
 });
 
 describe("pickAuthRetries", () => {
-  const un = [{ serial: "A", state: "unauthorized" }];
-  const ok = [{ serial: "A", state: "device" }];
+  const un = [{ serial: "A", mode: "unauthorized" as const }];
+  const ok = [{ serial: "A", mode: "system" as const }];
 
   it("首次出现只记录，不重试", () => {
     const state = new Map<string, AuthWatch>();
@@ -100,5 +102,57 @@ describe("pickAuthRetries", () => {
     expect(state.has("A")).toBe(false);
     expect(pickAuthRetries(un, 200_000, state)).toEqual([]);
     expect(pickAuthRetries(un, 200_000 + AUTH_RETRY_DELAY, state)).toEqual(["A"]);
+  });
+});
+
+describe("adbMode", () => {
+  it.each([
+    ["device", "system"],
+    ["recovery", "recovery"],
+    ["sideload", "sideload"],
+    ["bootloader", "bootloader"],
+    ["unauthorized", "unauthorized"],
+    ["offline", "offline"],
+    ["authorizing", "offline"],
+    ["connecting", "offline"],
+    ["no", "offline"],
+    ["host", "offline"],
+    ["toString", "offline"],
+  ])("状态 %s 对应模式 %s", (state, mode) => {
+    expect(adbMode(state)).toBe(mode);
+  });
+});
+
+describe("parseAdbDevices", () => {
+  const header = "List of devices attached\n";
+
+  it.each([
+    ["空输出", "", []],
+    ["只有表头", header, []],
+    [
+      "带 model 的行",
+      `${header}R5CT\tdevice usb:1-1 product:husky model:Pixel_8_Pro device:husky transport_id:1\n\n`,
+      [{ serial: "R5CT", state: "device", model: "Pixel 8 Pro" }],
+    ],
+    [
+      "没有 model 的行",
+      `${header}TAB01\tunauthorized usb:1-2 transport_id:2\n`,
+      [{ serial: "TAB01", state: "unauthorized", model: "" }],
+    ],
+    [
+      "no permissions 行取第一个词作为状态",
+      `${header}0123\tno permissions (user in plugdev group; are you root?) usb:1-3 transport_id:3\n`,
+      [{ serial: "0123", state: "no", model: "" }],
+    ],
+    [
+      "多台设备",
+      `${header}A\tdevice model:A_1\nB\toffline\n`,
+      [
+        { serial: "A", state: "device", model: "A 1" },
+        { serial: "B", state: "offline", model: "" },
+      ],
+    ],
+  ])("%s", (_name, out, expected) => {
+    expect(parseAdbDevices(out)).toEqual(expected);
   });
 });

@@ -57,7 +57,7 @@ export function useShellState(): ShellState {
   const { transfers, startTransfer, patchTransfer, dismissTransfer } = useTransfers();
 
   const { devices, adbError, serial, setSerial } = useDevices();
-  const online = devices.find((d) => d.serial === serial)?.state === "device";
+  const online = devices.find((d) => d.serial === serial)?.mode === "system";
   const { storage, refreshStorage } = useStorage(serial, online);
   const { rootMode, askEnableRoot, disableRoot } = useRootMode({ serial, online, flash, openDialog: setDialog });
   const target = useMemo<Target | null>(() => (serial ? { serial, root: rootMode } : null), [serial, rootMode]);

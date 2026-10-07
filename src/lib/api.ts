@@ -3,7 +3,7 @@ import type {
   ArchiveFormat,
   ArchiveListing,
   CompressResult,
-  Device,
+  DeviceList,
   DirUsage,
   ErrorResponse,
   ExtractResult,
@@ -57,7 +57,7 @@ const qs = (t: Target, extra: Record<string, string> = {}) =>
   new URLSearchParams({ serial: t.serial, ...(t.root ? { root: "1" } : {}), ...extra });
 
 export const api = {
-  devices: () => request<Device[]>("/api/devices"),
+  devices: () => request<DeviceList>("/api/devices"),
   reconnectDevices: () => post<OkResult>("/api/devices/reconnect", {}),
   restartAdb: () => post<OkResult>("/api/devices/restart-server", {}),
 

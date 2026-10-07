@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { RootCheckResult, StorageInfo } from "../shared/types.d.ts";
+import type { DeviceList, RootCheckResult, StorageInfo } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { msg } from "./i18n.ts";
 import { rootFor, serialOf, wrap } from "./request.ts";
@@ -11,13 +11,22 @@ export async function storage(ctx: adb.Ctx): Promise<StorageInfo> {
   return { total: total * 1024, free: avail * 1024 };
 }
 
+/** 合并各来源的设备；adb 失败时记入 adbError，不影响其他来源 */
+export async function listDevices(): Promise<DeviceList> {
+  try {
+    return { devices: await adb.devices() };
+  } catch (e) {
+    return { devices: [], adbError: (e as Error).message };
+  }
+}
+
 export function deviceRoutes() {
   const router = Router();
 
   router.get(
     "/",
     wrap(async (_req, res) => {
-      res.json(await adb.devices());
+      res.json(await listDevices());
     }),
   );
 

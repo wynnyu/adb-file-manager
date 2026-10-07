@@ -5,6 +5,8 @@ export type {
   CompressRequest,
   CompressResult,
   Device,
+  DeviceList,
+  DeviceMode,
   DirUsage,
   ErrorCode,
   ErrorResponse,
@@ -19,6 +21,7 @@ export type {
   RootMethod,
   StorageInfo,
   TextPreview,
+  Transport,
   UploadResult,
 } from "../shared/types.d.ts";
 

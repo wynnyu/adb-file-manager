@@ -1,11 +1,24 @@
 // 前后端共用的接口数据结构，只放类型。用 .d.ts 是为了不参与编译输出，后端的 rootDir 仍是 server/
 
+/** 设备经由哪个工具连接 */
+export type Transport = "adb" | "fastboot";
+
+/** 规范化的设备模式；各模块按模式决定是否可用 */
+export type DeviceMode = "system" | "recovery" | "sideload" | "bootloader" | "fastbootd" | "unauthorized" | "offline";
+
 export interface Device {
   serial: string;
-  /** adb devices 报告的状态，常见的有 device、unauthorized、offline，也可能是 bootloader、recovery 等 */
-  state: string;
+  transport: Transport;
+  mode: DeviceMode;
   model: string;
   name: string;
+}
+
+/** GET /api/devices 的响应：adb 失败时 adbError 带上错误，fastboot 设备照常列出；fastboot 不存在时 fastbootMissing 为 true */
+export interface DeviceList {
+  devices: Device[];
+  adbError?: string;
+  fastbootMissing?: boolean;
 }
 
 export interface FileEntry {
