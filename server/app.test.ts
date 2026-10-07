@@ -28,6 +28,8 @@ const PARAMS = {
   owner: "root",
   format: "tgz",
   pkg: "com.example.app",
+  key: "debug.adbfm.test",
+  value: "1",
 };
 
 /** preview、archive、extract 会先按扩展名判断类型，需要给出对应类型的路径 */
@@ -78,6 +80,9 @@ describe("createApp 的接口挂载", () => {
     ["POST", "/api/apps/clear"],
     ["POST", "/api/apps/extract"],
     ["POST", "/api/apps/install"],
+    ["GET", "/api/props"],
+    ["POST", "/api/props/set"],
+    ["POST", "/api/props/delete"],
     ["GET", "/api/devices/storage"],
     ["POST", "/api/devices/root-check"],
   ] as const)("%s %s 不带 serial 时返回 400", async (method, url) => {

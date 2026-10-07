@@ -51,8 +51,11 @@ export interface OkResult {
   ok: true;
 }
 
-/** 供前端识别的错误类型：no_root 为设备无法获取 root，root_lost 为 root 请求失败后复查发现 root 已失效 */
-export type ErrorCode = "no_root" | "root_lost";
+/**
+ * 供前端识别的错误类型：no_root 为设备无法获取 root，root_lost 为 root 请求失败后复查发现 root 已失效，
+ * needs_force 为 409 时的通用约定：error 是可直接显示的风险说明，前端强确认后带 force: true 重试
+ */
+export type ErrorCode = "no_root" | "root_lost" | "needs_force";
 
 /** 所有接口出错时的响应；error 可直接显示给用户 */
 export interface ErrorResponse {
@@ -282,4 +285,37 @@ export interface AppUninstallRequest extends AppActionRequest {
 /** POST /api/apps/install 的任务结果；obb 为推送的 OBB 文件数，没有时缺省 */
 export interface InstallResult {
   obb?: number;
+}
+
+/** GET /api/props 的一项 */
+export interface PropEntry {
+  key: string;
+  /** 多行值以换行符连接 */
+  value: string;
+}
+
+/** GET /api/props 的响应；resetprop 仅在 root 请求时检测，否则为 false */
+export interface PropList {
+  props: PropEntry[];
+  resetprop: boolean;
+}
+
+/**
+ * POST /api/props/set 的请求。ro.* 需要 root 和 resetprop；
+ * 有风险的属性不带 force: true 时返回 409 和 needs_force
+ */
+export interface PropSetRequest {
+  serial: string;
+  root?: boolean;
+  key: string;
+  value: string;
+  force?: boolean;
+}
+
+/** POST /api/props/delete 的请求；删除需要 root 和 resetprop，且总是要求 force: true */
+export interface PropDeleteRequest {
+  serial: string;
+  root?: boolean;
+  key: string;
+  force?: boolean;
 }

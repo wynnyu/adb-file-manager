@@ -112,3 +112,29 @@ export function criticalRole(pkg: string, current: CurrentDefaults = {}): Critic
 export function assertNotCritical(role: CriticalRole | undefined, force: unknown) {
   if (role && force !== true) throw new adb.AdbError(msg("criticalPackage"), 409);
 }
+
+/** 属性操作的风险类型：ro 为修改只读属性，adb 为可能断开 adb 连接，delete 为删除属性 */
+export type PropRisk = "ro" | "adb" | "delete";
+
+/** 修改后可能断开 adb 连接的属性 */
+export const ADB_PROPS = new Set([
+  "sys.usb.config",
+  "persist.sys.usb.config",
+  "service.adb.root",
+  "service.adb.tcp.port",
+  "persist.adb.tcp.port",
+  "persist.service.adb.enable",
+]);
+
+/** 修改属性的风险：ro.* 为 ro，ADB_PROPS 中的为 adb，其余为 undefined；删除操作另行视为 delete */
+export function propRisk(key: string): Exclude<PropRisk, "delete"> | undefined {
+  if (key.startsWith("ro.")) return "ro";
+  return ADB_PROPS.has(key) ? "adb" : undefined;
+}
+
+const PROP_RISK_MSG = { ro: "propRiskRo", adb: "propRiskAdb", delete: "propRiskDelete" } as const;
+
+/** 有风险的操作没有带 force: true 时返回 409 和 needs_force，error 是风险说明，前端据此要求强确认 */
+export function assertPropForce(risk: PropRisk | undefined, force: unknown) {
+  if (risk && force !== true) throw new adb.AdbError(msg(PROP_RISK_MSG[risk]), 409, "needs_force");
+}

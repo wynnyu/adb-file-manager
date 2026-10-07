@@ -63,6 +63,16 @@ const zh = {
   bundleUnsafe: "安装包含有不安全的路径，已拒绝",
   bundleMissingEntry: "安装包缺少清单中列出的文件：{name}",
   bundleBroken: "无法读取安装包：{reason}",
+  badPropKey: "属性名只能包含字母、数字、下划线、点、连字符、冒号和 @，且不能以符号开头",
+  badPropValue: "属性值必须是不含换行和空字符的字符串",
+  propControl: "ctl.* 和 sys.powerctl 是控制属性，会启停系统服务或重启设备，不允许修改",
+  propNeedsRoot: "此操作需要 root 模式",
+  noResetprop: "设备上未找到 resetprop，无法修改 ro.* 或删除属性。需要 Magisk、KernelSU 或 APatch 提供 resetprop",
+  propFailed: "操作失败：{reason}",
+  propNotApplied: "属性未生效：设置后读取到的值与预期不一致，可能被系统拒绝",
+  propRiskRo: "ro 属性仅在本次开机内生效，完全重启后恢复。系统服务读取到异常值可能反复重启，导致无法正常进入系统",
+  propRiskAdb: "修改该属性可能断开 adb 连接，需在设备上恢复",
+  propRiskDelete: "删除属性后，读取它的系统服务或应用可能异常。persist.* 属性保存的值会一并清除，无法恢复",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -132,6 +142,22 @@ const en: Record<MsgKey, string> = {
   bundleUnsafe: "The package contains an unsafe path and was rejected",
   bundleMissingEntry: "The package is missing a file listed in its manifest: {name}",
   bundleBroken: "Cannot read the package: {reason}",
+  badPropKey:
+    "A property name may only contain letters, digits, underscores, dots, hyphens, colons and @, and must not start with a symbol",
+  badPropValue: "A property value must be a string without line breaks or null characters",
+  propControl:
+    "ctl.* and sys.powerctl are control properties that start or stop system services or reboot the device. Changing them is not allowed",
+  propNeedsRoot: "This operation requires root mode",
+  noResetprop:
+    "resetprop was not found on the device, so ro.* properties cannot be changed and properties cannot be deleted. Magisk, KernelSU or APatch provides resetprop",
+  propFailed: "Operation failed: {reason}",
+  propNotApplied:
+    "The property was not applied: the value read back does not match, so the system may have rejected it",
+  propRiskRo:
+    "A ro property takes effect only until the next full reboot, then reverts. System services that read an abnormal value may restart repeatedly, which can prevent the system from booting",
+  propRiskAdb: "Changing this property may disconnect adb. Recovery requires access on the device",
+  propRiskDelete:
+    "After deletion, system services or apps that read the property may misbehave. The stored value of a persist.* property is also removed and cannot be restored",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

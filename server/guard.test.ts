@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 import { AdbError } from "./adb.ts";
-import { assertNotCritical, criticalRole, isProtected, localOnly } from "./guard.ts";
+import { assertNotCritical, assertPropForce, criticalRole, isProtected, localOnly, propRisk } from "./guard.ts";
 import { msg } from "./i18n.ts";
 
 describe("isProtected", () => {
@@ -127,5 +127,52 @@ describe("assertNotCritical", () => {
 
   it("非关键包始终放行", () => {
     expect(() => assertNotCritical(undefined, undefined)).not.toThrow();
+  });
+});
+
+describe("propRisk", () => {
+  it.each([
+    ["ro.debuggable", "ro"],
+    ["ro.build.fingerprint", "ro"],
+    ["sys.usb.config", "adb"],
+    ["persist.sys.usb.config", "adb"],
+    ["service.adb.root", "adb"],
+    ["service.adb.tcp.port", "adb"],
+    ["persist.adb.tcp.port", "adb"],
+    ["persist.service.adb.enable", "adb"],
+  ])("%s 的风险是 %s", (key, risk) => {
+    expect(propRisk(key)).toBe(risk);
+  });
+
+  it.each(["debug.adbfm.test", "persist.sys.language", "sys.usb.state", "constructor", "ro"])("%s 没有风险", (key) => {
+    expect(propRisk(key)).toBeUndefined();
+  });
+});
+
+describe("assertPropForce", () => {
+  it.each([
+    ["ro", "propRiskRo"],
+    ["adb", "propRiskAdb"],
+    ["delete", "propRiskDelete"],
+  ] as const)("%s 风险没有 force 时返回 409 和 needs_force", (risk, key) => {
+    for (const force of [undefined, false, "true", 1]) {
+      try {
+        assertPropForce(risk, force);
+        expect.unreachable();
+      } catch (e) {
+        expect(e).toBeInstanceOf(AdbError);
+        expect((e as AdbError).status).toBe(409);
+        expect((e as AdbError).code).toBe("needs_force");
+        expect((e as AdbError).message).toBe(msg(key));
+      }
+    }
+  });
+
+  it("带 force: true 时放行", () => {
+    expect(() => assertPropForce("ro", true)).not.toThrow();
+  });
+
+  it("没有风险时始终放行", () => {
+    expect(() => assertPropForce(undefined, undefined)).not.toThrow();
   });
 });
