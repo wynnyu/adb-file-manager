@@ -12,6 +12,8 @@ import { type Transfers, useTransfers } from "./useTransfers.ts";
 export interface Shell {
   devices: Device[];
   adbError: string | null;
+  /** 电脑上找不到 fastboot，fastboot 设备无法检测 */
+  fastbootMissing: boolean;
   serial: string | null;
   setSerial: (serial: string) => void;
   /** 当前设备是否已连接且已授权 */
@@ -56,7 +58,7 @@ export function useShellState(): ShellState {
   const { toast, flash } = useToast();
   const { transfers, startTransfer, patchTransfer, dismissTransfer } = useTransfers();
 
-  const { devices, adbError, serial, setSerial } = useDevices();
+  const { devices, adbError, fastbootMissing, serial, setSerial } = useDevices();
   const online = devices.find((d) => d.serial === serial)?.mode === "system";
   const { storage, refreshStorage } = useStorage(serial, online);
   const { rootMode, askEnableRoot, disableRoot } = useRootMode({ serial, online, flash, openDialog: setDialog });
@@ -66,6 +68,7 @@ export function useShellState(): ShellState {
     () => ({
       devices,
       adbError,
+      fastbootMissing,
       serial,
       setSerial,
       online,
@@ -88,6 +91,7 @@ export function useShellState(): ShellState {
     [
       devices,
       adbError,
+      fastbootMissing,
       serial,
       setSerial,
       online,

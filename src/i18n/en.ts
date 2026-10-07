@@ -104,6 +104,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "device.mode.fastbootd": "fastbootd",
   "device.mode.unauthorized": "Unauthorized",
   "device.mode.offline": "Offline",
+  "device.fastbootMissing": "fastboot not found. Set the FASTBOOT_PATH environment variable to specify its path",
   "device.none": "No device",
   "device.waiting": "Waiting for USB connection…",
   "device.noneDetected": "No devices detected",

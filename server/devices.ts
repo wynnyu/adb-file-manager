@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { DeviceList, RootCheckResult, StorageInfo } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import * as fastboot from "./fastboot.ts";
 import { msg } from "./i18n.ts";
 import { rootFor, serialOf, wrap } from "./request.ts";
 
@@ -11,13 +12,17 @@ export async function storage(ctx: adb.Ctx): Promise<StorageInfo> {
   return { total: total * 1024, free: avail * 1024 };
 }
 
-/** 合并各来源的设备；adb 失败时记入 adbError，不影响其他来源 */
+/** 合并 adb 和 fastboot 的设备；同一 serial 两边都有时保留 adb 的。任一来源失败不影响另一个 */
 export async function listDevices(): Promise<DeviceList> {
-  try {
-    return { devices: await adb.devices() };
-  } catch (e) {
-    return { devices: [], adbError: (e as Error).message };
+  const [a, f] = await Promise.allSettled([adb.devices(), fastboot.devices()]);
+  const list: DeviceList = { devices: a.status === "fulfilled" ? [...a.value] : [] };
+  if (a.status === "rejected") list.adbError = (a.reason as Error).message;
+  if (f.status === "fulfilled") {
+    const seen = new Set(list.devices.map((d) => d.serial));
+    list.devices.push(...f.value.devices.filter((d) => !seen.has(d.serial)));
+    if (f.value.missing) list.fastbootMissing = true;
   }
+  return list;
 }
 
 export function deviceRoutes() {

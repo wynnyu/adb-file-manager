@@ -117,7 +117,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - 请求参数通过 `serialOf`、`ctxOf`、`pathsOf`、`adb.assertAbs` 取出和校验，不直接信任 `req.query` / `req.body`
 - 出错时抛出 `AdbError(msg("..."), status, code?)`；错误响应格式固定为 `{ error, code? }`，`code` 仅在前端需要识别时提供（如 `root_lost`）
 - 无返回数据的成功响应为 `{ ok: true }`，有数据时直接返回共享类型中定义的结构
-- `adb.ts` 提供底层调用（`run`、`shell`、`checked`、exec-out），各功能模块在自己的文件中拼命令；其他模块不直接调用 `child_process`
+- `adb.ts` 提供 adb 的底层调用（`run`、`shell`、`checked`、exec-out），各功能模块在自己的文件中拼命令；`fastboot.ts` 是 fastboot 命令的底层调用。除这两个文件外，其他模块不直接调用 `child_process`
 - 新增或修改接口后同步更新 `docs/api.md`
 
 ### 安全

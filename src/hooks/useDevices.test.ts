@@ -78,6 +78,17 @@ describe("useDevices", () => {
     expect(result.current.serial).toBe("A");
   });
 
+  it("记录 fastboot 是否缺失", async () => {
+    const list = vi.spyOn(api, "devices").mockResolvedValue({ devices: [], fastbootMissing: true });
+    const { result } = renderHook(() => useDevices());
+    await tick();
+    expect(result.current.fastbootMissing).toBe(true);
+
+    list.mockResolvedValue({ devices: [] });
+    await tick(2000);
+    expect(result.current.fastbootMissing).toBe(false);
+  });
+
   it("卸载后停止轮询", async () => {
     const list = vi.spyOn(api, "devices").mockResolvedValue(listOf());
     const { unmount } = renderHook(() => useDevices());

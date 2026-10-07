@@ -7,9 +7,11 @@ import { DeviceSelect } from "./DeviceSelect.tsx";
 const pixel: Device = { serial: "R5CT", transport: "adb", mode: "system", model: "Pixel 9", name: "Pixel 9" };
 const tablet: Device = { serial: "TAB01", transport: "adb", mode: "unauthorized", model: "Tab", name: "Galaxy Tab" };
 
-function show(devices: Device[], serial: string | null) {
+function show(devices: Device[], serial: string | null, fastbootMissing = false) {
   const onChange = vi.fn();
-  render(<DeviceSelect devices={devices} serial={serial} onChange={onChange} />, { wrapper: providers() });
+  render(<DeviceSelect devices={devices} fastbootMissing={fastbootMissing} serial={serial} onChange={onChange} />, {
+    wrapper: providers(),
+  });
   const toggle = () => fireEvent.click(screen.getAllByRole("button")[0]);
   return { onChange, toggle };
 }
@@ -59,6 +61,15 @@ describe("DeviceSelect", () => {
     const { toggle } = show([], null);
     toggle();
     expect(screen.getByText(tz("device.noneDetected"))).toBeTruthy();
+  });
+
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])("fastboot 缺失为 %s 时提示出现 %i 次", (missing, count) => {
+    const { toggle } = show([pixel], "R5CT", missing);
+    toggle();
+    expect(screen.queryAllByText(tz("device.fastbootMissing"))).toHaveLength(count);
   });
 
   it("点击外面时收起", async () => {

@@ -6,6 +6,7 @@ import type { Device, StorageInfo } from "../types.ts";
 export function useDevices() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [adbError, setAdbError] = useState<string | null>(null);
+  const [fastbootMissing, setFastbootMissing] = useState(false);
   const [serial, setSerial] = useState<string | null>(null);
 
   useEffect(() => {
@@ -15,6 +16,7 @@ export function useDevices() {
         const list = await api.devices();
         if (!alive) return;
         setAdbError(list.adbError ?? null);
+        setFastbootMissing(list.fastbootMissing ?? false);
         setDevices(list.devices);
         setSerial((cur) => {
           if (cur && list.devices.some((d) => d.serial === cur)) return cur;
@@ -32,7 +34,7 @@ export function useDevices() {
     };
   }, []);
 
-  return { devices, adbError, serial, setSerial };
+  return { devices, adbError, fastbootMissing, serial, setSerial };
 }
 
 /** 设备共享存储的用量；设备离线时为 null */

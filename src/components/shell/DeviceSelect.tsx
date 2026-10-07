@@ -34,10 +34,12 @@ function Dot({ mode }: { mode: DeviceMode }) {
 
 export function DeviceSelect({
   devices,
+  fastbootMissing = false,
   serial,
   onChange,
 }: {
   devices: Device[];
+  fastbootMissing?: boolean;
   serial: string | null;
   onChange: (serial: string) => void;
 }) {
@@ -140,6 +142,7 @@ export function DeviceSelect({
                 <Dot mode={d.mode} />
               </button>
             ))}
+            {fastbootMissing && <div className="px-4 py-2 text-xs text-muted">{t("device.fastbootMissing")}</div>}
           </motion.div>
         )}
       </AnimatePresence>
