@@ -32,7 +32,7 @@ function dropPull(token: string) {
 }
 
 /** 登记一次性下载 token，30 分钟内未取走则自动清理 */
-function registerPull(source: PullSource, name: string): PullResult {
+export function registerPull(source: PullSource, name: string): PullResult {
   const token = randomUUID();
   pulls.set(token, { ...source, name, timer: setTimeout(() => dropPull(token), 30 * 60_000) });
   return { token, name };

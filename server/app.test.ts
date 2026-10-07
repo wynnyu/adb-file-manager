@@ -67,6 +67,14 @@ describe("createApp 的接口挂载", () => {
     ["POST", "/api/files/pull"],
     ["GET", "/api/apps"],
     ["GET", "/api/apps/info"],
+    ["POST", "/api/apps/uninstall"],
+    ["POST", "/api/apps/uninstall-updates"],
+    ["POST", "/api/apps/restore"],
+    ["POST", "/api/apps/disable"],
+    ["POST", "/api/apps/enable"],
+    ["POST", "/api/apps/force-stop"],
+    ["POST", "/api/apps/clear"],
+    ["POST", "/api/apps/extract"],
     ["GET", "/api/devices/storage"],
     ["POST", "/api/devices/root-check"],
   ] as const)("%s %s 不带 serial 时返回 400", async (method, url) => {
@@ -87,6 +95,19 @@ describe("createApp 的接口挂载", () => {
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toBe(msg("badPackage"));
   });
+
+  it.each(["uninstall", "uninstall-updates", "restore", "disable", "enable", "force-stop", "clear", "extract"])(
+    "POST /api/apps/%s 包名不合法时返回 400",
+    async (action) => {
+      const res = await fetch(`${base}/api/apps/${action}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-lang": "zh" },
+        body: JSON.stringify({ serial: "x", pkg: "com.a;rm -rf" }),
+      });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe(msg("badPackage"));
+    },
+  );
 
   it.each([
     ["GET", "/api/jobs/nope/events"],

@@ -1,6 +1,6 @@
 import posix from "node:path/posix";
 import type { NextFunction, Request, Response } from "express";
-import type { ErrorResponse } from "../shared/types.d.ts";
+import type { CriticalRole, ErrorResponse } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import * as fs from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
@@ -77,4 +77,38 @@ export async function assertNotInside(ctx: adb.Ctx, sources: string[], dest: str
       throw new adb.AdbError(msg("intoItself", { name: posix.basename(sources[i]) }), 400);
     }
   });
+}
+
+/** 任何时候都视为关键的包：系统核心组件，以及权限、安装器、电话、设置存储等 */
+export const CRITICAL_PACKAGES: Record<string, CriticalRole> = {
+  android: "core",
+  "com.android.systemui": "systemui",
+  "com.android.settings": "settings",
+  "com.android.phone": "core",
+  "com.android.providers.settings": "core",
+  "com.android.shell": "core",
+  "com.android.server.telecom": "core",
+  "com.android.packageinstaller": "core",
+  "com.google.android.packageinstaller": "core",
+  "com.android.permissioncontroller": "core",
+  "com.google.android.permissioncontroller": "core",
+};
+
+/** 设备当前的默认启动器和输入法的包名，取不到时缺省 */
+export interface CurrentDefaults {
+  launcher?: string;
+  ime?: string;
+}
+
+/** 包的关键角色：静态表优先，其次是当前的启动器和输入法；不是关键包时为 undefined */
+export function criticalRole(pkg: string, current: CurrentDefaults = {}): CriticalRole | undefined {
+  if (Object.hasOwn(CRITICAL_PACKAGES, pkg)) return CRITICAL_PACKAGES[pkg];
+  if (pkg === current.launcher) return "launcher";
+  if (pkg === current.ime) return "ime";
+  return undefined;
+}
+
+/** 关键包没有带 force: true 时返回 409，前端据此要求强确认；非关键包直接放行 */
+export function assertNotCritical(role: CriticalRole | undefined, force: unknown) {
+  if (role && force !== true) throw new adb.AdbError(msg("criticalPackage"), 409);
 }

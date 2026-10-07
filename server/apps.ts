@@ -1,8 +1,13 @@
+import fs from "node:fs/promises";
 import { Router } from "express";
-import type { AppDetail, AppEntry, AppPermission, AppState } from "../shared/types.d.ts";
+import type { AppDetail, AppEntry, AppPermission, AppState, JobRef, OkResult, PullResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import { assertNotCritical, type CurrentDefaults, criticalRole } from "./guard.ts";
 import { msg as t } from "./i18n.ts";
+import { startJob } from "./jobs.ts";
 import { serialOf, wrap } from "./request.ts";
+import { tmpDir } from "./tmp.ts";
+import { registerPull } from "./transfer.ts";
 
 const SPLIT = "__ADBFM_SPLIT__";
 
@@ -14,9 +19,15 @@ export function assertPackage(v: unknown): string {
   return v;
 }
 
+/** 默认启动器：取 HOME 的解析结果的最后一行，形如 com.miui.home/.launcher.Launcher */
+const LAUNCHER_CMD =
+  "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tail -n 1";
+/** 当前输入法，形如 com.google.android.inputmethod.latin/...LatinIME，未设置时为 null */
+const IME_CMD = "settings get secure default_input_method 2>/dev/null";
+
 /**
- * 一次 shell 取四段，以 SPLIT 分隔：全部包（含已卸载，带路径和 uid）、系统包、已停用包、当前用户已安装的包。
- * 老系统的 pm 不认识 -U 时降级为不带 uid。pm 命令默认作用于用户 0
+ * 一次 shell 取六段，以 SPLIT 分隔：全部包（含已卸载，带路径和 uid）、系统包、已停用包、当前用户已安装的包、
+ * 默认启动器、当前输入法。老系统的 pm 不认识 -U 时降级为不带 uid。pm 命令默认作用于用户 0
  */
 export function listCmd() {
   return [
@@ -24,7 +35,30 @@ export function listCmd() {
     "pm list packages -s -u",
     "pm list packages -d",
     "pm list packages",
+    LAUNCHER_CMD,
+    IME_CMD,
   ].join(`; echo ${SPLIT}; `);
+}
+
+/** 只取默认启动器和输入法，操作接口据此在服务端复查关键包，不信任前端 */
+export function defaultsCmd() {
+  return [LAUNCHER_CMD, IME_CMD].join(`; echo ${SPLIT}; `) + "; true";
+}
+
+/** 从 组件名（包名/类名）取包名；输出为空、null 或不像组件名时为 undefined */
+function componentPackage(out: string): string | undefined {
+  return /^([A-Za-z][\w.]*)\//.exec(out.trim())?.[1];
+}
+
+/** 解析启动器、输入法两段输出 */
+export function parseDefaults(launcherOut = "", imeOut = ""): CurrentDefaults {
+  return { launcher: componentPackage(launcherOut), ime: componentPackage(imeOut) };
+}
+
+/** 读取设备当前的默认启动器和输入法 */
+export async function currentDefaults(ctx: adb.Ctx): Promise<CurrentDefaults> {
+  const [launcher, ime] = (await adb.shell(ctx, defaultsCmd())).split(SPLIT);
+  return parseDefaults(launcher, ime);
 }
 
 /** 解析 pm list packages -f -U 的一行；路径里可能含 =，按最后一个 = 切 */
@@ -46,7 +80,8 @@ function pkgSet(part: string) {
 
 /** 解析 listCmd 的输出，按包名排序 */
 export function parseAppList(out: string): AppEntry[] {
-  const [all = "", system = "", disabled = "", installed = ""] = out.split(SPLIT);
+  const [all = "", system = "", disabled = "", installed = "", launcherOut, imeOut] = out.split(SPLIT);
+  const defaults = parseDefaults(launcherOut, imeOut);
   const systemSet = pkgSet(system);
   const disabledSet = pkgSet(disabled);
   const installedSet = pkgSet(installed);
@@ -63,6 +98,8 @@ export function parseAppList(out: string): AppEntry[] {
           : "enabled";
     const entry: AppEntry = { pkg: p.pkg, path: p.path, system: systemSet.has(p.pkg), state };
     if (p.uid !== undefined) entry.uid = p.uid;
+    const critical = criticalRole(p.pkg, defaults);
+    if (critical) entry.critical = critical;
     entries.push(entry);
   }
   return entries.sort((a, b) => (a.pkg < b.pkg ? -1 : a.pkg > b.pkg ? 1 : 0));
@@ -174,7 +211,88 @@ export function parseAppDetail(out: string, pkg: string): AppDetail {
   return Object.fromEntries(Object.entries(detail).filter(([, v]) => v !== undefined)) as unknown as AppDetail;
 }
 
-/** 应用相关接口：列表和详情。只读，不需要 root */
+/** pm、am 的失败输出：每项取出原因。输出里先出现的优先 */
+const PM_FAILURES: RegExp[] = [
+  /Failure\s*\[([^\]]*)\]/,
+  /^Error:\s*(.+)/,
+  /^(Failed\b.*)/,
+  /(.*(?:doesn't exist|Unknown package).*)/,
+  /(.*SecurityException.*)/,
+];
+
+/** 从 pm 的输出里找失败的原因；没有失败迹象时为 undefined。老版本的 pm 失败时也可能返回 0 */
+export function pmFailure(out: string): string | undefined {
+  for (const raw of out.split("\n")) {
+    const line = raw.trim();
+    for (const re of PM_FAILURES) {
+      const m = re.exec(line);
+      if (m) return m[1].trim() || line;
+    }
+  }
+  return undefined;
+}
+
+/** 执行 pm / am 命令：退出码和输出里的失败信息都算失败，以 400 和原因报出 */
+export async function pmRun(ctx: adb.Ctx, cmd: string) {
+  let out: string;
+  try {
+    out = await adb.checked(ctx, cmd, adb.QUICK_TIMEOUT);
+  } catch (e) {
+    const reason = e instanceof adb.AdbError && e.status === 400 ? pmFailure(e.message) : undefined;
+    if (reason) throw new adb.AdbError(t("pmFailed", { reason }), 400);
+    throw e;
+  }
+  const reason = pmFailure(out);
+  if (reason) throw new adb.AdbError(t("pmFailed", { reason }), 400);
+}
+
+interface AppOp {
+  /** 设备端命令；body 是请求体，布尔参数需严格为 true */
+  cmd: (pkg: string, body: Record<string, unknown>) => string;
+  /** 目标是关键包时要求 force */
+  guarded?: boolean;
+  /** 执行前的额外检查 */
+  before?: (ctx: adb.Ctx, pkg: string) => Promise<void>;
+}
+
+/** 只作用于用户 0；卸载更新要求该应用确实被更新过 */
+const APP_OPS: Record<string, AppOp> = {
+  uninstall: {
+    guarded: true,
+    cmd: (pkg, b) =>
+      `pm uninstall${b.keepData === true ? " -k" : ""}${b.user0 === true ? " --user 0" : ""} ${adb.q(pkg)}`,
+  },
+  "uninstall-updates": {
+    guarded: true,
+    cmd: (pkg) => `pm uninstall ${adb.q(pkg)}`,
+    async before(ctx, pkg) {
+      const out = await adb.shell(ctx, `dumpsys package ${adb.q(pkg)}`);
+      if (!parseAppDetail(out, pkg).updatedSystem) throw new adb.AdbError(t("notUpdatedSystem"), 400);
+    },
+  },
+  restore: { cmd: (pkg) => `cmd package install-existing ${adb.q(pkg)} || pm install-existing ${adb.q(pkg)}` },
+  disable: { guarded: true, cmd: (pkg) => `pm disable-user --user 0 ${adb.q(pkg)}` },
+  enable: { cmd: (pkg) => `pm enable ${adb.q(pkg)}` },
+  "force-stop": { cmd: (pkg) => `am force-stop ${adb.q(pkg)}` },
+  clear: { guarded: true, cmd: (pkg) => `pm clear ${adb.q(pkg)}` },
+};
+
+/** 包的全部 APK 路径：分包应用有多个。pm path 取不到时（已为用户卸载的系统应用）退回 pm list 里的主 APK */
+async function apkPaths(ctx: adb.Ctx, pkg: string): Promise<string[]> {
+  const paths = (await adb.shell(ctx, `pm path ${adb.q(pkg)}`))
+    .split("\n")
+    .map((l) => /^package:(.+\.apk)\s*$/.exec(l.replace(/\r$/, ""))?.[1])
+    .filter((p): p is string => !!p);
+  if (paths.length) return paths;
+  const listed = (await adb.shell(ctx, `pm list packages -f -u ${adb.q(pkg)}`))
+    .split("\n")
+    .map(parsePackageLine)
+    .find((p) => p?.pkg === pkg);
+  if (!listed) throw new adb.AdbError(t("noPackage", { pkg }), 404);
+  return [listed.path];
+}
+
+/** 应用相关接口：列表、详情和操作。都作用于用户 0，不需要 root */
 export function appRoutes() {
   const router = Router();
 
@@ -191,6 +309,47 @@ export function appRoutes() {
       const serial = serialOf(req);
       const pkg = assertPackage(req.query.pkg);
       res.json(parseAppDetail(await adb.shell({ serial, root: false }, `dumpsys package ${adb.q(pkg)}`), pkg));
+    }),
+  );
+
+  for (const [name, op] of Object.entries(APP_OPS)) {
+    router.post(
+      `/${name}`,
+      wrap(async (req, res) => {
+        const ctx: adb.Ctx = { serial: serialOf(req), root: false };
+        const pkg = assertPackage(req.body.pkg);
+        // 关键包由服务端对照设备当前的启动器和输入法复查，不信任前端的判断
+        if (op.guarded) assertNotCritical(criticalRole(pkg, await currentDefaults(ctx)), req.body.force);
+        await op.before?.(ctx, pkg);
+        await pmRun(ctx, op.cmd(pkg, req.body));
+        res.json({ ok: true } satisfies OkResult);
+      }),
+    );
+  }
+
+  // 提取 APK：单个直接流式取回，分包逐个 pull 后打成 .apks（可用本工具重新安装）
+  router.post(
+    "/extract",
+    wrap(async (req, res) => {
+      const ctx: adb.Ctx = { serial: serialOf(req), root: false };
+      const pkg = assertPackage(req.body.pkg);
+      const paths = await apkPaths(ctx, pkg);
+      const ref = startJob<PullResult>(req, async (job) => {
+        if (paths.length === 1) return registerPull({ kind: "stream", ctx, path: paths[0] }, `${pkg}.apk`);
+        job.phase("pulling");
+        const dir = await tmpDir();
+        try {
+          for (const [i, p] of paths.entries()) {
+            await adb.pull(ctx, p, dir, job.signal);
+            job.progress((i + 1) / paths.length);
+          }
+        } catch (e) {
+          await fs.rm(dir, { recursive: true, force: true });
+          throw e;
+        }
+        return registerPull({ kind: "zip", dir }, `${pkg}.apks`);
+      });
+      res.json(ref satisfies JobRef);
     }),
   );
 

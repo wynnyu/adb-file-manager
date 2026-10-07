@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { AdbError } from "./adb.ts";
-import { assertPackage, listCmd, parseAppDetail, parseAppList, parsePackageLine } from "./apps.ts";
+import {
+  assertPackage,
+  defaultsCmd,
+  listCmd,
+  parseAppDetail,
+  parseAppList,
+  parseDefaults,
+  parsePackageLine,
+  pmFailure,
+} from "./apps.ts";
 
 describe("assertPackage", () => {
   it.each(["android", "com.foo_bar.x1", "a.b.c", "Com.Foo"])("接受 %s", (pkg) => {
@@ -31,11 +40,73 @@ describe("assertPackage", () => {
 });
 
 describe("listCmd", () => {
-  it("四段以分隔符隔开，且带 -U 的命令失败时降级", () => {
+  it("六段以分隔符隔开，且带 -U 的命令失败时降级", () => {
     const cmd = listCmd();
-    expect(cmd.split("__ADBFM_SPLIT__")).toHaveLength(4);
+    expect(cmd.split("__ADBFM_SPLIT__")).toHaveLength(6);
     expect(cmd).toContain("pm list packages -f -U -u 2>/dev/null || pm list packages -f -u");
   });
+
+  it("末两段取默认启动器和当前输入法", () => {
+    const [, , , , launcher, ime] = listCmd().split("__ADBFM_SPLIT__");
+    expect(launcher).toContain(
+      "resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME",
+    );
+    expect(ime).toContain("settings get secure default_input_method");
+  });
+});
+
+describe("defaultsCmd", () => {
+  it("只含启动器和输入法两段", () => {
+    expect(defaultsCmd().split("__ADBFM_SPLIT__")).toHaveLength(2);
+  });
+});
+
+describe("parseDefaults", () => {
+  it.each([
+    [
+      "com.miui.home/.launcher.Launcher\r\n",
+      "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME\n",
+      "com.miui.home",
+      "com.google.android.inputmethod.latin",
+    ],
+    ["", "null\n", undefined, undefined],
+    ["android/com.android.internal.app.ResolverActivity", "", "android", undefined],
+    ["No activity found", "null", undefined, undefined],
+  ])("解析 %j 和 %j", (launcherOut, imeOut, launcher, ime) => {
+    expect(parseDefaults(launcherOut, imeOut)).toEqual({ launcher, ime });
+  });
+
+  it("缺省时都为 undefined", () => {
+    expect(parseDefaults()).toEqual({ launcher: undefined, ime: undefined });
+  });
+});
+
+describe("pmFailure", () => {
+  it.each([
+    ["Failure [DELETE_FAILED_DEVICE_POLICY_MANAGER]", "DELETE_FAILED_DEVICE_POLICY_MANAGER"],
+    ["Failure [-1000]\r\n", "-1000"],
+    [
+      "Error: java.lang.IllegalArgumentException: Unknown package: com.x",
+      "java.lang.IllegalArgumentException: Unknown package: com.x",
+    ],
+    ["Failed", "Failed"],
+    ["Package com.x doesn't exist", "Package com.x doesn't exist"],
+    ["Unknown package: com.x", "Unknown package: com.x"],
+    [
+      "java.lang.SecurityException: Shell cannot change component state",
+      "java.lang.SecurityException: Shell cannot change component state",
+    ],
+    ["Package com.x new state: disabled-user\nFailure [BAD]", "BAD"],
+  ])("从 %j 找到失败原因", (out, reason) => {
+    expect(pmFailure(out)).toBe(reason);
+  });
+
+  it.each(["Success", "Package com.x new state: enabled", "Package com.x installed for user: 0", ""])(
+    "%j 没有失败迹象",
+    (out) => {
+      expect(pmFailure(out)).toBeUndefined();
+    },
+  );
 });
 
 describe("parsePackageLine", () => {
@@ -109,6 +180,32 @@ describe("parseAppList", () => {
   it("没有 uid 时不带该字段", () => {
     const out = ["package:/system/app/A/A.apk=com.a", SPLIT, SPLIT, SPLIT, "package:com.a"].join("\n");
     expect(parseAppList(out)).toEqual([{ pkg: "com.a", path: "/system/app/A/A.apk", system: false, state: "enabled" }]);
+  });
+
+  it("按静态表、默认启动器和输入法标出关键包", () => {
+    const out = [
+      [
+        "package:/system/app/A/A.apk=android",
+        "package:/system/priv-app/UI/UI.apk=com.android.systemui",
+        "package:/system/app/H/H.apk=com.miui.home",
+        "package:/system/app/K/K.apk=com.google.android.inputmethod.latin",
+        "package:/data/app/b/base.apk=com.user.app",
+      ].join("\n"),
+      "",
+      "",
+      "package:android",
+      "com.miui.home/.launcher.Launcher",
+      "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME",
+    ].join(`\n${SPLIT}\n`);
+    const critical = Object.fromEntries(parseAppList(out).map((a) => [a.pkg, a.critical]));
+    expect(critical).toEqual({
+      android: "core",
+      "com.android.systemui": "systemui",
+      "com.miui.home": "launcher",
+      "com.google.android.inputmethod.latin": "ime",
+      "com.user.app": undefined,
+    });
+    expect(parseAppList(out).find((a) => a.pkg === "com.user.app")).not.toHaveProperty("critical");
   });
 
   it("已安装集合为空时不把应用标成已卸载", () => {

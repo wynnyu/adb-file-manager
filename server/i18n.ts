@@ -44,6 +44,9 @@ const zh = {
   jobNotFound: "任务不存在或已过期",
   badPackage: "包名格式不正确",
   noPackage: "设备上未找到应用：{pkg}",
+  criticalPackage: "该应用是系统关键组件，需经强确认后才能执行此操作",
+  pmFailed: "操作失败：{reason}",
+  notUpdatedSystem: "该应用不是被更新过的系统应用，没有可卸载的更新",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -91,6 +94,9 @@ const en: Record<MsgKey, string> = {
   jobNotFound: "Task not found or expired",
   badPackage: "Invalid package name",
   noPackage: "Package not found on the device: {pkg}",
+  criticalPackage: "This is a critical system package. The operation requires explicit confirmation",
+  pmFailed: "Operation failed: {reason}",
+  notUpdatedSystem: "This app is not an updated system app, so there is no update to uninstall",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

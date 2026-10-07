@@ -218,6 +218,9 @@ export interface ChownRequest {
 /** 应用对用户 0 的状态：uninstalled 为系统应用被 pm uninstall --user 0 移除，可用 install-existing 恢复 */
 export type AppState = "enabled" | "disabled" | "uninstalled";
 
+/** 关键包的角色：core 为系统核心组件，其余为当前的系统界面、设置、启动器、输入法 */
+export type CriticalRole = "core" | "systemui" | "settings" | "launcher" | "ime";
+
 /** GET /api/apps 的一项 */
 export interface AppEntry {
   pkg: string;
@@ -226,6 +229,8 @@ export interface AppEntry {
   uid?: number;
   system: boolean;
   state: AppState;
+  /** 关键包，停用、卸载、清除数据前需强确认；不是关键包时缺省 */
+  critical?: CriticalRole;
 }
 
 /** 应用的一项权限 */
@@ -257,4 +262,24 @@ export interface AppDetail {
   /** 系统应用已被更新过，卸载更新可回到出厂版本 */
   updatedSystem: boolean;
   permissions: AppPermission[];
+}
+
+/**
+ * POST /api/apps/uninstall、uninstall-updates、disable、clear 的请求（另带 serial）。
+ * 目标是关键包时必须带 force: true，否则返回 409
+ */
+export interface AppActionRequest {
+  pkg: string;
+  force?: boolean;
+}
+
+/** POST /api/apps/uninstall 的请求；user0 只为当前用户卸载（系统应用），keepData 保留数据和缓存 */
+export interface AppUninstallRequest extends AppActionRequest {
+  user0?: boolean;
+  keepData?: boolean;
+}
+
+/** POST /api/apps/install 的任务结果；obb 为推送的 OBB 文件数，没有时缺省 */
+export interface InstallResult {
+  obb?: number;
 }
