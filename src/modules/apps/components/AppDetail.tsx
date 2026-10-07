@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { IconButton, Placeholder } from "../../../components/ui.tsx";
 import { useT } from "../../../i18n/index.tsx";
 import type { AppEntry, AppPermission } from "../../../types.ts";
+import type { AppOps } from "../hooks/index.ts";
 import { appQuery } from "../lib/index.ts";
+import { AppActions } from "./AppActions.tsx";
 import { AppBadge } from "./AppBadge.tsx";
 
 function Row({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
@@ -44,7 +46,17 @@ function PermissionGroup({ title, items }: { title: string; items: AppPermission
 }
 
 /** 右侧的应用详情面板：版本、安装信息和权限；窄屏下替换列表，用返回按钮回到列表 */
-export function AppDetail({ serial, entry, onBack }: { serial: string; entry: AppEntry; onBack: () => void }) {
+export function AppDetail({
+  serial,
+  entry,
+  ops,
+  onBack,
+}: {
+  serial: string;
+  entry: AppEntry;
+  ops: Pick<AppOps, "run" | "extract">;
+  onBack: () => void;
+}) {
   const t = useT();
   const { data, error, isPending } = useQuery(appQuery(serial, entry.pkg));
 
@@ -73,8 +85,7 @@ export function AppDetail({ serial, entry, onBack }: { serial: string; entry: Ap
         </div>
       </header>
 
-      {/* 操作区：S7 的安装、卸载、停用等按钮放在这里 */}
-      <div className="flex flex-wrap gap-2 empty:hidden" />
+      <AppActions entry={entry} updatedSystem={data?.updatedSystem ?? false} ops={ops} />
 
       {error ? (
         <Placeholder icon={<TriangleAlert className="size-7" />} text={error.message} tone="bg-red/15 text-red" />

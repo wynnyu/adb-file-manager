@@ -31,11 +31,13 @@ const detail: AppDetailData = {
   ],
 };
 
-function setup(onBack = vi.fn()) {
+const ops = { run: vi.fn(), extract: vi.fn() };
+
+function setup(onBack = vi.fn(), app: AppEntry = entry) {
   render(
     <QueryClientProvider client={newQueryClient()}>
       <I18nProvider>
-        <AppDetail serial="A" entry={entry} onBack={onBack} />
+        <AppDetail serial="A" entry={app} ops={ops} onBack={onBack} />
       </I18nProvider>
     </QueryClientProvider>,
   );
@@ -43,7 +45,11 @@ function setup(onBack = vi.fn()) {
 }
 
 describe("AppDetail", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    ops.run.mockClear();
+    ops.extract.mockClear();
+  });
 
   it("显示版本、SDK、时间和路径", async () => {
     const info = vi.spyOn(api, "appInfo").mockResolvedValue(detail);
@@ -108,5 +114,26 @@ describe("AppDetail", () => {
     const onBack = setup();
     fireEvent.click(screen.getByRole("button", { name: tz("apps.back") }));
     await waitFor(() => expect(onBack).toHaveBeenCalled());
+  });
+
+  it("点操作按钮时把应用交给 ops", async () => {
+    vi.spyOn(api, "appInfo").mockResolvedValue(detail);
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: tz("apps.action.disable") }));
+    expect(ops.run).toHaveBeenCalledWith("disable", entry);
+  });
+
+  it("系统应用更新过时才显示“卸载更新”", async () => {
+    vi.spyOn(api, "appInfo").mockResolvedValue({ ...detail, updatedSystem: true });
+    setup(vi.fn(), { ...entry, system: true });
+    expect(await screen.findByRole("button", { name: tz("apps.action.uninstallUpdates") })).toBeTruthy();
+    expect(screen.getByRole("button", { name: tz("apps.action.uninstallUser") })).toBeTruthy();
+  });
+
+  it("没有更新过时不显示“卸载更新”", async () => {
+    vi.spyOn(api, "appInfo").mockResolvedValue(detail);
+    setup(vi.fn(), { ...entry, system: true });
+    await screen.findByText("2023-01-01 10:00:00");
+    expect(screen.queryByRole("button", { name: tz("apps.action.uninstallUpdates") })).toBeNull();
   });
 });

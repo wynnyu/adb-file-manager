@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { type Shell, ShellContext } from "../hooks/useShell.ts";
 import type { MessageKey } from "../i18n/index.tsx";
 import { format, I18nProvider, type Params } from "../i18n/index.tsx";
 import type { FileEntry } from "../types.ts";
@@ -45,4 +46,16 @@ export function deferred<T>() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+/** 提供外壳状态的外层：只填测试用到的字段，其余缺省；在 providers 之内再包一层 ShellContext */
+export function shellProviders(shell: Partial<Shell>, client: QueryClient = newQueryClient()) {
+  const Base = providers(client);
+  return function ShellProviders({ children }: { children: ReactNode }) {
+    return (
+      <Base>
+        <ShellContext.Provider value={shell as Shell}>{children}</ShellContext.Provider>
+      </Base>
+    );
+  };
 }

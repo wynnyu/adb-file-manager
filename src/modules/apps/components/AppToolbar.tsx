@@ -1,7 +1,9 @@
-import { RotateCw, Search, X } from "lucide-react";
+import { PackagePlus, RotateCw, Search, X } from "lucide-react";
 import { motion } from "motion/react";
-import { IconButton, press, spring } from "../../../components/ui.tsx";
+import { useRef } from "react";
+import { IconButton, PillButton, press, spring } from "../../../components/ui.tsx";
 import { useT } from "../../../i18n/index.tsx";
+import { INSTALL_EXTS } from "../lib/index.ts";
 import type { AppFilter } from "../types.ts";
 
 const FILTERS: AppFilter[] = ["all", "user", "system", "disabled", "uninstalled"];
@@ -16,6 +18,7 @@ export function AppToolbar({
   counts,
   shown,
   onRefresh,
+  onInstall,
 }: {
   loading: boolean;
   search: string;
@@ -27,10 +30,30 @@ export function AppToolbar({
   /** 当前筛选和搜索后显示的数量 */
   shown: number;
   onRefresh: () => void;
+  /** 选好要安装的文件 */
+  onInstall: (files: File[]) => void;
 }) {
   const t = useT();
+  const picker = useRef<HTMLInputElement>(null);
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <PillButton tone="accent" icon={<PackagePlus className="size-4" />} onClick={() => picker.current?.click()}>
+        {t("apps.install")}
+      </PillButton>
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        accept={INSTALL_EXTS.join(",")}
+        aria-label={t("apps.install.hint")}
+        className="hidden"
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          // 清空后再选同一个文件也会触发 change
+          e.target.value = "";
+          if (files.length) onInstall(files);
+        }}
+      />
       <IconButton title={t("apps.refresh")} onClick={onRefresh}>
         <RotateCw className={`size-5 ${loading ? "animate-spin" : ""}`} />
       </IconButton>

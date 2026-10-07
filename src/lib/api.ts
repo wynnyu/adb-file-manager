@@ -2,6 +2,7 @@ import { getLang, tr } from "../i18n/translate.ts";
 import type {
   AppDetail,
   AppEntry,
+  AppUninstallRequest,
   ArchiveFormat,
   ArchiveListing,
   DeviceList,
@@ -17,6 +18,7 @@ import type {
   RootCheckResult,
   StorageInfo,
   TextPreview,
+  UploadResult,
 } from "../types.ts";
 
 /** 当前操作的设备；root 为 true 时后端以 root 身份执行 */
@@ -67,6 +69,61 @@ const post = <T>(url: string, body: unknown) =>
 const qs = (t: Target, extra: Record<string, string> = {}) =>
   new URLSearchParams({ serial: t.serial, ...(t.root ? { root: "1" } : {}), ...extra });
 
+/** 应用操作的接口名，对应 POST /api/apps/<action> */
+export type AppAction = "uninstall" | "uninstall-updates" | "restore" | "disable" | "enable" | "force-stop" | "clear";
+
+/** 任务启动后的回调：onJob 给出任务 id（用于取消），onUpdate 在任务状态变化时调用 */
+export interface JobHooks<R> {
+  onJob?: (id: string) => void;
+  onUpdate?: (snap: JobSnapshot<R>) => void;
+}
+
+/**
+ * 以 multipart 表单 POST，上传阶段回调进度（0 到 1）。响应体为 JSON 时解析后返回；
+ * signal 触发时中止上传并抛出 JobCanceled
+ */
+function xhrForm<T>(url: string, form: FormData, onProgress: (p: number) => void, signal?: AbortSignal) {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("X-Lang", getLang());
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => {
+      let data: unknown = {};
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        /* 非 JSON 响应 */
+      }
+      if (xhr.status < 300) return resolve(data as T);
+      reject(fail(data as Partial<ErrorResponse>, xhr.status));
+    };
+    xhr.onerror = () => reject(new Error(tr("common.networkError")));
+    xhr.onabort = () => reject(new JobCanceled());
+    if (signal?.aborted) return reject(new JobCanceled());
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(form);
+  });
+}
+
+/** 触发浏览器下载一次性 token 对应的文件 */
+function saveFile(token: string) {
+  const a = document.createElement("a");
+  a.href = `/api/files/fetch/${token}`;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/** 启动一个产出 PullResult 的任务，等它完成后触发浏览器下载 */
+async function saveFromJob(start: () => Promise<JobRef>, hooks: JobHooks<PullResult> = {}) {
+  const { id } = await start();
+  hooks.onJob?.(id);
+  const { token } = await api.watchJob<PullResult>(id, (snap) => hooks.onUpdate?.(snap));
+  saveFile(token);
+}
+
 export const api = {
   devices: () => request<DeviceList>("/api/devices"),
   reconnectDevices: () => post<OkResult>("/api/devices/reconnect", {}),
@@ -80,6 +137,25 @@ export const api = {
 
   appInfo: (serial: string, pkg: string) =>
     request<AppDetail>(`/api/apps/info?${new URLSearchParams({ serial, pkg })}`),
+
+  /** 对应用执行操作；目标是关键包时需带 force: true，否则返回 409 */
+  appAction: (serial: string, action: AppAction, pkg: string, opts: Omit<AppUninstallRequest, "pkg"> = {}) =>
+    post<OkResult>(`/api/apps/${action}`, { serial, pkg, ...opts }),
+
+  /** 提取应用的 APK 并触发浏览器下载；分包应用得到可重新安装的 .apks */
+  extractApk: (serial: string, pkg: string, hooks: JobHooks<PullResult> = {}) =>
+    saveFromJob(() => post<JobRef>("/api/apps/extract", { serial, pkg }), hooks),
+
+  /**
+   * 上传安装包并启动安装任务，返回任务（结果为 InstallResult，用 watchJob 取得）。
+   * 上传阶段有进度，signal 可取消上传；.apks 和 .xapk 只能单独一个
+   */
+  installApps(serial: string, files: File[], onProgress: (p: number) => void, signal?: AbortSignal) {
+    const form = new FormData();
+    form.append("names", JSON.stringify(files.map((f) => f.name)));
+    for (const f of files) form.append("files", f, "blob");
+    return xhrForm<JobRef>(`/api/apps/install?${new URLSearchParams({ serial })}`, form, onProgress, signal);
+  },
 
   ls: (t: Target, path: string) => request<FileEntry[]>(`/api/files/ls?${qs(t, { path })}`),
 
@@ -158,44 +234,15 @@ export const api = {
    * adb pull 到电脑，然后触发浏览器下载。onJob 在任务启动后回调任务 id（用于取消），
    * onUpdate 在任务状态变化时回调
    */
-  async download(
-    t: Target,
-    paths: string[],
-    hooks: { onJob?: (id: string) => void; onUpdate?: (snap: JobSnapshot<PullResult>) => void } = {},
-  ) {
-    const { id } = await api.pull(t, paths);
-    hooks.onJob?.(id);
-    const { token } = await api.watchJob<PullResult>(id, (snap) => hooks.onUpdate?.(snap));
-    const a = document.createElement("a");
-    a.href = `/api/files/fetch/${token}`;
-    a.download = "";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  download(t: Target, paths: string[], hooks: JobHooks<PullResult> = {}) {
+    return saveFromJob(() => api.pull(t, paths), hooks);
   },
 
   /** 上传：先从浏览器传到电脑（有进度），再由电脑 adb push 到手机 */
-  upload(t: Target, dest: string, files: { file: File; path: string }[], onProgress: (p: number) => void) {
-    return new Promise<void>((resolve, reject) => {
-      const form = new FormData();
-      form.append("paths", JSON.stringify(files.map((f) => f.path)));
-      for (const f of files) form.append("files", f.file, "blob");
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `/api/files/upload?${qs(t, { path: dest })}`);
-      xhr.setRequestHeader("X-Lang", getLang());
-      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-      xhr.onload = () => {
-        if (xhr.status < 300) return resolve();
-        let data: Partial<ErrorResponse> = {};
-        try {
-          data = JSON.parse(xhr.responseText);
-        } catch {
-          /* 非 JSON 响应 */
-        }
-        reject(fail(data, xhr.status));
-      };
-      xhr.onerror = () => reject(new Error(tr("common.networkError")));
-      xhr.send(form);
-    });
+  async upload(t: Target, dest: string, files: { file: File; path: string }[], onProgress: (p: number) => void) {
+    const form = new FormData();
+    form.append("paths", JSON.stringify(files.map((f) => f.path)));
+    for (const f of files) form.append("files", f.file, "blob");
+    await xhrForm<UploadResult>(`/api/files/upload?${qs(t, { path: dest })}`, form, onProgress);
   },
 };
