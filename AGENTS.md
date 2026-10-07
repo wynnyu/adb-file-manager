@@ -52,7 +52,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 - 格式以 Biome 为准：2 空格缩进、双引号、分号、尾随逗号、行宽 120。不要手动调整格式，运行 `pnpm fix`
 - 全部使用 ES Module。相对导入写明扩展名（`./adb.ts`、`./App.tsx`），后端编译依赖 `rewriteRelativeImportExtensions`；不使用路径别名
-- 前端的 `hooks/`、`lib/` 和 `components/` 各子目录用 `index.ts` 作为桶文件，目录外一律从桶文件导入（`../lib/index.ts`），目录内部的模块之间仍直接导入。`i18n/` 的出口是已有的 `index.tsx`。桶文件只重导出被目录外使用的模块；`viewer/` 的 `CodeView`、`MarkdownView` 是懒加载分包，不得加入桶文件。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入，避免循环依赖。后端模块平铺在 `server/`，不设桶文件
+- 前端的 `hooks/`、`lib/` 和 `components/` 各子目录（包括模块内部的同名目录）用 `index.ts` 作为桶文件，目录外一律从桶文件导入（`../lib/index.ts`），目录内部的模块之间仍直接导入。`i18n/` 的出口是已有的 `index.tsx`。桶文件只重导出被目录外使用的模块；`viewer/` 的 `CodeView`、`MarkdownView` 是懒加载分包，不得加入桶文件。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入，避免循环依赖。后端模块平铺在 `server/`，不设桶文件
 - 开启了 `verbatimModuleSyntax`：只用作类型的导入必须写 `import type` 或 `import { type X }`
 - 不使用 `any`、`enum`。取值有限的字段用字面量联合类型，按取值映射用 `Record<联合类型, ...>` 常量；对象结构一般用 `interface`，联合类型用 `type`
 - 用 `satisfies` 检查对象字面量的类型，例如 `res.json({ method } satisfies RootCheckResult)`
@@ -68,17 +68,21 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 ### 前端结构
 
-- `App.tsx` 只负责组装；状态和交互逻辑放 `src/hooks/`，界面放 `src/components/`，与 React 状态无关的工具函数放 `src/lib/`
-- hook 中不写 JSX；hooks 与 components 之间只允许 `import type`
-- `src/lib/` 不依赖 `hooks/` 和 `components/`
-- 组件按区域放入 `components/` 下的子目录（`header/`、`toolbar/`、`views/`、`bookmarks/`、`overlays/`、`viewer/`），通用按钮等放 `components/ui.tsx`
+前端分为外壳和模块两层：外壳（`App.tsx`、共用的 `hooks/`、`components/`、`lib/`）负责设备、root、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是 `src/modules/` 下的一个目录，文件管理是第一个模块（`modules/files/`）。
+
+- `App.tsx` 只负责组装：调用 `useShellState()`，把外壳状态和模块导航放进 `ShellContext`，渲染当前模块的 `Page` 和全局浮层。模块在 `modules/index.ts` 的 `MODULES` 中注册
+- 模块目录内部仍按职责分为 `hooks/`、`components/`、`lib/`：状态和交互逻辑放 `hooks/`，界面放 `components/`，与 React 状态无关的工具函数放 `lib/`；模块专属的类型放模块自己的 `types.ts`，对外只通过模块的 `index.ts` 导出（`files` 只导出 `FilesPage`、`UsageTip`）
+- 共用代码：`src/hooks/`（设备、root、提示、传输队列和 `useShell`）、`src/components/`、`src/lib/`。模块从 `useShell()` 读取设备、`target`、`flash`、`openDialog`、`startTransfer` 等外壳状态，不自己管理这些
+- 依赖规则：模块可以导入 `src/hooks`、`src/components`、`src/lib`、`src/i18n` 和 `src/types.ts`；共用代码不导入 `modules/`；模块之间不互相导入。唯一的例外是 `components/overlays/Dialog.tsx` 的 `bookmark` 类型导入文件模块的 `BookmarkForm` 及 `BookmarkFields` 类型，等后续模块需要自定义表单时再泛化
+- hook 中不写 JSX；hooks 与 components 之间只允许 `import type`，模块内部同样如此；`lib/` 不依赖 `hooks/` 和 `components/`
+- 共用组件放 `components/` 下的 `shell/`（顶栏、模块导航、页面骨架）和 `overlays/`（对话框、右键菜单、提示、传输队列），通用按钮等放 `components/ui.tsx`；模块的组件按区域放入模块自己的 `components/` 子目录（文件模块有 `bookmarks/`、`toolbar/`、`views/`、`viewer/`、`overlays/`）
 - 调整模块依赖或新增 hook、持久化项后，同步更新 `docs/architecture.md` 中的图和表
 
 ### React
 
 - 只写函数组件。Props 直接在参数里解构，类型写在参数处，不直观的 prop 逐个加 `/** */`；需要继承原生属性时用 `interface Props extends ...`。不使用 `React.FC`
 - 所有后端请求经 `src/lib/api.ts` 的 `api` 对象发出，组件和 hook 中不直接调用 `fetch`
-- 目录列表等服务端数据通过 TanStack Query 缓存，查询定义（`queryOptions`、查询键）集中在 `src/lib/queries.ts`；全局默认不重试、切回窗口不刷新，增删改后由 `useDirectory` 的 `afterChange` / `reload` 让缓存失效
+- 目录列表等服务端数据通过 TanStack Query 缓存，查询定义（`queryOptions`、查询键）集中在各模块的 `lib/queries.ts`（文件模块为 `modules/files/lib/queries.ts`），`queryClient` 在 `src/lib/queries.ts`；全局默认不重试、切回窗口不刷新，增删改后由 `useDirectory` 的 `afterChange` / `reload` 让缓存失效
 - 需要持久化的界面状态使用 `src/lib/prefs.ts` 的 `usePref` / `loadPref` / `savePref`，键名以 `afm.` 开头；不直接读写 `localStorage`
 - `useEffect` 依赖数组保持完整（Biome 的 `useExhaustiveDependencies` 会提示）；hook 返回给外部的回调用 `useCallback` 保持稳定
 - 列表 `key` 使用路径等稳定值，不用数组下标

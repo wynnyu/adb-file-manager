@@ -130,56 +130,105 @@ sequenceDiagram
 
 ## 前端结构
 
-`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 本身只负责组装：状态和交互逻辑在 `hooks/` 中，界面在 `components/` 中，与界面无关的工具函数在 `lib/` 中。
+前端分为外壳和模块两层。外壳负责设备、root 模式、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是一个整页，文件管理是第一个模块，位于 `src/modules/files/`。`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 只负责组装：调用 `useShellState()` 得到外壳状态，加上模块导航后放进 `ShellContext`，渲染当前模块的 `Page`，并在页面之外渲染全局浮层（`TransferQueue`、`Toast`、`Dialog`）。
 
 ```mermaid
 flowchart TB
   main["main.tsx"] --> App["App.tsx"]
-  App --> hooks["hooks/<br/>状态与交互逻辑"]
-  App --> components["components/<br/>界面组件"]
-  hooks --> lib["lib/<br/>接口请求、查询缓存、排序、格式化、偏好设置"]
-  components --> lib
-  hooks --> i18n["i18n/<br/>中英文文案"]
-  components --> i18n
-  lib --> i18n
-  lib --> shared["shared/types.d.ts<br/>前后端共用类型"]
-  hooks -. "仅类型：DialogState" .-> components
-  components -. "仅类型：ToastState" .-> hooks
+  App --> state["useShellState<br/>设备、root、提示、对话框、传输队列"]
+  App --> ctx["ShellContext<br/>外壳状态加模块导航"]
+  App --> registry["modules/index.ts<br/>MODULES 注册表"]
+  registry --> files["modules/files/<br/>FilesPage、UsageTip"]
+  ctx -. "useShell()" .-> files
+  ctx -. "useShell()" .-> shellui["components/shell/<br/>Header、ModuleNav、ShellLayout"]
+  App --> overlays["components/overlays/<br/>TransferQueue、Toast、Dialog"]
+  files --> shared["hooks/、components/、lib/<br/>共用代码"]
+  shared --> i18n["i18n/<br/>中英文文案"]
+  shared --> shared_types["shared/types.d.ts<br/>前后端共用类型"]
 ```
 
-实线表示运行时依赖，虚线表示仅导入类型（`import type`），编译后不产生依赖。`lib/` 不依赖 `hooks/` 和 `components/`。
+目录布局：
 
-图中的 `hooks/`、`lib/` 和 `components/` 的各子目录都有 `index.ts` 桶文件，目录外的模块从桶文件导入，例如 `../lib/index.ts`。桶文件仅重导出被目录外使用的模块，`viewer/` 中懒加载的 `CodeView` 和 `MarkdownView` 不在其中，以保持分包。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入。
+```
+src/
+  App.tsx                 组装外壳和当前模块
+  modules/
+    index.ts              模块注册表 MODULES（id、图标、名称键、Page、可选的 Tip）
+    files/                文件管理模块
+      index.ts            对外只导出 FilesPage、UsageTip
+      FilesPage.tsx       文件管理的整页
+      types.ts            Listing、TreeRow、ViewMode、Clip
+      hooks/              文件管理的状态与交互逻辑
+      components/         bookmarks/ toolbar/ views/ viewer/ overlays/ 和 UploadInputs.tsx
+      lib/                archive、bookmarks、code、drop、entries、kinds、markdown，以及目录和文件相关的查询
+  hooks/                  共用：useDevices useReauthorize useRootMode useToast useTransfers useShell
+  components/
+    shell/                Header DeviceSelect LanguagePicker ThemePicker ModuleNav ShellLayout
+    overlays/             共用浮层：ContextMenu Dialog DialogMessage Toast TransferQueue
+    NoDevice.tsx ui.tsx
+  lib/                    共用：api prefs format theme favicon，以及只含 queryClient 的 queries.ts
+  i18n/  test/  types.ts
+```
+
+依赖规则：
+
+- 模块可以导入 `src/hooks`、`src/components`、`src/lib`、`src/i18n` 和 `src/types.ts`；共用代码不导入 `modules/`，模块之间也不互相导入
+- 唯一的例外是 `components/overlays/Dialog.tsx`：`bookmark` 类型的对话框内嵌文件模块的 `BookmarkForm`（并使用 `BookmarkFields` 类型）。等后续模块需要自定义表单时再泛化
+- `hooks/` 和 `components/` 之间只允许导入类型（`import type`），模块内部的 `hooks/` 和 `components/` 同样如此；`lib/` 不依赖 `hooks/` 和 `components/`
+- `hooks/`、`lib/` 和 `components/` 的各子目录（包括模块内部的同名目录）都有 `index.ts` 桶文件，目录外的模块从桶文件导入，例如 `../lib/index.ts`。桶文件仅重导出被目录外使用的模块，`viewer/` 中懒加载的 `CodeView` 和 `MarkdownView` 不在其中，以保持分包。`lib/` 与 `i18n/` 互相依赖，二者之间保持直接导入
+
+### 外壳与模块
+
+`ShellContext` 的值（`Shell`，见 `hooks/useShell.ts`）：
+
+| 字段 | 含义 |
+| --- | --- |
+| `devices`、`adbError`、`serial`、`setSerial` | 设备列表、adb 错误、当前设备 |
+| `online` | 当前设备的状态为 `device`（已连接且已授权） |
+| `storage`、`refreshStorage` | 当前设备的存储空间 |
+| `rootMode`、`askEnableRoot`、`disableRoot` | root 模式开关及其对话框 |
+| `target` | 当前设备加 root 方式（`{ serial, root }`），没有设备时为 `null` |
+| `toast`、`flash` | 顶部提示 |
+| `dialog`、`openDialog`、`closeDialog` | 当前对话框；`closeDialog` 传入打开的那个对话框时，只有它仍是当前对话框才关闭 |
+| `transfers`、`startTransfer`、`patchTransfer`、`dismissTransfer` | 传输队列 |
+| `nav` | 模块导航（`items`、`current`、`onChange`），由 `App` 根据 `MODULES` 生成，`useShellState` 不包含 |
+
+`useShell()` 在没有 Provider 时抛出错误。外壳回调保持稳定，整个值用 `useMemo`。
+
+新增模块的步骤：在 `modules/<名称>/` 下建立页面，页面用 `ShellLayout` 作为骨架，从 `useShell()` 取设备和传输队列；在 `modules/index.ts` 的 `MODULES` 中加一项（`ModuleId` 联合类型、图标、`nav.*` 文案键、`Page`，需要时加 `Tip`）。`ModuleNav` 仅在模块多于一个时显示，当前模块记录在 `afm.module`，存储的 id 无效时回退到第一个模块。切换模块时页面卸载，模块在 `window` 上注册的监听（例如 `useShortcuts`）随之移除。
+
+`ShellLayout` 提供 `min-h-dvh` 容器、`max-w-6xl` 列、顶栏、模块导航和主面板，页面通过 `dropProps`（整窗拖放）、`children`（面板内容）、`panelOverlay`（面板内的绝对定位提示）和 `overlays`（页面自己的浮层）填充。浮层放在面板外面，不能放进带 transform 的元素，否则 `fixed` 定位会失效。
 
 ### 状态归属
 
-| hook | 管理的状态 | 持久化（localStorage） |
-| --- | --- | --- |
-| `useDevices` | 设备列表、当前设备、adb 错误；每 2 秒轮询 | 无 |
-| `useReauthorize` | 待授权时“重新请求授权”“重启 adb 服务”的进行状态和错误 | 无 |
-| `useStorage` | 当前设备的存储空间 | 无 |
-| `useRootMode` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
-| `useSelection` | 选中的路径、连选起点 | 无 |
-| `useSelectionActions` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
-| `useDirectory` | 当前路径、筛选、目录内容和加载状态 | `afm.path` |
-| `useListings` | 当前目录以外需要显示的目录（分栏视图的各栏、列表视图展开的文件夹） | 无 |
-| `useTree` | 列表视图中展开的文件夹及展开后的行 | 无 |
-| `useClipboard` | 应用内剪贴板（剪切或拷贝的条目及其所属设备） | 无 |
-| `useBookmarks` | 书签列表及其对话框 | `afm.bookmarks` |
-| `useFileOps` | 上传、下载、粘贴、解压、压缩，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
-| `useProperties` | 属性页要查看的条目 | 无 |
-| `useTransfers` | 传输队列 | 无 |
-| `useToast` | 顶部提示 | 无 |
-| `useViewer` | 查看器打开的文件、在可切换文件中的位置；切换时同步选中，掉线或切换设备后关闭 | 无 |
-| `useMediaPlayer` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
-| `useShortcuts` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应 | 无 |
-| `useUploadPicker` / `useDropUpload` | 文件选择框、拖放上传 | 无 |
+| hook | 位置 | 管理的状态 | 持久化（localStorage） |
+| --- | --- | --- | --- |
+| `useShell` / `useShellState` | `hooks/` | 组合下列外壳 hook 和对话框状态，提供 `ShellContext` | 无 |
+| `useDevices` | `hooks/` | 设备列表、当前设备、adb 错误；每 2 秒轮询 | 无 |
+| `useReauthorize` | `hooks/` | 待授权时“重新请求授权”“重启 adb 服务”的进行状态和错误 | 无 |
+| `useStorage` | `hooks/` | 当前设备的存储空间 | 无 |
+| `useRootMode` | `hooks/` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
+| `useTransfers` | `hooks/` | 传输队列 | 无 |
+| `useToast` | `hooks/` | 顶部提示 | 无 |
+| `useSelection` | `modules/files/hooks/` | 选中的路径、连选起点 | 无 |
+| `useSelectionActions` | `modules/files/hooks/` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
+| `useDirectory` | `modules/files/hooks/` | 当前路径、筛选、目录内容和加载状态 | `afm.path` |
+| `useListings` | `modules/files/hooks/` | 当前目录以外需要显示的目录（分栏视图的各栏、列表视图展开的文件夹） | 无 |
+| `useTree` | `modules/files/hooks/` | 列表视图中展开的文件夹及展开后的行 | 无 |
+| `useClipboard` | `modules/files/hooks/` | 应用内剪贴板（剪切或拷贝的条目及其所属设备） | 无 |
+| `useBookmarks` | `modules/files/hooks/` | 书签列表及其对话框 | `afm.bookmarks` |
+| `useFileOps` | `modules/files/hooks/` | 上传、下载、粘贴、解压、压缩，以及删除、重命名、新建文件夹的对话框 | `afm.rootDeleteNoWarn` |
+| `useProperties` | `modules/files/hooks/` | 属性页要查看的条目 | 无 |
+| `useViewer` | `modules/files/hooks/` | 查看器打开的文件、在可切换文件中的位置；切换时同步选中，掉线或切换设备后关闭 | 无 |
+| `useMediaPlayer` | `modules/files/hooks/` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
+| `useShortcuts` | `modules/files/hooks/` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应；仅在文件模块激活时注册 | 无 |
+| `useUploadPicker` / `useDropUpload` | `modules/files/hooks/` | 文件选择框、拖放上传 | 无 |
 
-`App.tsx` 中还用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
+`App.tsx` 用 `usePref` 保存当前模块（`afm.module`）；`FilesPage.tsx` 中用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
 
 ### 目录缓存
 
-目录内容由 TanStack Query 缓存，查询键为 `["ls", serial, root, path]`（`lib/queries.ts`）。当前目录、分栏视图的各栏和列表视图展开的文件夹共用同一份缓存：
+目录内容由 TanStack Query 缓存，查询键为 `["ls", serial, root, path]`（`modules/files/lib/queries.ts`；`queryClient` 及其默认设置在共用的 `lib/queries.ts`）。当前目录、分栏视图的各栏和列表视图展开的文件夹共用同一份缓存：
 
 - 进入缓存中已有的目录时立即显示缓存内容，同时在后台重新加载
 - 新建、重命名、删除、粘贴、上传之后，`useDirectory` 的 `afterChange` / `reload` 删除已不存在的目录的缓存，其余目录标记为过期，正在显示的目录随即重新加载
@@ -192,10 +241,16 @@ hooks 之间及 hooks 与 `lib/` 的依赖如下。所有 hook 和组件都通�
 
 ```mermaid
 flowchart LR
-  subgraph hooks["hooks/"]
+  subgraph shellHooks["hooks/（共用）"]
+    useShell
     useDevices
     useReauthorize
     useRootMode
+    useTransfers
+    useToast
+  end
+
+  subgraph filesHooks["modules/files/hooks/"]
     useSelection
     useDirectory
     useTree
@@ -203,8 +258,6 @@ flowchart LR
     useProperties
     useClipboard
     useBookmarks
-    useTransfers
-    useToast
     useShortcuts
     useViewer
     useMediaPlayer
@@ -212,24 +265,31 @@ flowchart LR
     useDropUpload
   end
 
-  subgraph lib["lib/"]
+  subgraph lib["lib/（共用）"]
     api["api.ts"]
+    format["format.ts"]
+    prefs["prefs.ts"]
+    theme["theme.ts"]
+    favicon["favicon.ts"]
+  end
+
+  subgraph filesLib["modules/files/lib/"]
     queries["queries.ts"]
     entries["entries.ts"]
     kinds["kinds.ts"]
     code["code.ts"]
     markdown["markdown.ts"]
-    format["format.ts"]
-    prefs["prefs.ts"]
     bookmarks["bookmarks.ts"]
     drop["drop.ts"]
-    theme["theme.ts"]
-    favicon["favicon.ts"]
   end
 
   translate["i18n/translate.ts"]
   Dialog["components/overlays/Dialog.tsx"]
 
+  useShell --> useDevices
+  useShell --> useRootMode
+  useShell --> useToast
+  useShell --> useTransfers
   useDevices --> api
   useReauthorize --> api
   useRootMode --> api
@@ -278,57 +338,68 @@ flowchart LR
 ```mermaid
 flowchart LR
   App["App.tsx"]
-  subgraph comps["components/"]
-    header["header/<br/>Header、DeviceSelect、<br/>LanguagePicker、ThemePicker"]
+  subgraph shellComps["components/（共用）"]
+    shell["shell/<br/>Header、DeviceSelect、<br/>LanguagePicker、ThemePicker、<br/>ModuleNav、ShellLayout"]
+    sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、Toast、<br/>TransferQueue"]
+    noDevice["NoDevice"]
+    ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
+  end
+  subgraph filesComps["modules/files/components/"]
     toolbar["toolbar/<br/>Toolbar、Breadcrumbs、<br/>SelectionBar、StatusBar"]
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
-    overlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、menus、Toast、<br/>Properties、TransferQueue、<br/>DropOverlay、UsageTip"]
+    overlays["overlays/<br/>menus、Properties、<br/>DropOverlay、UsageTip"]
     viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>ArchiveView、CodeView、<br/>MarkdownView、MarkdownParts、<br/>Unsupported"]
-    misc["NoDevice、UploadInputs"]
-    ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
+    upload["UploadInputs"]
   end
-  subgraph lib["lib/"]
+  subgraph lib["lib/（共用）"]
     api["api.ts"]
     format["format.ts"]
+    theme["theme.ts"]
+    prefs["prefs.ts"]
+  end
+  subgraph filesLib["modules/files/lib/"]
     kinds["kinds.ts"]
     entries["entries.ts"]
-    theme["theme.ts"]
     bookmarksLib["bookmarks.ts"]
-    prefs["prefs.ts"]
     queries["queries.ts"]
     archiveLib["archive.ts"]
   end
 
-  App --> header & toolbar & views & bm & overlays & viewer & misc
-  header & toolbar & views & bm & overlays & viewer & misc --> ui
+  App --> shellComps
+  App --> filesComps
+  shell & sharedOverlays & noDevice & toolbar & views & bm & overlays & viewer & upload --> ui
   toolbar --> views
   toolbar --> overlays
+  toolbar --> sharedOverlays
   views --> overlays
+  views --> sharedOverlays
   overlays --> bm
   overlays --> views
-  bm --> overlays
+  overlays --> sharedOverlays
+  bm --> sharedOverlays
+  sharedOverlays -. "例外：bookmark 对话框" .-> bm
   views --> api
   views --> format & kinds & entries
   toolbar --> format & entries
-  header --> format & theme
+  shell --> format & theme
   bm --> bookmarksLib
+  sharedOverlays --> bookmarksLib
   overlays --> bookmarksLib & entries & prefs
   viewer --> views
-  viewer --> api & queries & format & kinds & code
-  viewer --> markdown
+  viewer --> api & queries & format & kinds
   viewer --> archiveLib
 ```
 
 说明：
 
 - `views/` 中仅 `ColumnView` 和 `GalleryView` 依赖 `api.ts`，用于生成图片预览地址（`api.previewUrl`）
-- `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `lib/queries.ts` 的 `textQuery` 读取，再由 `CodeView`（CodeMirror 6，只读，首次打开文本时懒加载）显示，语言识别和主题配色在 `lib/code.ts`。播放状态来自 `App.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
-- 压缩包（`lib/kinds.ts` 的 `isArchive`，扩展名须与后端 `archiveFormat` 一致）在查看器中由 `ArchiveView` 显示：经 `archiveQuery` 读取条目，`lib/archive.ts` 的 `archiveTree` 补齐中间目录并排序，`flattenTree` 按展开状态输出可见的行，`treeStats` 统计文件数、文件夹数和总大小。只列条目，不预览内部文件。7z、rar、xz 不在支持范围内，仍走文本查看器
-- Markdown 文件（`lib/kinds.ts` 的 `isMarkdown`）默认由 `MarkdownView` 渲染为排版后的预览，同样懒加载，`vite.config.ts` 把 unified 生态的依赖单独分为 `markdown` 块，避免并入首屏。渲染链路为 react-markdown，加 remark-gfm（表格、任务列表、删除线、脚注）、rehype-raw 和 rehype-sanitize（GitHub 风格白名单，净化原始 HTML）；各标签的样式在 `MarkdownView` 的 `components` 映射里用 Tailwind 类名写出。代码块由 `MarkdownParts` 的 `CodeBlock` 接管，经 `lib/code.ts` 的 `languageForFence` 和 `highlightLines` 复用源码视图的语言识别和配色，`codeHighlightCss` 提供对应的样式规则。链接和图片的路径解析、标题锚点在 `lib/markdown.ts`：指向设备上其他文件的相对链接不可点击，相对路径的图片按 md 所在目录解析，经 `api.previewUrl` 读取
-- `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用 `ContextMenu` 的菜单类型
-- `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `lib/queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
-- `overlays/Dialog.tsx` 内嵌 `bookmarks/BookmarkForm.tsx` 编辑书签，`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
+- `viewer/` 使用 `views/FileIcon.tsx` 显示文件图标；媒体元素直接以 `api.previewUrl` 为地址，文本经 `modules/files/lib/queries.ts` 的 `textQuery` 读取，再由 `CodeView`（CodeMirror 6，只读，首次打开文本时懒加载）显示，语言识别和主题配色在 `modules/files/lib/code.ts`。播放状态来自 `FilesPage.tsx` 中的 `useMediaPlayer`，组件只导入其类型，媒体元素通过返回的 `attach` 挂上
+- 压缩包（`modules/files/lib/kinds.ts` 的 `isArchive`，扩展名须与后端 `archiveFormat` 一致）在查看器中由 `ArchiveView` 显示：经 `archiveQuery` 读取条目，`archive.ts` 的 `archiveTree` 补齐中间目录并排序，`flattenTree` 按展开状态输出可见的行，`treeStats` 统计文件数、文件夹数和总大小。只列条目，不预览内部文件。7z、rar、xz 不在支持范围内，仍走文本查看器
+- Markdown 文件（`kinds.ts` 的 `isMarkdown`）默认由 `MarkdownView` 渲染为排版后的预览，同样懒加载，`vite.config.ts` 把 unified 生态的依赖单独分为 `markdown` 块，避免并入首屏。渲染链路为 react-markdown，加 remark-gfm（表格、任务列表、删除线、脚注）、rehype-raw 和 rehype-sanitize（GitHub 风格白名单，净化原始 HTML）；各标签的样式在 `MarkdownView` 的 `components` 映射里用 Tailwind 类名写出。代码块由 `MarkdownParts` 的 `CodeBlock` 接管，经 `code.ts` 的 `languageForFence` 和 `highlightLines` 复用源码视图的语言识别和配色，`codeHighlightCss` 提供对应的样式规则。链接和图片的路径解析、标题锚点在 `markdown.ts`：指向设备上其他文件的相对链接不可点击，相对路径的图片按 md 所在目录解析，经 `api.previewUrl` 读取
+- 文件模块的 `overlays/menus.tsx` 引用 `views/ViewSwitch.tsx` 中的视图列表；`Toolbar` 和 `ViewSwitch` 引用共用 `ContextMenu` 的菜单类型
+- `overlays/Properties*.tsx` 和 `PermissionEditor.tsx` 经 `queries.ts` 的 `statQuery`、`usageQuery` 读取数据，修改权限和所有者时直接调用 `api.chmod`、`api.chown` 后让 `statQuery` 缓存失效；`usageQuery` 在查询函数内先等待 500 毫秒再请求，关闭属性页时随查询一起取消
+- 共用的 `components/overlays/Dialog.tsx` 内嵌文件模块的 `bookmarks/BookmarkForm.tsx` 编辑书签，这是共用代码导入模块的唯一例外；`bookmarks/QuickLinks.tsx` 引用 `ContextMenu` 的菜单类型
 
 ## 主要流程
 

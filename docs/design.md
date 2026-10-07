@@ -73,7 +73,7 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 | 符号链接 | `flamingo` |
 | 其他 | `overlay0` 底、`overlay2` 图标 |
 
-对应关系定义在 `components/views/FileIcon.tsx`。
+对应关系定义在 `modules/files/components/views/FileIcon.tsx`。
 
 ### 主题切换动画
 
@@ -120,7 +120,7 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 
 ### 布局
 
-内容区最大宽度 `max-w-6xl`，水平居中。自上而下依次为顶栏、常用目录、主面板（工具栏、文件视图、状态栏）。窄屏时减小内边距（`px-4`，`sm:` 以上为 `px-6`），顶栏中的 `ROOT` 标记在窄屏上隐藏。浮层的固定位置：
+内容区最大宽度 `max-w-6xl`，水平居中，由 `components/shell/ShellLayout.tsx` 提供。自上而下依次为顶栏、模块导航、主面板；文件模块的主面板内依次为工具栏、常用目录、文件视图、状态栏。窄屏时减小内边距（`px-4`，`sm:` 以上为 `px-6`），顶栏中的 `ROOT` 标记在窄屏上隐藏。浮层的固定位置：
 
 - Toast：顶部居中
 - 传输队列、首次使用提示：右下角，宽度 `min(24rem, 100vw - 2rem)`
@@ -131,6 +131,10 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 浮层的叠放顺序由 DOM 顺序决定（`z-index` 相同时后出现的在上）：模块页面自己的浮层（查看器、右键菜单、属性页、多选操作条）在前，外壳的传输队列、Toast、对话框在后。因此传输卡片和提示显示在属性页上方，对话框显示在最上层。
 
 ## 组件
+
+### 模块导航
+
+`components/shell/ModuleNav.tsx`：位于顶栏下方、主面板上方的药丸形分段按钮，`surface0` 底，高 48px，内边距 4px。每项为 40px 高的胶囊，图标加文字（`text-sm font-bold`）。当前项为 `accent` 底、`on-accent` 文字，底色用 `layoutId` 的弹簧动画在各项之间滑动；其余项为 `subtext0` 文字，悬停时 `surface1` 底。按钮带 `aria-pressed`，容器是带 `aria-label` 的 `nav`。仅有一个模块时不渲染。
 
 ### 按钮
 
@@ -237,7 +241,7 @@ root 模式需要在多个位置同时可见，避免用户忘记当前处于高
 
 ### 选择
 
-与访达一致，逻辑在 `hooks/useSelection.ts`：
+与访达一致，逻辑在 `modules/files/hooks/useSelection.ts`：
 
 - 单击：只选中该项，并以它为连选起点
 - `Shift` + 单击：从起点到该项连续选中
@@ -247,7 +251,7 @@ root 模式需要在多个位置同时可见，避免用户忘记当前处于高
 
 ### 快捷键
 
-完整列表见 README 的“快捷键”一节，实现在 `hooks/useShortcuts.ts`。设计上遵循以下约定：
+完整列表见 README 的“快捷键”一节，实现在 `modules/files/hooks/useShortcuts.ts`。设计上遵循以下约定：
 
 - 焦点在输入框、文本框中时不响应全局快捷键；对话框、菜单、属性页或查看器打开时也不响应
 - 页面上选中了文字时，`Cmd` / `Ctrl+C` 交给浏览器正常复制

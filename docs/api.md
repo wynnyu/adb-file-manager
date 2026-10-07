@@ -749,15 +749,15 @@ interface Target {
 | `reconnectDevices()`、`restartAdb()` | `Promise<OkResult>` | 设备待授权时的补救操作，由 `hooks/useReauthorize.ts` 调用 |
 | `rootCheck(serial)` | `Promise<{ method: RootMethod }>` | |
 | `storage(serial)` | `Promise<StorageInfo>` | |
-| `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
+| `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `modules/files/lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
 | `mkdir(target, path)` | `Promise<OkResult>` | |
 | `rename(target, from, to)` | `Promise<OkResult>` | |
 | `remove(target, paths)` | `Promise<OkResult>` | 对应 `/api/files/delete` |
 | `copy(target, paths, dest)` | `Promise<OkResult>` | |
 | `move(target, paths, dest)` | `Promise<OkResult>` | |
 | `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img>`、`<video>`、`<audio>` 的 `src` 使用；媒体元素自行发出 Range 请求 |
-| `text(target, path)` | `Promise<TextPreview>` | 通常经 `lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
-| `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
+| `text(target, path)` | `Promise<TextPreview>` | 通常经 `modules/files/lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
+| `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `modules/files/lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
 | `extract(target, path)` | `Promise<ExtractResult>` | 耗时随压缩包大小而定，没有进度 |
 | `compress(target, paths, format)` | `Promise<CompressResult>` | zip 需经电脑中转，耗时随大小而定，没有进度 |
 | `download(target, paths)` | `Promise<void>` | 调用 `/api/files/pull` 后创建临时 `<a download>` 指向 `/api/files/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
@@ -777,8 +777,8 @@ interface Target {
 | --- | --- |
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
-| `ls` | `lib/queries.ts`，由 `hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `hooks/useTree.ts` 使用 |
-| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download` | `hooks/useFileOps.ts` |
-| `previewUrl` | `components/views/ColumnView.tsx`、`components/views/GalleryView.tsx`、`components/viewer/Viewer.tsx` |
-| `text` | `lib/queries.ts`，由 `components/viewer/TextViewer.tsx` 使用 |
-| `archive` | `lib/queries.ts`，由 `components/viewer/ArchiveView.tsx` 使用 |
+| `ls` | `modules/files/lib/queries.ts`，由 `modules/files/hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `modules/files/hooks/useTree.ts` 使用 |
+| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download` | `modules/files/hooks/useFileOps.ts` |
+| `previewUrl` | `modules/files/components/views/ColumnView.tsx`、`modules/files/components/views/GalleryView.tsx`、`modules/files/components/viewer/Viewer.tsx` |
+| `text` | `modules/files/lib/queries.ts`，由 `modules/files/components/viewer/TextViewer.tsx` 使用 |
+| `archive` | `modules/files/lib/queries.ts`，由 `modules/files/components/viewer/ArchiveView.tsx` 使用 |
