@@ -60,7 +60,39 @@ describe("TaskQueue", () => {
     expect(close()).toHaveLength(1);
   });
 
-  it("children 排在传输卡片下面", () => {
+  it("任何进行中的状态只要有进度就显示百分比", () => {
+    show([{ id: "1", kind: "compress", label: "d", status: "compressing", progress: 0.5 }]);
+    expect(screen.getByText("50%")).toBeTruthy();
+  });
+
+  it("统计大小时显示对应文案，没有进度时不显示百分比", () => {
+    show([{ id: "1", kind: "download", label: "d", status: "preparing" }]);
+    expect(screen.getByText(tz("task.preparing"))).toBeTruthy();
+    expect(screen.queryByText(/%$/)).toBeNull();
+  });
+
+  it("进行中且可取消的任务显示取消按钮，点击后调用 cancel", () => {
+    const cancel = vi.fn();
+    show([{ id: "1", kind: "download", label: "d", status: "pulling", cancel }]);
+    fireEvent.click(screen.getByRole("button", { name: tz("task.cancel") }));
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("没有 cancel 的任务和已结束的任务不显示取消按钮", () => {
+    show([
+      { id: "1", kind: "download", label: "a", status: "pulling" },
+      { id: "2", kind: "download", label: "b", status: "done", cancel: vi.fn() },
+    ]);
+    expect(screen.queryByRole("button", { name: tz("task.cancel") })).toBeNull();
+  });
+
+  it("已取消的任务显示已取消，可以关闭", () => {
+    show([{ id: "1", kind: "download", label: "a", status: "canceled" }]);
+    expect(screen.getByText(tz("task.canceled"))).toBeTruthy();
+    expect(close()).toHaveLength(1);
+  });
+
+  it("children 排在任务卡片下面", () => {
     show([{ id: "1", kind: "copy", label: "a", status: "copying" }]);
     const tip = screen.getByText("提示");
     expect(screen.getByText("a").compareDocumentPosition(tip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

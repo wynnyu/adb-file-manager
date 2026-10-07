@@ -1,7 +1,9 @@
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  Ban,
   Check,
+  CircleStop,
   Copy,
   FolderInput,
   type LucideIcon,
@@ -35,6 +37,7 @@ const kindTint: Record<Task["kind"], { badge: string; bar: string }> = {
 };
 
 const statusText: Record<Task["status"], MessageKey> = {
+  preparing: "task.preparing",
   uploading: "task.uploading",
   pushing: "task.pushing",
   pulling: "task.pulling",
@@ -44,6 +47,7 @@ const statusText: Record<Task["status"], MessageKey> = {
   compressing: "task.compressing",
   done: "task.done",
   error: "task.error",
+  canceled: "task.canceled",
 };
 
 /** 右下角的传输卡片；children 排在最下面（首次使用的提示），和传输卡片共用这一角，不会互相盖住 */
@@ -63,14 +67,16 @@ export function TaskQueue({
         {items.map((item) => {
           const Icon = kindIcon[item.kind];
           const color = kindTint[item.kind];
-          const busy = item.status !== "done" && item.status !== "error";
-          const pct = item.status === "uploading" && item.progress != null ? Math.round(item.progress * 100) : null;
+          const busy = item.status !== "done" && item.status !== "error" && item.status !== "canceled";
+          const pct = busy && item.progress != null ? Math.round(item.progress * 100) : null;
           const tint =
             item.status === "error"
               ? "bg-red/20 text-red"
               : item.status === "done"
                 ? "bg-green/20 text-green"
-                : color.badge;
+                : item.status === "canceled"
+                  ? "bg-surface1 text-subtext1"
+                  : color.badge;
           return (
             <motion.div
               key={item.id}
@@ -96,6 +102,8 @@ export function TaskQueue({
                       <Check className="size-5" />
                     ) : item.status === "error" ? (
                       <X className="size-5" />
+                    ) : item.status === "canceled" ? (
+                      <Ban className="size-5" />
                     ) : (
                       <Icon className="size-5" />
                     )}
@@ -126,6 +134,17 @@ export function TaskQueue({
                   {item.error ?? item.note ?? t(statusText[item.status])}
                 </div>
               </div>
+              {busy && item.cancel && (
+                <button
+                  type="button"
+                  onClick={item.cancel}
+                  className="grid size-8 shrink-0 place-items-center rounded-circle text-muted hover:bg-surface1 hover:text-text"
+                  title={t("task.cancel")}
+                  aria-label={t("task.cancel")}
+                >
+                  <CircleStop className="size-4" />
+                </button>
+              )}
               {!busy && (
                 <button
                   type="button"

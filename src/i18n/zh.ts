@@ -125,6 +125,7 @@ export const zh = {
   "nodevice.waiting": "正在等待设备……",
   "nodevice.adbError": "adb 错误：{error}",
 
+  "task.preparing": "正在统计大小……",
   "task.uploading": "上传到电脑",
   "task.pushing": "adb push 到设备",
   "task.pulling": "从设备 adb pull",
@@ -135,6 +136,8 @@ export const zh = {
   "task.skipped": "已跳过 {n} 个符号链接或特殊文件",
   "task.done": "完成",
   "task.error": "失败",
+  "task.canceled": "已取消",
+  "task.cancel": "取消",
 
   "delete.title": "删除“{name}”？",
   "delete.titleMany": "删除 {n} 项？",

@@ -1,13 +1,22 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DialogState } from "../../../components/overlays/index.ts";
-import { api, loadPref, type Target } from "../../../lib/index.ts";
+import { api, JobCanceled, loadPref, type Target } from "../../../lib/index.ts";
 import { file, folder, providers, tz } from "../../../test/utils.tsx";
+import type { JobSnapshot, PullResult } from "../../../types.ts";
 import type { Clip } from "../types.ts";
 import { useFileOps } from "./useFileOps.ts";
 
 type PromptDialog = Extract<DialogState, { kind: "prompt" }>;
 type ConfirmDialog = Extract<DialogState, { kind: "confirm" }>;
+
+const realDownload = api.download;
+const running = <R>(patch: Partial<JobSnapshot<R>>): JobSnapshot<R> => ({
+  id: "j1",
+  state: "running",
+  cancelable: true,
+  ...patch,
+});
 
 const target: Target = { serial: "A", root: false };
 const a = file("/sdcard/a.txt");
@@ -113,10 +122,10 @@ describe("useFileOps", () => {
   });
 
   describe("download", () => {
-    it("下载选中的条目并更新传输状态", async () => {
+    it("下载选中的条目并更新任务状态", async () => {
       const { result, startTask, patchTask } = setup();
       await act(() => result.current.download([a, b]));
-      expect(api.download).toHaveBeenCalledWith(target, [a.path, b.path]);
+      expect(api.download).toHaveBeenCalledWith(target, [a.path, b.path], expect.any(Object));
       expect(startTask).toHaveBeenCalledWith(expect.objectContaining({ kind: "download", status: "pulling" }));
       expect(patchTask).toHaveBeenLastCalledWith("job", { status: "done" });
     });
@@ -126,6 +135,69 @@ describe("useFileOps", () => {
       const { result, patchTask } = setup();
       await act(() => result.current.download([a]));
       expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "下载已过期" });
+    });
+
+    it("被取消时记为已取消，而不是失败", async () => {
+      vi.mocked(api.download).mockRejectedValue(new JobCanceled());
+      const { result, patchTask } = setup();
+      await act(() => result.current.download([a]));
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "canceled" });
+    });
+
+    describe("经任务接口", () => {
+      beforeEach(() => {
+        vi.mocked(api.download).mockImplementation(realDownload);
+        vi.spyOn(api, "pull").mockResolvedValue({ id: "j1" });
+        vi.spyOn(api, "watchJob");
+        vi.spyOn(api, "cancelJob").mockResolvedValue({ ok: true });
+        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      });
+
+      it("阶段映射为状态，进度写进任务，完成后触发浏览器下载", async () => {
+        vi.mocked(api.watchJob).mockImplementation(async (_id, onUpdate) => {
+          onUpdate(running({ phase: "preparing" }));
+          onUpdate(running({ phase: "pulling", progress: 0.4 }));
+          return { token: "t", name: "DCIM.zip" } satisfies PullResult as never;
+        });
+        const { result, patchTask } = setup();
+        await act(() => result.current.download([folder("/sdcard/DCIM")]));
+        expect(api.pull).toHaveBeenCalledWith(target, ["/sdcard/DCIM"]);
+        expect(patchTask.mock.calls).toEqual([
+          ["job", { cancel: expect.any(Function) }],
+          ["job", { status: "preparing", progress: undefined }],
+          ["job", { status: "pulling", progress: 0.4 }],
+          ["job", { status: "done" }],
+        ]);
+        expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
+      });
+
+      it("取消按钮调用 cancelJob，取消后任务为已取消，不触发下载", async () => {
+        vi.mocked(api.watchJob).mockRejectedValue(new JobCanceled());
+        const { result, patchTask } = setup();
+        await act(() => result.current.download([folder("/sdcard/DCIM")]));
+        const patch = patchTask.mock.calls[0][1] as { cancel: () => void };
+        patch.cancel();
+        expect(api.cancelJob).toHaveBeenCalledWith("j1");
+        expect(patchTask).toHaveBeenLastCalledWith("job", { status: "canceled" });
+        expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+      });
+
+      it("阶段不可取消时去掉取消按钮", async () => {
+        vi.mocked(api.watchJob).mockImplementation(async (_id, onUpdate) => {
+          onUpdate(running({ phase: "pulling", cancelable: false }));
+          return { token: "t", name: "a" } as never;
+        });
+        const { result, patchTask } = setup();
+        await act(() => result.current.download([folder("/sdcard/DCIM")]));
+        expect(patchTask).toHaveBeenCalledWith("job", { status: "pulling", progress: undefined, cancel: undefined });
+      });
+
+      it("任务失败时记下错误", async () => {
+        vi.mocked(api.watchJob).mockRejectedValue(new Error("root 权限已失效"));
+        const { result, patchTask } = setup();
+        await act(() => result.current.download([folder("/sdcard/DCIM")]));
+        expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "root 权限已失效" });
+      });
     });
   });
 
@@ -208,7 +280,8 @@ describe("useFileOps", () => {
 
   describe("compress", () => {
     it("多项压缩：按所选路径调用，进度记在传输队列里，成功后刷新存储空间和目录", async () => {
-      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/Archive.zip" });
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "watchJob").mockResolvedValue({ path: "/sdcard/Archive.zip" });
       const { result, startTask, patchTask, refreshStorage, afterChange } = setup();
       await act(() => result.current.compress([a, b], "zip"));
       expect(api.compress).toHaveBeenCalledWith(target, [a.path, b.path], "zip");
@@ -223,7 +296,8 @@ describe("useFileOps", () => {
     });
 
     it("单项以其名称作为标题，格式原样传给接口", async () => {
-      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/a.txt.tar.gz" });
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "watchJob").mockResolvedValue({ path: "/sdcard/a.txt.tar.gz" });
       const { result, startTask } = setup();
       await act(() => result.current.compress([a], "tgz"));
       expect(api.compress).toHaveBeenCalledWith(target, [a.path], "tgz");
@@ -231,7 +305,8 @@ describe("useFileOps", () => {
     });
 
     it("zip 跳过了符号链接时，完成状态带上说明", async () => {
-      vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/d.zip", skipped: 3 });
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "watchJob").mockResolvedValue({ path: "/sdcard/d.zip", skipped: 3 });
       const { result, patchTask } = setup();
       await act(() => result.current.compress([folder("/sdcard/d")], "zip"));
       expect(patchTask).toHaveBeenLastCalledWith("job", {
@@ -247,6 +322,44 @@ describe("useFileOps", () => {
       expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "电脑上的临时空间不足" });
       expect(reload).toHaveBeenCalledWith(true);
       expect(afterChange).not.toHaveBeenCalled();
+    });
+
+    it("进度和阶段写进任务，取消按钮调用 cancelJob", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "cancelJob").mockResolvedValue({ ok: true });
+      vi.spyOn(api, "watchJob").mockImplementation(async (_id, onUpdate) => {
+        onUpdate(running({ phase: "compressing", progress: 0.25 }));
+        onUpdate(running({ phase: "pushing", cancelable: false }));
+        return { path: "/sdcard/a.txt.zip" } as never;
+      });
+      const { result, patchTask } = setup();
+      await act(() => result.current.compress([a], "zip"));
+      expect(patchTask.mock.calls.slice(0, 3)).toEqual([
+        ["job", { cancel: expect.any(Function) }],
+        ["job", { status: "compressing", progress: 0.25 }],
+        ["job", { status: "pushing", progress: undefined, cancel: undefined }],
+      ]);
+      (patchTask.mock.calls[0][1] as { cancel: () => void }).cancel();
+      expect(api.cancelJob).toHaveBeenCalledWith("j1");
+    });
+
+    it("被取消时记为已取消并刷新目录，不刷新存储空间", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "watchJob").mockRejectedValue(new JobCanceled());
+      const { result, patchTask, reload, refreshStorage, afterChange } = setup();
+      await act(() => result.current.compress([a], "zip"));
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "canceled" });
+      expect(reload).toHaveBeenCalledWith(true);
+      expect(refreshStorage).not.toHaveBeenCalled();
+      expect(afterChange).not.toHaveBeenCalled();
+    });
+
+    it("任务因 root 失效而失败时记下错误", async () => {
+      vi.mocked(api.compress).mockResolvedValue({ id: "j1" });
+      vi.spyOn(api, "watchJob").mockRejectedValue(new Error("root 权限已失效"));
+      const { result, patchTask } = setup();
+      await act(() => result.current.compress([a], "zip"));
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "root 权限已失效" });
     });
 
     it("没有设备或没有选中项时不压缩", async () => {

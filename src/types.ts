@@ -13,6 +13,10 @@ export type {
   ExtractResult,
   FileEntry,
   FileStat,
+  JobPhase,
+  JobRef,
+  JobSnapshot,
+  JobState,
   LinkInfo,
   OkResult,
   PartitionInfo,
@@ -26,6 +30,7 @@ export type {
 } from "../shared/types.d.ts";
 
 export type TaskStatus =
+  | "preparing"
   | "uploading"
   | "pushing"
   | "pulling"
@@ -34,16 +39,19 @@ export type TaskStatus =
   | "extracting"
   | "compressing"
   | "done"
-  | "error";
+  | "error"
+  | "canceled";
 
 export interface Task {
   id: string;
   kind: "upload" | "download" | "copy" | "move" | "extract" | "compress";
   label: string;
   status: TaskStatus;
-  /** 0 到 1，仅浏览器传到电脑的阶段可知 */
+  /** 0 到 1，未知时缺省；任何进行中的状态都可以带进度 */
   progress?: number;
   error?: string;
   /** 完成后需要用户留意的说明，有说明的任务不会自动移除 */
   note?: string;
+  /** 取消任务；存在且任务进行中时卡片显示取消按钮 */
+  cancel?: () => void;
 }

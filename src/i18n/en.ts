@@ -133,6 +133,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "nodevice.waiting": "Waiting for a device…",
   "nodevice.adbError": "adb error: {error}",
 
+  "task.preparing": "Calculating size…",
   "task.uploading": "Uploading to computer",
   "task.pushing": "adb push to device",
   "task.pulling": "adb pull from device",
@@ -144,6 +145,8 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "task.skipped_one": "Skipped 1 symbolic link or special file",
   "task.done": "Done",
   "task.error": "Failed",
+  "task.canceled": "Canceled",
+  "task.cancel": "Cancel",
 
   "delete.title": "Delete “{name}”?",
   "delete.titleMany": "Delete {n} items?",

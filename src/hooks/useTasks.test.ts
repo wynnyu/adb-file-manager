@@ -43,6 +43,18 @@ describe("useTasks", () => {
     expect(result.current.tasks).toEqual([]);
   });
 
+  it("已取消的任务 4 秒后移除", () => {
+    const { result } = renderHook(() => useTasks());
+    let id = "";
+    act(() => {
+      id = result.current.startTask({ kind: "download", label: "a", status: "pulling" });
+    });
+    act(() => result.current.patchTask(id, { status: "canceled" }));
+    expect(result.current.tasks).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(4000));
+    expect(result.current.tasks).toEqual([]);
+  });
+
   it("失败的任务一直保留，直到手动关闭", () => {
     const { result } = renderHook(() => useTasks());
     let id = "";

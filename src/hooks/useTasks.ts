@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Task } from "../types.ts";
 
-/** 传输队列：完成的任务 4 秒后自动移除，失败的和带说明的留到手动关闭 */
+/** 任务队列：完成和已取消的任务 4 秒后自动移除，失败的和带说明的留到手动关闭 */
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -13,7 +13,7 @@ export function useTasks() {
 
   const patchTask = useCallback((id: string, patch: Partial<Task>) => {
     setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    if (patch.status === "done" && !patch.note) {
+    if ((patch.status === "done" && !patch.note) || patch.status === "canceled") {
       setTimeout(() => setTasks((list) => list.filter((t) => t.id !== id)), 4000);
     }
   }, []);

@@ -4,8 +4,8 @@ import type { DialogState } from "../../../components/overlays/index.ts";
 import type { Tasks } from "../../../hooks/index.ts";
 import type { T } from "../../../i18n/index.tsx";
 import { useT } from "../../../i18n/index.tsx";
-import { api, joinPath, loadPref, parentPath, savePref, type Target } from "../../../lib/index.ts";
-import type { ArchiveFormat, FileEntry } from "../../../types.ts";
+import { api, JobCanceled, joinPath, loadPref, parentPath, savePref, type Target } from "../../../lib/index.ts";
+import type { ArchiveFormat, CompressResult, FileEntry, JobPhase, JobSnapshot, TaskStatus } from "../../../types.ts";
 import type { UploadItem } from "../lib/index.ts";
 import type { Clip } from "../types.ts";
 import type { Directory } from "./useDirectory.ts";
@@ -19,7 +19,15 @@ const SHELL_WRITABLE = [
 ];
 const needsRoot = (p: string) => !SHELL_WRITABLE.some((re) => re.test(p));
 
-/** 传输队列里显示的名称：单项为其名称，多项为“某某等 n 项” */
+/** 任务阶段对应的卡片状态 */
+const PHASE_STATUS: Record<JobPhase, TaskStatus> = {
+  preparing: "preparing",
+  pulling: "pulling",
+  compressing: "compressing",
+  pushing: "pushing",
+};
+
+/** 任务队列里显示的名称：单项为其名称，多项为“某某等 n 项” */
 const batchLabel = (names: string[], t: T) =>
   names.length === 1 ? names[0] : t("common.itemsEtc", { name: names[0], n: names.length, rest: names.length - 1 });
 
@@ -50,6 +58,19 @@ export function useFileOps({
   openDialog: (d: DialogState) => void;
 }) {
   const t = useT();
+
+  /** 把任务快照写进卡片：阶段对应状态，进度原样，当前阶段不可取消时去掉取消按钮 */
+  const syncTask = useCallback(
+    (id: string) => (snap: JobSnapshot) => {
+      if (snap.state !== "running") return;
+      patchTask(id, {
+        ...(snap.phase ? { status: PHASE_STATUS[snap.phase] } : {}),
+        progress: snap.progress,
+        ...(snap.cancelable ? {} : { cancel: undefined }),
+      });
+    },
+    [patchTask],
+  );
 
   const upload = useCallback(
     async (items: UploadItem[], dest = path) => {
@@ -85,13 +106,20 @@ export function useFileOps({
         await api.download(
           target,
           targets.map((x) => x.path),
+          {
+            onJob: (jobId) => patchTask(id, { cancel: () => void api.cancelJob(jobId).catch(() => {}) }),
+            onUpdate: syncTask(id),
+          },
         );
         patchTask(id, { status: "done" });
       } catch (e) {
-        patchTask(id, { status: "error", error: (e as Error).message });
+        patchTask(
+          id,
+          e instanceof JobCanceled ? { status: "canceled" } : { status: "error", error: (e as Error).message },
+        );
       }
     },
-    [target, startTask, patchTask, t],
+    [target, startTask, patchTask, syncTask, t],
   );
 
   const paste = useCallback(
@@ -151,21 +179,26 @@ export function useFileOps({
       );
       const id = startTask({ kind: "compress", label, status: "compressing" });
       try {
-        const { skipped } = await api.compress(
+        const { id: jobId } = await api.compress(
           target,
           targets.map((x) => x.path),
           format,
         );
+        patchTask(id, { cancel: () => void api.cancelJob(jobId).catch(() => {}) });
+        const { skipped } = await api.watchJob<CompressResult>(jobId, syncTask(id));
         patchTask(id, skipped ? { status: "done", note: t("task.skipped", { n: skipped }) } : { status: "done" });
         refreshStorage();
         await afterChange([], true);
       } catch (e) {
-        patchTask(id, { status: "error", error: (e as Error).message });
-        // 失败时设备上已清理暂存文件，刷新是为了让多项压缩前后的列表一致
+        patchTask(
+          id,
+          e instanceof JobCanceled ? { status: "canceled" } : { status: "error", error: (e as Error).message },
+        );
+        // 失败或取消时设备上已清理暂存文件，刷新是为了让多项压缩前后的列表一致
         void reload(true);
       }
     },
-    [target, startTask, patchTask, refreshStorage, afterChange, reload, t],
+    [target, startTask, patchTask, syncTask, refreshStorage, afterChange, reload, t],
   );
 
   const askDelete = useCallback(

@@ -2,13 +2,14 @@ import { getLang, tr } from "../i18n/translate.ts";
 import type {
   ArchiveFormat,
   ArchiveListing,
-  CompressResult,
   DeviceList,
   DirUsage,
   ErrorResponse,
   ExtractResult,
   FileEntry,
   FileStat,
+  JobRef,
+  JobSnapshot,
   OkResult,
   PullResult,
   RootCheckResult,
@@ -34,6 +35,14 @@ function fail(data: Partial<ErrorResponse>, status: number) {
   const message = data.error ?? `HTTP ${status}`;
   if (data.code === "root_lost") rootLostListener?.(message);
   return new Error(message);
+}
+
+/** 任务被取消时 watchJob 抛出的错误，调用方据此区分取消和失败 */
+export class JobCanceled extends Error {
+  constructor() {
+    super(tr("task.canceled"));
+    this.name = "JobCanceled";
+  }
 }
 
 /** 让后端按界面语言返回错误信息 */
@@ -103,14 +112,53 @@ export const api = {
   extract: (t: Target, path: string) => post<ExtractResult>("/api/files/extract", { ...t, path }),
 
   /**
-   * 压缩到所选项的公共父目录，返回生成的压缩包；zip 在电脑上生成，需要经过电脑中转，耗时随大小而定
+   * 启动压缩任务，结果（CompressResult）用 watchJob 取得；压缩到所选项的公共父目录。
+   * zip 在电脑上生成，需要经过电脑中转，耗时随大小而定
    */
   compress: (t: Target, paths: string[], format: ArchiveFormat) =>
-    post<CompressResult>("/api/files/compress", { ...t, paths, format }),
+    post<JobRef>("/api/files/compress", { ...t, paths, format }),
 
-  /** adb pull 到电脑，然后触发浏览器下载 */
-  async download(t: Target, paths: string[]) {
-    const { token } = await post<PullResult>("/api/files/pull", { ...t, paths });
+  /** 启动下载任务，结果（PullResult）用 watchJob 取得 */
+  pull: (t: Target, paths: string[]) => post<JobRef>("/api/files/pull", { ...t, paths }),
+
+  /**
+   * 订阅任务的进度（SSE），每次状态变化回调一次快照。done 时返回结果，error 时抛出错误（root_lost 同时通知
+   * onRootLost），canceled 时抛出 JobCanceled。连接断开且无法重连时抛出网络错误；重连期间继续等待，
+   * 服务端会在重连后重发当前快照
+   */
+  watchJob<R>(id: string, onUpdate: (snap: JobSnapshot<R>) => void) {
+    return new Promise<R>((resolve, reject) => {
+      const source = new EventSource(`/api/jobs/${id}/events`);
+      source.addEventListener("state", (e) => {
+        const snap = JSON.parse((e as MessageEvent<string>).data) as JobSnapshot<R>;
+        onUpdate(snap);
+        if (snap.state === "running") return;
+        source.close();
+        if (snap.state === "done") resolve(snap.result as R);
+        else if (snap.state === "canceled") reject(new JobCanceled());
+        else reject(fail({ error: snap.error, code: snap.code }, 500));
+      });
+      source.onerror = () => {
+        if (source.readyState !== EventSource.CLOSED) return;
+        reject(new Error(tr("common.networkError")));
+      };
+    });
+  },
+
+  cancelJob: (id: string) => post<OkResult>(`/api/jobs/${id}/cancel`, {}),
+
+  /**
+   * adb pull 到电脑，然后触发浏览器下载。onJob 在任务启动后回调任务 id（用于取消），
+   * onUpdate 在任务状态变化时回调
+   */
+  async download(
+    t: Target,
+    paths: string[],
+    hooks: { onJob?: (id: string) => void; onUpdate?: (snap: JobSnapshot<PullResult>) => void } = {},
+  ) {
+    const { id } = await api.pull(t, paths);
+    hooks.onJob?.(id);
+    const { token } = await api.watchJob<PullResult>(id, (snap) => hooks.onUpdate?.(snap));
     const a = document.createElement("a");
     a.href = `/api/files/fetch/${token}`;
     a.download = "";
