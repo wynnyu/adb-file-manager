@@ -134,6 +134,70 @@ describe("Dialog", () => {
     });
   });
 
+  describe("form", () => {
+    const form = (patch: Partial<Extract<DialogState, { kind: "form" }>> = {}): DialogState => ({
+      kind: "form",
+      icon: Pencil,
+      title: "修改属性",
+      fields: [
+        { label: "属性名", initial: "persist.a", readOnly: true, mono: true },
+        { label: "值", initial: "old", required: true, trim: true },
+        { label: "备注", initial: " x " },
+      ],
+      confirm: "保存",
+      onSubmit: vi.fn(async () => {}),
+      ...patch,
+    });
+    const field = (name: string) => screen.getByRole<HTMLInputElement>("textbox", { name });
+
+    it("聚焦第一个可编辑项并选中内容，只读项不可编辑", () => {
+      show(form());
+      expect(field("值")).toBe(document.activeElement);
+      expect([field("值").selectionStart, field("值").selectionEnd]).toEqual([0, 3]);
+      expect(field("属性名").readOnly).toBe(true);
+      expect(field("属性名").value).toBe("persist.a");
+    });
+
+    it("显示说明，提交按项顺序传值，只对 trim 项去掉首尾空白", async () => {
+      const state = form({ message: "说明文字" });
+      const { onClose } = show(state);
+      expect(screen.getByText("说明文字")).toBeTruthy();
+      fireEvent.change(field("值"), { target: { value: "  new  " } });
+      await act(async () => fireEvent.click(button("保存")));
+      expect(state.onSubmit).toHaveBeenCalledWith(["persist.a", "new", " x "]);
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    it("必填项为空（含全空白）时禁用确认，回车也不提交", () => {
+      const state = form();
+      show(state);
+      fireEvent.change(field("值"), { target: { value: "   " } });
+      expect((button("保存") as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.submit(document.querySelector("form")!);
+      expect(state.onSubmit).not.toHaveBeenCalled();
+      fireEvent.change(field("值"), { target: { value: "1" } });
+      expect((button("保存") as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it("非必填项可以为空", async () => {
+      const state = form();
+      show(state);
+      fireEvent.change(field("备注"), { target: { value: "" } });
+      await act(async () => fireEvent.click(button("保存")));
+      expect(state.onSubmit).toHaveBeenCalledWith(["persist.a", "old", ""]);
+    });
+
+    it("失败时显示错误并保留输入，不关闭", async () => {
+      const onSubmit = vi.fn().mockRejectedValueOnce(new Error("属性未生效"));
+      const { onClose } = show(form({ onSubmit }));
+      fireEvent.change(field("值"), { target: { value: "new" } });
+      await act(async () => fireEvent.click(button("保存")));
+      expect(screen.getByText("属性未生效")).toBeTruthy();
+      expect(field("值").value).toBe("new");
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
   it("Esc、取消按钮和点击背景都会关闭，点在对话框里不会", () => {
     const { onClose } = show(confirm());
     fireEvent.mouseDown(document.querySelector("form")!);

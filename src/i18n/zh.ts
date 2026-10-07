@@ -16,6 +16,13 @@ export const zh = {
   "common.itemsEtc": "{name} 等 {n} 项",
   "common.moreItems": "……以及另外 {n} 项",
 
+  "kv.copyKey": "拷贝键名",
+  "kv.copyValue": "拷贝 {key} 的值",
+  "kv.copied": "已拷贝",
+  "kv.edit": "修改 {key}",
+  "kv.delete": "删除 {key}",
+  "kv.emptyValue": "空值",
+
   "toolbar.up": "上一级 (Backspace)",
   "toolbar.refresh": "刷新",
   "toolbar.filter": "筛选",

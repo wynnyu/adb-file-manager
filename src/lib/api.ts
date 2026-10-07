@@ -7,6 +7,7 @@ import type {
   ArchiveListing,
   DeviceList,
   DirUsage,
+  ErrorCode,
   ErrorResponse,
   ExtractResult,
   FileEntry,
@@ -14,6 +15,9 @@ import type {
   JobRef,
   JobSnapshot,
   OkResult,
+  PropDeleteRequest,
+  PropList,
+  PropSetRequest,
   PullResult,
   RootCheckResult,
   StorageInfo,
@@ -34,11 +38,22 @@ export function onRootLost(fn: (message: string) => void) {
   rootLostListener = fn;
 }
 
+/** 后端返回的错误；code 供调用方识别，例如 needs_force 表示需要强确认后带 force 重试 */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public code?: ErrorCode,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 /** 响应可能不是后端生成的 JSON（例如代理返回的错误页），字段都按可缺省处理 */
 function fail(data: Partial<ErrorResponse>, status: number) {
   const message = data.error ?? `HTTP ${status}`;
   if (data.code === "root_lost") rootLostListener?.(message);
-  return new Error(message);
+  return new ApiError(message, data.code);
 }
 
 /** 任务被取消时 watchJob 抛出的错误，调用方据此区分取消和失败 */
@@ -156,6 +171,17 @@ export const api = {
     for (const f of files) form.append("files", f, "blob");
     return xhrForm<JobRef>(`/api/apps/install?${new URLSearchParams({ serial })}`, form, onProgress, signal);
   },
+
+  /** root 模式下能看到更多属性，并检测 resetprop */
+  props: (t: Target) => request<PropList>(`/api/props?${qs(t)}`),
+
+  /** 修改或新建属性；风险属性返回 409 和 needs_force，强确认后带 force: true 重试 */
+  setProp: (t: Target, key: string, value: string, force?: boolean) =>
+    post<OkResult>("/api/props/set", { ...t, key, value, ...(force ? { force } : {}) } satisfies PropSetRequest),
+
+  /** 删除属性，需要 root 和 resetprop；总要求 force: true */
+  deleteProp: (t: Target, key: string, force?: boolean) =>
+    post<OkResult>("/api/props/delete", { ...t, key, ...(force ? { force } : {}) } satisfies PropDeleteRequest),
 
   ls: (t: Target, path: string) => request<FileEntry[]>(`/api/files/ls?${qs(t, { path })}`),
 

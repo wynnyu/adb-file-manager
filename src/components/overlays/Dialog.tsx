@@ -10,6 +10,20 @@ import { type DialogMessage, DialogMessageBody } from "./DialogMessage.tsx";
 /** 对话框的配色：confirm 可指定 danger 或 warn，其余为 default */
 type DialogTone = "default" | "danger" | "warn";
 
+/** 表单对话框的一个输入项 */
+export interface DialogField {
+  label: string;
+  initial: string;
+  /** 只读项显示当前值，不可编辑也不参与聚焦 */
+  readOnly?: boolean;
+  /** 去掉首尾空白后为空时禁用确认 */
+  required?: boolean;
+  /** 提交时去掉首尾空白 */
+  trim?: boolean;
+  /** 等宽字体，适合键名、路径一类内容 */
+  mono?: boolean;
+}
+
 export type DialogState =
   | {
       kind: "prompt";
@@ -33,6 +47,17 @@ export type DialogState =
       onSubmit: (checked: boolean) => Promise<void>;
     }
   | {
+      kind: "form";
+      title: string;
+      icon: LucideIcon;
+      /** 表单上方的说明 */
+      message?: DialogMessage;
+      fields: DialogField[];
+      confirm: string;
+      /** values 与 fields 一一对应 */
+      onSubmit: (values: string[]) => Promise<void>;
+    }
+  | {
       kind: "bookmark";
       title: string;
       initial: BookmarkFields;
@@ -54,10 +79,12 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [values, setValues] = useState(() => (state.kind === "form" ? state.fields.map((f) => f.initial) : []));
   const [bookmark, setBookmark] = useState(state.kind === "bookmark" ? state.initial : null);
   const [left, setLeft] = useState(state.kind === "confirm" ? (state.countdown ?? 0) : 0);
   const input = useRef<HTMLInputElement>(null);
   const cancelBtn = useRef<HTMLButtonElement>(null);
+  const fieldInputs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (left <= 0) return;
@@ -79,14 +106,25 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
     el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
   }, [state.kind]);
 
+  // 表单聚焦第一个可编辑项并选中其内容
+  useEffect(() => {
+    if (state.kind !== "form") return;
+    const first = state.fields.findIndex((f) => !f.readOnly);
+    fieldInputs.current[first]?.focus();
+    fieldInputs.current[first]?.select();
+  }, [state]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [busy, onClose]);
 
+  const formInvalid = state.kind === "form" && state.fields.some((f, i) => f.required && !values[i]?.trim());
+
   async function submit() {
     if (state.kind === "prompt" && !value.trim()) return;
+    if (formInvalid) return;
     if (bookmark && !(bookmark.name.trim() && bookmark.path.trim())) return;
     if (left > 0) return;
     setBusy(true);
@@ -95,6 +133,8 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
       if (state.kind === "prompt") await state.onSubmit(value.trim());
       else if (state.kind === "bookmark" && bookmark)
         await state.onSubmit({ ...bookmark, name: bookmark.name.trim(), path: bookmark.path.trim() });
+      else if (state.kind === "form")
+        await state.onSubmit(state.fields.map((f, i) => (f.trim ? values[i].trim() : values[i])));
       else if (state.kind === "confirm") await state.onSubmit(checked);
       onClose();
     } catch (e) {
@@ -145,6 +185,35 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             spellCheck={false}
             className="h-12 w-full rounded-full bg-base px-5 text-center font-mono text-text ring-1 ring-surface1 outline-none focus:ring-2 focus:ring-accent"
           />
+        ) : state.kind === "form" ? (
+          <>
+            {state.message && (
+              <div className="w-full text-sm text-subtext1 wrap-anywhere">
+                <DialogMessageBody message={state.message} />
+              </div>
+            )}
+            <div className="flex w-full flex-col gap-3 text-left">
+              {state.fields.map((f, i) => (
+                <label key={f.label} className="flex flex-col gap-1.5">
+                  <span className="px-3 text-xs font-bold text-subtext0">{f.label}</span>
+                  <input
+                    ref={(el) => {
+                      fieldInputs.current[i] = el;
+                    }}
+                    value={values[i] ?? ""}
+                    readOnly={f.readOnly}
+                    onChange={(e) => setValues((vs) => vs.map((v, j) => (j === i ? e.target.value : v)))}
+                    spellCheck={false}
+                    className={`h-11 w-full rounded-full px-5 text-text outline-none ${f.mono ? "font-mono text-sm" : ""} ${
+                      f.readOnly
+                        ? "bg-surface0/60 text-subtext1"
+                        : "bg-base ring-1 ring-surface1 focus:ring-2 focus:ring-accent"
+                    }`}
+                  />
+                </label>
+              ))}
+            </div>
+          </>
         ) : state.kind === "bookmark" && bookmark ? (
           <BookmarkForm
             value={bookmark}
@@ -202,7 +271,7 @@ export function Dialog({ state, onClose }: { state: DialogState; onClose: () => 
             type="submit"
             tone={tone === "default" ? "accent" : tone}
             className="relative h-12 flex-1 justify-center overflow-hidden"
-            disabled={busy || left > 0}
+            disabled={busy || left > 0 || formInvalid}
           >
             {countdown > 0 && (
               <motion.span

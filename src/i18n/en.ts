@@ -18,6 +18,13 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "common.itemsEtc": "{name} and {rest} more",
   "common.moreItems": "…and {n} more",
 
+  "kv.copyKey": "Copy key",
+  "kv.copyValue": "Copy value of {key}",
+  "kv.copied": "Copied",
+  "kv.edit": "Edit {key}",
+  "kv.delete": "Delete {key}",
+  "kv.emptyValue": "Empty value",
+
   "toolbar.up": "Up (Backspace)",
   "toolbar.refresh": "Refresh",
   "toolbar.filter": "Filter",

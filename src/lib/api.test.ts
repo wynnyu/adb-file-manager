@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tz } from "../test/utils.tsx";
 import type { JobSnapshot } from "../types.ts";
-import { api, JobCanceled, onRootLost } from "./api.ts";
+import { ApiError, api, JobCanceled, onRootLost } from "./api.ts";
 
 /** 只实现 watchJob 用到的部分：事件监听、onerror、readyState、close */
 class FakeEventSource {
@@ -135,6 +135,81 @@ describe("api.appAction", () => {
       vi.fn(() => jsonResponse({ error: "该应用是系统关键组件" }, 409)),
     );
     await expect(api.appAction("S", "disable", "com.android.systemui")).rejects.toThrow("该应用是系统关键组件");
+  });
+});
+
+describe("ApiError", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("请求失败时抛出带 code 的 ApiError，缺省 code 时为 undefined", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => jsonResponse({ error: "风险说明", code: "needs_force" }, 409)),
+    );
+    const err = await api.setProp({ serial: "S", root: false }, "persist.a", "1").catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ message: "风险说明", code: "needs_force" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => jsonResponse({ error: "失败" }, 400)),
+    );
+    const plain = await api.setProp({ serial: "S", root: false }, "persist.a", "1").catch((e) => e);
+    expect(plain).toBeInstanceOf(ApiError);
+    expect((plain as ApiError).code).toBeUndefined();
+  });
+
+  it("root_lost 仍通知 root 失效", async () => {
+    const lost = vi.fn();
+    onRootLost(lost);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => jsonResponse({ error: "root 已失效", code: "root_lost" }, 403)),
+    );
+    const err = await api.props({ serial: "S", root: true }).catch((e) => e);
+    expect(err).toMatchObject({ code: "root_lost" });
+    expect(lost).toHaveBeenCalledWith("root 已失效");
+    onRootLost(() => {});
+  });
+});
+
+describe("api.props、setProp、deleteProp", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stub() {
+    const fetchMock = vi.fn(() => jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    return () => fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  }
+
+  it("列表带 serial，root 模式带 root=1", async () => {
+    const call = stub();
+    await api.props({ serial: "S", root: true });
+    expect(call()[0]).toBe("/api/props?serial=S&root=1");
+  });
+
+  it("修改只在需要时带 force，body 带 root", async () => {
+    const call = stub();
+    await api.setProp({ serial: "S", root: true }, "ro.a", "1");
+    expect(call()[0]).toBe("/api/props/set");
+    expect(JSON.parse(call()[1].body as string)).toEqual({ serial: "S", root: true, key: "ro.a", value: "1" });
+    vi.unstubAllGlobals();
+    const call2 = stub();
+    await api.setProp({ serial: "S", root: true }, "ro.a", "1", true);
+    expect(JSON.parse(call2()[1].body as string)).toEqual({
+      serial: "S",
+      root: true,
+      key: "ro.a",
+      value: "1",
+      force: true,
+    });
+  });
+
+  it("删除带 force 重试", async () => {
+    const call = stub();
+    await api.deleteProp({ serial: "S", root: true }, "ro.a", true);
+    expect(call()[0]).toBe("/api/props/delete");
+    expect(JSON.parse(call()[1].body as string)).toEqual({ serial: "S", root: true, key: "ro.a", force: true });
   });
 });
 
