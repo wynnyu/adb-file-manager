@@ -244,9 +244,10 @@ export async function diskUsage(ctx: adb.Ctx, paths: string[], signal?: AbortSig
 }
 
 /** 路径之下 adb pull 会跳过的条目数：符号链接、套接字等既不是文件也不是目录的东西 */
-export async function countSkipped(ctx: adb.Ctx, paths: string[]) {
+export async function countSkipped(ctx: adb.Ctx, paths: string[], signal?: AbortSignal) {
   const out = await adb.shell(ctx, `find ${paths.map(adb.q).join(" ")} ! -type d ! -type f 2>/dev/null | wc -l`, {
     timeout: 0,
+    signal,
   });
   return Number.parseInt(out.trim(), 10) || 0;
 }

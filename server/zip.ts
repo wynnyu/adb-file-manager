@@ -7,7 +7,8 @@ import { type EntryData, ZipArchive, type ZipEntryData } from "archiver";
 import * as adb from "./adb.ts";
 import * as cmds from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
-import { TMP, tmpDir } from "./tmp.ts";
+import type { JobHandle } from "./jobs.ts";
+import { dirBytes, TMP, tmpDir, watchGrowth } from "./tmp.ts";
 
 /** 已经压缩过的格式，再压缩几乎没有收益，直接存储以节省时间 */
 const PRECOMPRESSED =
@@ -61,24 +62,36 @@ async function hostFree() {
 
 /**
  * 设备端没有 zip 命令，所以在电脑上生成：pull 到临时目录，打包，再 push 回 base。
- * name 是压缩包的文件名。adb pull 会跳过符号链接，返回的 skipped 是被跳过的条目数。临时目录无论成败都会删除
+ * name 是压缩包的文件名。adb pull 会跳过符号链接，返回的 skipped 是被跳过的条目数。临时目录无论成败都会删除。
+ * 推送阶段不可取消，避免设备上留下不完整的压缩包
  */
-export async function compressZip(ctx: adb.Ctx, base: string, names: string[], name: string) {
+export async function compressZip(ctx: adb.Ctx, base: string, names: string[], name: string, job: JobHandle) {
+  const { signal } = job;
   const paths = names.map((n) => posix.join(base, n));
+  job.phase("preparing");
+  const total = await cmds.diskUsage(ctx, paths, signal);
   // 拉取的副本和 zip 本身同时存在，按源大小的两倍预留空间
-  if ((await cmds.diskUsage(ctx, paths)) * 2 > (await hostFree())) throw new adb.AdbError(msg("hostNoSpace"), 507);
-  const skipped = await cmds.countSkipped(ctx, paths);
+  if (total * 2 > (await hostFree())) throw new adb.AdbError(msg("hostNoSpace"), 507);
+  const skipped = await cmds.countSkipped(ctx, paths, signal);
   const dir = await tmpDir();
   try {
     const src = path.join(dir, "src");
-    for (const n of names) {
-      // 按相对路径落盘，不同目录下的同名项不会冲突；pull 的目标目录须先存在，否则会被当成文件夹本身
-      const local = path.join(src, posix.dirname(n));
-      await fs.mkdir(local, { recursive: true });
-      await adb.pull(ctx, posix.join(base, n), local);
+    job.phase("pulling");
+    const stop = watchGrowth(src, total, job.progress);
+    try {
+      for (const n of names) {
+        // 按相对路径落盘，不同目录下的同名项不会冲突；pull 的目标目录须先存在，否则会被当成文件夹本身
+        const local = path.join(src, posix.dirname(n));
+        await fs.mkdir(local, { recursive: true });
+        await adb.pull(ctx, posix.join(base, n), local, signal);
+      }
+    } finally {
+      stop();
     }
+    job.phase("compressing");
     const built = path.join(dir, "pack.zip");
-    await buildZip(src, built);
+    await buildZip(src, built, { signal, onProgress: job.progress, total: await dirBytes(src) });
+    job.phase("pushing", { cancelable: false });
     // push 以本地文件名作为设备上的名字，所以最后才定名并改名，缩小与其他写入撞名的时间窗口
     const final = await cmds.uniqueName(ctx, base, name, cmds.ARCHIVE_EXT.zip);
     const named = path.join(dir, final);

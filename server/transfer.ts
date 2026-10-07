@@ -5,29 +5,37 @@ import posix from "node:path/posix";
 import { ZipArchive } from "archiver";
 import { Router } from "express";
 import multer from "multer";
-import type { PullResult, UploadResult } from "../shared/types.d.ts";
+import type { JobRef, PullResult, UploadResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import * as cmds from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
+import { startJob } from "./jobs.ts";
 import { ctxOf, pathsOf, uploadPathsOf, wrap } from "./request.ts";
-import { TMP, tmpDir } from "./tmp.ts";
+import { TMP, tmpDir, watchGrowth } from "./tmp.ts";
 
 type PullSource =
   /** 取回时直接 exec-out cat，不落盘 */
   | { kind: "stream"; ctx: adb.Ctx; path: string }
   /** 已 pull 到 dir，取回时打包 dir 下全部内容为 zip */
   | { kind: "zip"; dir: string };
-type PullJob = PullSource & { name: string; timer: NodeJS.Timeout };
-const jobs = new Map<string, PullJob>();
+type PullEntry = PullSource & { name: string; timer: NodeJS.Timeout };
+const pulls = new Map<string, PullEntry>();
 
-function dropJob(token: string) {
-  const job = jobs.get(token);
-  if (!job) return;
-  jobs.delete(token);
-  clearTimeout(job.timer);
-  if (job.kind === "zip") {
-    fs.rm(job.dir, { recursive: true, force: true }).catch((e) => console.warn(`清理临时目录失败：${e.message}`));
+function dropPull(token: string) {
+  const pull = pulls.get(token);
+  if (!pull) return;
+  pulls.delete(token);
+  clearTimeout(pull.timer);
+  if (pull.kind === "zip") {
+    fs.rm(pull.dir, { recursive: true, force: true }).catch((e) => console.warn(`清理临时目录失败：${e.message}`));
   }
+}
+
+/** 登记一次性下载 token，30 分钟内未取走则自动清理 */
+function registerPull(source: PullSource, name: string): PullResult {
+  const token = randomUUID();
+  pulls.set(token, { ...source, name, timer: setTimeout(() => dropPull(token), 30 * 60_000) });
+  return { token, name };
 }
 
 /** 下载的文件名：单个文件用原名，其余打包为 zip，以所选目录名或所在目录名命名 */
@@ -75,7 +83,7 @@ export function transferRoutes() {
     }),
   );
 
-  // 第一步：登记一次性 token。单个文件不落盘，目录和多选 adb pull 到电脑临时目录
+  // 第一步：启动下载任务，结果为一次性 token。单个文件不落盘，目录和多选 adb pull 到电脑临时目录
   router.post(
     "/pull",
     wrap(async (req, res) => {
@@ -83,24 +91,26 @@ export function transferRoutes() {
       const paths = pathsOf(req.body.paths);
       const single = paths.length === 1 && !(await cmds.isDir(ctx, paths[0]));
       const name = downloadName(paths, single);
-      let job: PullSource;
-      if (single) {
-        // 先确认文件存在且可读，404 / 403 在这一步以 JSON 返回
-        await cmds.fileSize(ctx, paths[0]);
-        job = { kind: "stream", ctx, path: paths[0] };
-      } else {
+      // 先确认文件存在且可读，404 / 403 在这一步以 JSON 返回
+      if (single) await cmds.fileSize(ctx, paths[0]);
+      const ref = startJob<PullResult>(req, async (job) => {
+        if (single) return registerPull({ kind: "stream", ctx, path: paths[0] }, name);
+        job.phase("preparing");
+        const total = await cmds.diskUsage(ctx, paths, job.signal);
+        job.phase("pulling");
         const dir = await tmpDir();
+        const stop = watchGrowth(dir, total, job.progress);
         try {
-          for (const p of paths) await adb.pull(ctx, p, dir);
+          for (const p of paths) await adb.pull(ctx, p, dir, job.signal);
         } catch (e) {
           await fs.rm(dir, { recursive: true, force: true });
           throw e;
+        } finally {
+          stop();
         }
-        job = { kind: "zip", dir };
-      }
-      const token = randomUUID();
-      jobs.set(token, { ...job, name, timer: setTimeout(() => dropJob(token), 30 * 60_000) });
-      res.json({ token, name } satisfies PullResult);
+        return registerPull({ kind: "zip", dir }, name);
+      });
+      res.json(ref satisfies JobRef);
     }),
   );
 
@@ -109,24 +119,24 @@ export function transferRoutes() {
     "/fetch/:token",
     wrap(async (req, res) => {
       const token = String(req.params.token);
-      const job = jobs.get(token);
-      if (!job) throw new adb.AdbError(msg("downloadExpired"), 404);
-      res.on("close", () => dropJob(token));
-      if (job.kind === "stream") {
+      const pull = pulls.get(token);
+      if (!pull) throw new adb.AdbError(msg("downloadExpired"), 404);
+      res.on("close", () => dropPull(token));
+      if (pull.kind === "stream") {
         // su 模式下 cat 已经通过 exec-out 提权，不需要经过设备上的暂存目录
-        res.setHeader("Content-Length", await cmds.fileSize(job.ctx, job.path));
-        res.attachment(job.name);
-        const child = cmds.cat(job.ctx, job.path);
+        res.setHeader("Content-Length", await cmds.fileSize(pull.ctx, pull.path));
+        res.attachment(pull.name);
+        const child = cmds.cat(pull.ctx, pull.path);
         res.on("close", () => child.kill());
         child.stdout.pipe(res);
         return;
       }
-      res.attachment(job.name);
+      res.attachment(pull.name);
       const zip = new ZipArchive({ zlib: { level: 1 } });
       zip.on("error", (e) => res.destroy(e));
       zip.pipe(res);
-      for (const entry of await fs.readdir(job.dir, { withFileTypes: true })) {
-        const full = path.join(job.dir, entry.name);
+      for (const entry of await fs.readdir(pull.dir, { withFileTypes: true })) {
+        const full = path.join(pull.dir, entry.name);
         if (entry.isDirectory()) zip.directory(full, entry.name);
         else zip.file(full, { name: entry.name });
       }

@@ -1,8 +1,19 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildZip, isPrecompressed } from "./zip.ts";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as adb from "./adb.ts";
+import * as cmds from "./fs-cmds.ts";
+import type { JobHandle } from "./jobs.ts";
+import { buildZip, compressZip, isPrecompressed } from "./zip.ts";
+
+vi.mock("./adb.ts", async (orig) => ({ ...(await orig<typeof import("./adb.ts")>()), pull: vi.fn(), push: vi.fn() }));
+vi.mock("./fs-cmds.ts", async (orig) => ({
+  ...(await orig<typeof import("./fs-cmds.ts")>()),
+  diskUsage: vi.fn(),
+  countSkipped: vi.fn(),
+  uniqueName: vi.fn(),
+}));
 
 /** 读 zip 的中央目录：条目名和压缩方式（0 为存储，8 为 deflate），不依赖系统的 unzip */
 function readZip(file: string) {
@@ -100,5 +111,85 @@ describe("buildZip", () => {
     const done = buildZip(big, path.join(root, "big.zip"), { signal: controller.signal });
     setTimeout(() => controller.abort(), 5);
     await expect(done).rejects.toBeDefined();
+  });
+});
+
+describe("compressZip", () => {
+  const ctx: adb.Ctx = { serial: "S1", root: false };
+
+  /** 记录阶段、进度和 cancelable 的假 JobHandle */
+  function fakeJob() {
+    const controller = new AbortController();
+    const phases: { phase: string; cancelable: boolean }[] = [];
+    const progress: number[] = [];
+    const job: JobHandle = {
+      signal: controller.signal,
+      phase: (phase, opts) => phases.push({ phase, cancelable: opts?.cancelable ?? true }),
+      progress: (f) => progress.push(f),
+      log: () => {},
+    };
+    return { job, controller, phases, progress };
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(cmds.diskUsage).mockResolvedValue(2048);
+    vi.mocked(cmds.countSkipped).mockResolvedValue(2);
+    vi.mocked(cmds.uniqueName).mockImplementation(async (_ctx, _base, name) => name);
+    vi.mocked(adb.pull).mockImplementation(async (_ctx, remote, local) => {
+      writeFileSync(path.join(local, path.basename(remote)), "hello ".repeat(100));
+    });
+  });
+
+  it("依次经过 preparing、pulling、compressing、pushing，推送阶段不可取消", async () => {
+    const { job, phases } = fakeJob();
+    let pushed: { locals: string[]; signal?: AbortSignal } | undefined;
+    vi.mocked(adb.push).mockImplementation(async (_ctx, locals, _dir, signal) => {
+      pushed = { locals, signal };
+      expect(existsSync(locals[0])).toBe(true);
+    });
+    const result = await compressZip(ctx, "/sdcard", ["a.txt"], "a.txt.zip", job);
+    expect(phases).toEqual([
+      { phase: "preparing", cancelable: true },
+      { phase: "pulling", cancelable: true },
+      { phase: "compressing", cancelable: true },
+      { phase: "pushing", cancelable: false },
+    ]);
+    expect(result).toEqual({ path: "/sdcard/a.txt.zip", skipped: 2 });
+    expect(path.basename(pushed?.locals[0] ?? "")).toBe("a.txt.zip");
+    expect(pushed?.signal).toBeUndefined();
+    expect(existsSync(pushed?.locals[0] ?? "")).toBe(false);
+  });
+
+  it("压缩阶段上报进度，空间检查的 diskUsage 带 signal", async () => {
+    const { job, progress } = fakeJob();
+    await compressZip(ctx, "/sdcard", ["a.txt"], "a.txt.zip", job);
+    expect(progress.length).toBeGreaterThan(0);
+    expect(progress.at(-1)).toBe(1);
+    expect(cmds.diskUsage).toHaveBeenCalledWith(ctx, ["/sdcard/a.txt"], job.signal);
+  });
+
+  it("拉取中取消：删除临时目录，不推送", async () => {
+    const { job, controller } = fakeJob();
+    let local = "";
+    vi.mocked(adb.pull).mockImplementation(async (_ctx, _remote, dir, signal) => {
+      local = dir;
+      controller.abort();
+      signal?.throwIfAborted();
+    });
+    await expect(compressZip(ctx, "/sdcard", ["a.txt"], "a.txt.zip", job)).rejects.toBeDefined();
+    expect(existsSync(path.dirname(local))).toBe(false);
+    expect(adb.push).not.toHaveBeenCalled();
+  });
+
+  it("推送失败：删除临时目录并抛出错误", async () => {
+    const { job } = fakeJob();
+    let named = "";
+    vi.mocked(adb.push).mockImplementation(async (_ctx, locals) => {
+      named = locals[0];
+      throw new adb.AdbError("push 失败");
+    });
+    await expect(compressZip(ctx, "/sdcard", ["a.txt"], "a.txt.zip", job)).rejects.toThrow("push 失败");
+    expect(existsSync(path.dirname(named))).toBe(false);
   });
 });

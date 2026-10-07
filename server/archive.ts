@@ -1,9 +1,17 @@
 import posix from "node:path/posix";
 import { Router } from "express";
-import type { ArchiveEntry, ArchiveFormat, ArchiveListing, CompressResult, ExtractResult } from "../shared/types.d.ts";
+import type {
+  ArchiveEntry,
+  ArchiveFormat,
+  ArchiveListing,
+  CompressResult,
+  ExtractResult,
+  JobRef,
+} from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import * as fs from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
+import { startJob } from "./jobs.ts";
 import { ctxOf, pathsOf, wrap } from "./request.ts";
 import { compressZip } from "./zip.ts";
 
@@ -193,11 +201,16 @@ export function archiveRoutes() {
       // 先确认都存在，不存在时给出明确的 404，而不是工具的报错
       for (const n of names) await fs.isDir(ctx, posix.join(base, n));
       const name = packName(names, format);
-      const result: CompressResult =
-        format === "zip"
-          ? await compressZip(ctx, base, names, name)
-          : { path: await fs.pack(ctx, base, names, format, name) };
-      res.json(result.skipped ? result : ({ path: result.path } satisfies CompressResult));
+      const ref = startJob<CompressResult>(req, async (job) => {
+        if (format === "zip") {
+          const result = await compressZip(ctx, base, names, name, job);
+          return result.skipped ? result : { path: result.path };
+        }
+        // tar 系在设备上执行，没有进度，进行中不能取消
+        job.phase("compressing", { cancelable: false });
+        return { path: await fs.pack(ctx, base, names, format, name) };
+      });
+      res.json(ref satisfies JobRef);
     }),
   );
 
