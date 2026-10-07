@@ -44,7 +44,21 @@ export function FilesPage() {
 
   // ---------- 设备 ----------
   const shell = useShell();
-  const { devices, adbError, serial, online, storage, refreshStorage, rootMode, target, flash, openDialog } = shell;
+  const {
+    devices,
+    device,
+    reconnecting,
+    modes,
+    adbError,
+    serial,
+    online,
+    storage,
+    refreshStorage,
+    rootMode,
+    target,
+    flash,
+    openDialog,
+  } = shell;
   const { startTransfer, patchTransfer } = shell;
 
   // ---------- 目录与选择 ----------
@@ -231,7 +245,14 @@ export function FilesPage() {
     >
       <AnimatePresence mode="wait" initial={false}>
         {!online ? (
-          <NoDevice key="none" devices={devices} adbError={adbError} />
+          <NoDevice
+            key="none"
+            devices={devices}
+            device={device}
+            reconnecting={reconnecting}
+            modes={modes}
+            adbError={adbError}
+          />
         ) : (
           <motion.div
             key="browser"

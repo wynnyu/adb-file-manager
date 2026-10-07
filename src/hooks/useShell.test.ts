@@ -23,12 +23,25 @@ describe("useShell", () => {
 });
 
 describe("useShellState", () => {
-  it("没有设备时不在线，target 为 null", async () => {
+  it("没有设备时 adbReady 为 false，target 为 null", async () => {
     vi.spyOn(api, "devices").mockResolvedValue({ devices: [] });
     const { result } = renderHook(() => useShellState(), { wrapper: providers() });
     await vi.waitFor(() => expect(api.devices).toHaveBeenCalled());
-    expect(result.current.online).toBe(false);
+    expect(result.current.adbReady).toBe(false);
     expect(result.current.target).toBeNull();
+  });
+
+  it.each([
+    ["adb 系统模式", { transport: "adb", mode: "system" }, true],
+    ["adb 待授权", { transport: "adb", mode: "unauthorized" }, false],
+    ["fastboot bootloader", { transport: "fastboot", mode: "bootloader" }, false],
+  ] as const)("%s 时的 adbReady", async (_name, patch, expected) => {
+    vi.spyOn(api, "storage").mockResolvedValue({ total: 100, free: 40 });
+    vi.spyOn(api, "devices").mockResolvedValue({ devices: [{ serial: "A", model: "", name: "A", ...patch }] });
+    const { result } = renderHook(() => useShellState(), { wrapper: providers() });
+    await vi.waitFor(() => expect(result.current.serial).toBe("A"));
+    expect(result.current.adbReady).toBe(expected);
+    expect(result.current.device?.serial).toBe("A");
   });
 
   it("closeDialog 传入已被替换的对话框时不关闭当前对话框", () => {

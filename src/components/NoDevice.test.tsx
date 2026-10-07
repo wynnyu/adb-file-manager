@@ -7,8 +7,13 @@ import { NoDevice } from "./NoDevice.tsx";
 
 const dev = (mode: DeviceMode): Device => ({ serial: "A", transport: "adb", mode, model: "", name: "A" });
 
-function setup(devices: Device[]) {
-  render(<NoDevice devices={devices} adbError={null} />, { wrapper: providers() });
+function setup(devices: Device[], { device = devices[0] ?? null, reconnecting = false } = {}) {
+  render(
+    <NoDevice devices={devices} device={device} reconnecting={reconnecting} modes={["system"]} adbError={null} />,
+    {
+      wrapper: providers(),
+    },
+  );
 }
 
 describe("NoDevice", () => {
@@ -24,6 +29,26 @@ describe("NoDevice", () => {
     setup([dev("offline")]);
     expect(screen.queryByRole("button", { name: tz("nodevice.reauthorize") })).toBeNull();
     expect(screen.queryByRole("button", { name: tz("nodevice.restartAdb") })).toBeNull();
+  });
+
+  it("设备处于不符的模式时显示当前模式和所需模式，不显示连接引导", () => {
+    setup([{ ...dev("bootloader"), transport: "fastboot" }]);
+    expect(screen.getByText(tz("nodevice.wrongMode", { mode: tz("device.mode.bootloader") }))).toBeTruthy();
+    expect(screen.getByText(tz("nodevice.needMode", { modes: tz("device.mode.system") }))).toBeTruthy();
+    expect(screen.queryByText(tz("nodevice.step1.title"))).toBeNull();
+    expect(screen.queryByRole("button", { name: tz("nodevice.reauthorize") })).toBeNull();
+  });
+
+  it("离线的设备仍显示连接引导", () => {
+    setup([dev("offline")]);
+    expect(screen.getByText(tz("nodevice.connect"))).toBeTruthy();
+    expect(screen.getByText(tz("nodevice.step1.title"))).toBeTruthy();
+  });
+
+  it("等待重新连接时显示提示，不显示连接引导", () => {
+    setup([], { device: dev("system"), reconnecting: true });
+    expect(screen.getByText(tz("nodevice.reconnecting"))).toBeTruthy();
+    expect(screen.queryByText(tz("nodevice.step1.title"))).toBeNull();
   });
 
   it("点击按钮调用对应接口", async () => {

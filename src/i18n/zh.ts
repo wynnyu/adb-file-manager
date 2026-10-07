@@ -119,6 +119,9 @@ export const zh = {
   "nodevice.tip2": "在“开发者选项”中选择“撤销 USB 调试授权”，然后重新连接",
   "nodevice.tip3": "部分机型需要把 USB 模式改为“文件传输”才会弹出授权提示",
   "nodevice.connect": "请连接设备",
+  "nodevice.wrongMode": "设备当前处于 {mode}",
+  "nodevice.needMode": "此功能需要设备处于 {modes}",
+  "nodevice.reconnecting": "等待设备重新连接",
   "nodevice.waiting": "正在等待设备……",
   "nodevice.adbError": "adb 错误：{error}",
 

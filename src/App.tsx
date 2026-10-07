@@ -21,8 +21,11 @@ export default function App() {
     [setModuleId],
   );
   const nav = useMemo(() => ({ items: NAV_ITEMS, current: current.id, onChange }), [current.id, onChange]);
-  const shell = useMemo(() => ({ ...state, nav }), [state, nav]);
-  const { online, transfers, dismissTransfer, toast, dialog, closeDialog } = state;
+  const { device, reconnecting, transfers, dismissTransfer, toast, dialog, closeDialog } = state;
+  const { modes } = current;
+  // online 随当前模块变化：同一台设备在 bootloader 模式下，文件模块不可用，fastboot 模块可用
+  const online = device != null && !reconnecting && modes.includes(device.mode);
+  const shell = useMemo(() => ({ ...state, nav, online, modes }), [state, nav, online, modes]);
   const { Page, Tip } = current;
 
   return (

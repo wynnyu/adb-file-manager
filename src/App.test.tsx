@@ -61,4 +61,15 @@ describe("App", () => {
     // 只有一个模块时不显示模块导航
     expect(screen.queryByRole("navigation", { name: tz("nav.label") })).toBeNull();
   });
+
+  it("设备模式不在当前模块的 modes 内时 online 为 false，显示当前模式", async () => {
+    vi.spyOn(api, "devices").mockResolvedValue({
+      devices: [{ ...phone, transport: "fastboot", mode: "bootloader" }],
+    });
+    const ls = vi.spyOn(api, "ls").mockResolvedValue([]);
+    setup();
+    expect(await screen.findByText(tz("nodevice.wrongMode", { mode: tz("device.mode.bootloader") }))).toBeTruthy();
+    expect(screen.queryByRole("button", { name: tz("toolbar.refresh") })).toBeNull();
+    expect(ls).not.toHaveBeenCalled();
+  });
 });

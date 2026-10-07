@@ -127,6 +127,9 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "nodevice.tip2": "Choose “Revoke USB debugging authorizations” in Developer options, then reconnect",
   "nodevice.tip3": "Some models only show the prompt when the USB mode is set to “File transfer”",
   "nodevice.connect": "Connect a device",
+  "nodevice.wrongMode": "Device is currently in {mode}",
+  "nodevice.needMode": "This feature requires the device to be in {modes}",
+  "nodevice.reconnecting": "Waiting for the device to reconnect",
   "nodevice.waiting": "Waiting for a device…",
   "nodevice.adbError": "adb error: {error}",
 

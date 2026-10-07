@@ -13,7 +13,7 @@ import { ThemePicker } from "./ThemePicker.tsx";
 export function Header() {
   const t = useT();
   const {
-    online,
+    adbReady,
     rootMode,
     askEnableRoot,
     disableRoot,
@@ -36,7 +36,7 @@ export function Header() {
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
             <span className="truncate">{t("app.name")}</span>
             <AnimatePresence>
-              {rootMode && online && (
+              {rootMode && adbReady && (
                 <motion.span
                   initial={{ scale: 0, rotate: -20 }}
                   animate={{ scale: 1, rotate: 0 }}
@@ -53,7 +53,7 @@ export function Header() {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {online && (
+        {adbReady && (
           <motion.button
             type="button"
             title={rootMode ? t("toolbar.rootOff") : t("toolbar.rootOn")}
