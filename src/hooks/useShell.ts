@@ -5,8 +5,8 @@ import type { Target } from "../lib/index.ts";
 import type { Device, DeviceMode, StorageInfo } from "../types.ts";
 import { useDevices, useStorage } from "./useDevices.ts";
 import { useRootMode } from "./useRootMode.ts";
+import { type Tasks, useTasks } from "./useTasks.ts";
 import { type Flash, type ToastState, useToast } from "./useToast.ts";
-import { type Transfers, useTransfers } from "./useTransfers.ts";
 
 /** 外壳提供给各模块的状态：设备、root、提示、对话框和传输队列 */
 export interface Shell {
@@ -39,10 +39,10 @@ export interface Shell {
   openDialog: (d: DialogState) => void;
   /** 传入打开的那个对话框时，只有它仍是当前对话框才关闭，避免误关随后打开的新对话框 */
   closeDialog: (d?: DialogState) => void;
-  transfers: Transfers["transfers"];
-  startTransfer: Transfers["startTransfer"];
-  patchTransfer: Transfers["patchTransfer"];
-  dismissTransfer: Transfers["dismissTransfer"];
+  tasks: Tasks["tasks"];
+  startTask: Tasks["startTask"];
+  patchTask: Tasks["patchTask"];
+  dismissTask: Tasks["dismissTask"];
   /** 模块导航；由 App 根据模块注册表提供，useShellState 不包含 */
   nav: ModuleNavState;
 }
@@ -64,7 +64,7 @@ export function useShellState(): ShellState {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const closeDialog = useCallback((d?: DialogState) => setDialog((cur) => (d && cur !== d ? cur : null)), []);
   const { toast, flash } = useToast();
-  const { transfers, startTransfer, patchTransfer, dismissTransfer } = useTransfers();
+  const { tasks, startTask, patchTask, dismissTask } = useTasks();
 
   const { devices, device, reconnecting, adbError, fastbootMissing, serial, setSerial } = useDevices();
   const adbReady = !reconnecting && device?.transport === "adb" && device.mode === "system";
@@ -98,10 +98,10 @@ export function useShellState(): ShellState {
       dialog,
       openDialog: setDialog,
       closeDialog,
-      transfers,
-      startTransfer,
-      patchTransfer,
-      dismissTransfer,
+      tasks,
+      startTask,
+      patchTask,
+      dismissTask,
     }),
     [
       devices,
@@ -122,10 +122,10 @@ export function useShellState(): ShellState {
       flash,
       dialog,
       closeDialog,
-      transfers,
-      startTransfer,
-      patchTransfer,
-      dismissTransfer,
+      tasks,
+      startTask,
+      patchTask,
+      dismissTask,
     ],
   );
 }

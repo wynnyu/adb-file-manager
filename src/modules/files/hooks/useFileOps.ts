@@ -1,7 +1,7 @@
 import { FolderPlus, Pencil, Skull, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import type { DialogState } from "../../../components/overlays/index.ts";
-import type { Transfers } from "../../../hooks/index.ts";
+import type { Tasks } from "../../../hooks/index.ts";
 import type { T } from "../../../i18n/index.tsx";
 import { useT } from "../../../i18n/index.tsx";
 import { api, joinPath, loadPref, parentPath, savePref, type Target } from "../../../lib/index.ts";
@@ -31,7 +31,7 @@ export function useFileOps({
   path,
   clip,
   setClip,
-  transfers: { startTransfer, patchTransfer },
+  tasks: { startTask, patchTask },
   reload,
   afterChange,
   refreshStorage,
@@ -43,7 +43,7 @@ export function useFileOps({
   path: string;
   clip: Clip | null;
   setClip: (c: Clip | null) => void;
-  transfers: Pick<Transfers, "startTransfer" | "patchTransfer">;
+  tasks: Pick<Tasks, "startTask" | "patchTask">;
   reload: Directory["reload"];
   afterChange: Directory["afterChange"];
   refreshStorage: () => void;
@@ -55,22 +55,22 @@ export function useFileOps({
     async (items: UploadItem[], dest = path) => {
       if (!target || !online || !items.length) return;
       const tops = new Set(items.map((i) => i.path.split("/")[0]));
-      const id = startTransfer({ kind: "upload", label: batchLabel([...tops], t), status: "uploading", progress: 0 });
+      const id = startTask({ kind: "upload", label: batchLabel([...tops], t), status: "uploading", progress: 0 });
       try {
         await api.upload(target, dest, items, (p) =>
-          patchTransfer(id, p >= 1 ? { status: "pushing", progress: undefined } : { progress: p }),
+          patchTask(id, p >= 1 ? { status: "pushing", progress: undefined } : { progress: p }),
         );
-        patchTransfer(id, { status: "done" });
+        patchTask(id, { status: "done" });
         refreshStorage();
         void reload(true);
       } catch (e) {
-        patchTransfer(id, { status: "error", error: (e as Error).message });
+        patchTask(id, { status: "error", error: (e as Error).message });
         // 多项时可能已经推送了一部分
         refreshStorage();
         void reload(true);
       }
     },
-    [target, online, path, reload, startTransfer, patchTransfer, refreshStorage, t],
+    [target, online, path, reload, startTask, patchTask, refreshStorage, t],
   );
 
   const download = useCallback(
@@ -80,18 +80,18 @@ export function useFileOps({
         targets.map((x) => x.name),
         t,
       );
-      const id = startTransfer({ kind: "download", label, status: "pulling" });
+      const id = startTask({ kind: "download", label, status: "pulling" });
       try {
         await api.download(
           target,
           targets.map((x) => x.path),
         );
-        patchTransfer(id, { status: "done" });
+        patchTask(id, { status: "done" });
       } catch (e) {
-        patchTransfer(id, { status: "error", error: (e as Error).message });
+        patchTask(id, { status: "error", error: (e as Error).message });
       }
     },
-    [target, startTransfer, patchTransfer, t],
+    [target, startTask, patchTask, t],
   );
 
   const paste = useCallback(
@@ -103,43 +103,43 @@ export function useFileOps({
         t,
       );
       const move = mode === "cut";
-      const id = startTransfer({ kind: move ? "move" : "copy", label, status: move ? "moving" : "copying" });
+      const id = startTask({ kind: move ? "move" : "copy", label, status: move ? "moving" : "copying" });
       try {
         await (move ? api.move : api.copy)(
           target,
           items.map((i) => i.path),
           dest,
         );
-        patchTransfer(id, { status: "done" });
+        patchTask(id, { status: "done" });
         // 剪切的只能粘贴一次；拷贝的可以继续粘贴到别处
         if (move) setClip(null);
         else refreshStorage();
         await afterChange(move ? items.map((i) => [i.path, joinPath(dest, i.name)]) : [], true);
       } catch (e) {
-        patchTransfer(id, { status: "error", error: (e as Error).message });
+        patchTask(id, { status: "error", error: (e as Error).message });
         // 多项时可能已经完成了一部分
         void reload(true);
       }
     },
-    [target, clip, setClip, t, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
+    [target, clip, setClip, t, startTask, patchTask, refreshStorage, afterChange, reload],
   );
 
   const extract = useCallback(
     async (entry: FileEntry) => {
       if (!target) return;
-      const id = startTransfer({ kind: "extract", label: entry.name, status: "extracting" });
+      const id = startTask({ kind: "extract", label: entry.name, status: "extracting" });
       try {
         await api.extract(target, entry.path);
-        patchTransfer(id, { status: "done" });
+        patchTask(id, { status: "done" });
         refreshStorage();
         await afterChange([], true);
       } catch (e) {
-        patchTransfer(id, { status: "error", error: (e as Error).message });
+        patchTask(id, { status: "error", error: (e as Error).message });
         // 中途失败时可能已经解出了一部分
         void reload(true);
       }
     },
-    [target, startTransfer, patchTransfer, refreshStorage, afterChange, reload],
+    [target, startTask, patchTask, refreshStorage, afterChange, reload],
   );
 
   const compress = useCallback(
@@ -149,26 +149,23 @@ export function useFileOps({
         targets.map((x) => x.name),
         t,
       );
-      const id = startTransfer({ kind: "compress", label, status: "compressing" });
+      const id = startTask({ kind: "compress", label, status: "compressing" });
       try {
         const { skipped } = await api.compress(
           target,
           targets.map((x) => x.path),
           format,
         );
-        patchTransfer(
-          id,
-          skipped ? { status: "done", note: t("transfer.skipped", { n: skipped }) } : { status: "done" },
-        );
+        patchTask(id, skipped ? { status: "done", note: t("task.skipped", { n: skipped }) } : { status: "done" });
         refreshStorage();
         await afterChange([], true);
       } catch (e) {
-        patchTransfer(id, { status: "error", error: (e as Error).message });
+        patchTask(id, { status: "error", error: (e as Error).message });
         // 失败时设备上已清理暂存文件，刷新是为了让多项压缩前后的列表一致
         void reload(true);
       }
     },
-    [target, startTransfer, patchTransfer, refreshStorage, afterChange, reload, t],
+    [target, startTask, patchTask, refreshStorage, afterChange, reload, t],
   );
 
   const askDelete = useCallback(

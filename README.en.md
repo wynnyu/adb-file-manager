@@ -86,7 +86,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 - Upload via the button or by dragging files and folders into the window, with directory structure preserved
 - Downloads start from the context menu, the selection bar or the download button in the viewer. Single files are downloaded as is; folders and multiple selections are downloaded as a zip archive
-- A transfer queue displays the progress and result of each task
+- A task queue displays the progress and result of each task
 
 **Organizing**
 
@@ -206,7 +206,7 @@ server/
 shared/
   types.d.ts    API data types shared by the backend and frontend
 src/
-  App.tsx       shell: composes devices, root, toasts, dialogs, the transfer queue and the current module
+  App.tsx       shell: composes devices, root, toasts, dialogs, the task queue and the current module
   modules/      feature modules; index.ts is the module registry
     files/      the file manager module, split into hooks, components and lib
       hooks/        state and interaction logic: directories, selection, file operations, shortcuts
@@ -217,11 +217,11 @@ src/
         bookmarks/  quick links and the bookmark editor
         viewer/     the viewer
         overlays/   context menu items, the properties sheet, drop hint
-  hooks/        shared state and interaction logic: devices, root, toasts, the transfer queue, shell state
+  hooks/        shared state and interaction logic: devices, root, toasts, the task queue, shell state
   lib/          shared frontend helpers: API requests, formatting, preferences, theme switching
   components/   shared UI components; ui.tsx holds the building blocks
     shell/      header, device, language and theme pickers, module navigation, page layout
-    overlays/   dialogs, context menus, toasts, transfer queue
+    overlays/   dialogs, context menus, toasts, task queue
   i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
   test/         setup and shared helpers for frontend tests
   *.test.ts(x)  unit tests for hooks and components, next to the modules under test (vitest + jsdom)

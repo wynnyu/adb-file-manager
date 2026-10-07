@@ -66,10 +66,10 @@
 ### S5 任务（job）与进度推送
 
 - [ ] 后端通用任务管理：id、状态、进度、输出日志、取消（`AbortSignal` 传到 `execFile` / `spawn`）、完成结果；`/api/jobs/:id/events` 以 SSE 推送，不新增依赖
-- [ ] 前端 `TransferQueue` 与 `useTransfers` 改为通用任务队列，`Transfer.kind` 扩展
+- [ ] 前端 `TaskQueue` 与 `useTasks` 改为通用任务队列，`Transfer.kind` 扩展
 - [ ] 用现有的 pull 和压缩验证：显示进度（先 `du` 取总量，再按临时目录增长估算）并支持取消
 
-关键文件：`server/transfer.ts`、`server/zip.ts`、`src/hooks/useTransfers.ts`、`src/components/overlays/TransferQueue.tsx`、`shared/types.d.ts`
+关键文件：`server/transfer.ts`、`server/zip.ts`、`src/hooks/useTasks.ts`、`src/components/overlays/TaskQueue.tsx`、`shared/types.d.ts`
 
 ### S6 应用管理：列表与详情
 
@@ -127,12 +127,12 @@
 ### S3
 
 - 目录与依赖规则见 AGENTS.md 的“前端结构”：模块在 `src/modules/<名称>/`，内部分 `hooks/`、`components/`、`lib/`，对外只经模块的 `index.ts`；模块可以导入 `src/hooks`、`src/components`、`src/lib`，共用代码不导入 `modules/`，模块之间不互相导入。文件模块的 `index.ts` 只导出 `FilesPage` 和 `UsageTip`
-- `ShellContext` 的值（`hooks/useShell.ts`）：`devices`、`adbError`、`serial`、`setSerial`、`online`、`storage`、`refreshStorage`、`rootMode`、`askEnableRoot`、`disableRoot`、`target`、`toast`、`flash`、`dialog`、`openDialog`、`closeDialog`、`transfers`、`startTransfer`、`patchTransfer`、`dismissTransfer`、`nav`。`useShellState()` 提供除 `nav` 以外的部分，`nav`（模块列表、当前模块、切换回调）由 `App` 根据 `MODULES` 补上，因为注册表导入了各模块页面，反过来由页面传会形成循环。`closeDialog` 可传入打开的那个对话框，只有它仍是当前对话框才关闭
-- 注册新模块：在 `modules/index.ts` 的 `MODULES` 加一项（同时扩展 `ModuleId`、加 `nav.<id>` 文案），页面用 `ShellLayout` 作骨架并从 `useShell()` 取设备和传输队列；`Tip` 可选，设备在线时显示在传输队列里。只有一个模块时不显示 `ModuleNav`；`afm.module` 中存储的 id 无效时回退到第一个模块。切换模块时页面卸载，`useShortcuts` 的 window 监听随之移除，新模块如需全局监听照此在页面内注册
-- `ShellLayout` 的 `overlays` 属性放页面自己的浮层，与页面共用整窗拖放区域；`TransferQueue`、`Toast`、`Dialog` 在 `App` 中、页面之后渲染，所以传输卡片和提示显示在页面的属性页、右键菜单之上
+- `ShellContext` 的值（`hooks/useShell.ts`）：`devices`、`adbError`、`serial`、`setSerial`、`online`、`storage`、`refreshStorage`、`rootMode`、`askEnableRoot`、`disableRoot`、`target`、`toast`、`flash`、`dialog`、`openDialog`、`closeDialog`、`tasks`、`startTask`、`patchTask`、`dismissTask`、`nav`。`useShellState()` 提供除 `nav` 以外的部分，`nav`（模块列表、当前模块、切换回调）由 `App` 根据 `MODULES` 补上，因为注册表导入了各模块页面，反过来由页面传会形成循环。`closeDialog` 可传入打开的那个对话框，只有它仍是当前对话框才关闭
+- 注册新模块：在 `modules/index.ts` 的 `MODULES` 加一项（同时扩展 `ModuleId`、加 `nav.<id>` 文案），页面用 `ShellLayout` 作骨架并从 `useShell()` 取设备和任务队列；`Tip` 可选，设备在线时显示在任务队列里。只有一个模块时不显示 `ModuleNav`；`afm.module` 中存储的 id 无效时回退到第一个模块。切换模块时页面卸载，`useShortcuts` 的 window 监听随之移除，新模块如需全局监听照此在页面内注册
+- `ShellLayout` 的 `overlays` 属性放页面自己的浮层，与页面共用整窗拖放区域；`TaskQueue`、`Toast`、`Dialog` 在 `App` 中、页面之后渲染，所以任务卡片和提示显示在页面的属性页、右键菜单之上
 - `components/overlays/Dialog.tsx` 的 `bookmark` 类型仍导入文件模块的 `BookmarkForm` 和 `BookmarkFields`，是共用代码导入模块的唯一例外。后续模块需要自定义表单时，把对话框的 `kind` 泛化为可由模块提供内容的形式
 - 保留的内部标识：`afm.` 偏好前缀、电脑临时目录 `adb-file-manager`、设备端 `adbfm-` 前缀、GitHub 仓库地址。改动它们会丢失已有偏好或留下残留，仓库改名由用户自行决定
-- S5 的传输队列已在外壳中：`useTransfers` 的状态在 `useShellState` 里，模块用 `startTransfer`、`patchTransfer` 登记任务，`TransferQueue` 在 `App` 中渲染，不属于任何模块
+- S5 的任务队列已在外壳中：`useTasks` 的状态在 `useShellState` 里，模块用 `startTask`、`patchTask` 登记任务，`TaskQueue` 在 `App` 中渲染，不属于任何模块
 
 ### S4
 

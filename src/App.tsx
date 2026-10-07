@@ -1,6 +1,6 @@
 import { AnimatePresence } from "motion/react";
 import { useCallback, useMemo } from "react";
-import { Dialog, Toast, TransferQueue } from "./components/overlays/index.ts";
+import { Dialog, TaskQueue, Toast } from "./components/overlays/index.ts";
 import type { ModuleNavItem } from "./components/shell/index.ts";
 import { ShellContext, useShellState } from "./hooks/index.ts";
 import { usePref } from "./lib/index.ts";
@@ -21,7 +21,7 @@ export default function App() {
     [setModuleId],
   );
   const nav = useMemo(() => ({ items: NAV_ITEMS, current: current.id, onChange }), [current.id, onChange]);
-  const { device, reconnecting, transfers, dismissTransfer, toast, dialog, closeDialog } = state;
+  const { device, reconnecting, tasks, dismissTask, toast, dialog, closeDialog } = state;
   const { modes } = current;
   // online 随当前模块变化：同一台设备在 bootloader 模式下，文件模块不可用，fastboot 模块可用
   const online = device != null && !reconnecting && modes.includes(device.mode);
@@ -32,9 +32,9 @@ export default function App() {
     <ShellContext value={shell}>
       <Page />
 
-      <TransferQueue items={transfers} onDismiss={dismissTransfer}>
+      <TaskQueue items={tasks} onDismiss={dismissTask}>
         {online && Tip && <Tip />}
-      </TransferQueue>
+      </TaskQueue>
 
       <Toast toast={toast} />
 

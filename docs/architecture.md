@@ -136,18 +136,18 @@ sequenceDiagram
 
 ## 前端结构
 
-前端分为外壳和模块两层。外壳负责设备、root 模式、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是一个整页，文件管理是第一个模块，位于 `src/modules/files/`。`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 只负责组装：调用 `useShellState()` 得到外壳状态，加上模块导航后放进 `ShellContext`，渲染当前模块的 `Page`，并在页面之外渲染全局浮层（`TransferQueue`、`Toast`、`Dialog`）。
+前端分为外壳和模块两层。外壳负责设备、root 模式、语言、主题、提示、对话框、任务队列和模块导航；每个功能模块是一个整页，文件管理是第一个模块，位于 `src/modules/files/`。`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 只负责组装：调用 `useShellState()` 得到外壳状态，加上模块导航后放进 `ShellContext`，渲染当前模块的 `Page`，并在页面之外渲染全局浮层（`TaskQueue`、`Toast`、`Dialog`）。
 
 ```mermaid
 flowchart TB
   main["main.tsx"] --> App["App.tsx"]
-  App --> state["useShellState<br/>设备、root、提示、对话框、传输队列"]
+  App --> state["useShellState<br/>设备、root、提示、对话框、任务队列"]
   App --> ctx["ShellContext<br/>外壳状态加模块导航"]
   App --> registry["modules/index.ts<br/>MODULES 注册表"]
   registry --> files["modules/files/<br/>FilesPage、UsageTip"]
   ctx -. "useShell()" .-> files
   ctx -. "useShell()" .-> shellui["components/shell/<br/>Header、ModuleNav、ShellLayout"]
-  App --> overlays["components/overlays/<br/>TransferQueue、Toast、Dialog"]
+  App --> overlays["components/overlays/<br/>TaskQueue、Toast、Dialog"]
   files --> shared["hooks/、components/、lib/<br/>共用代码"]
   shared --> i18n["i18n/<br/>中英文文案"]
   shared --> shared_types["shared/types.d.ts<br/>前后端共用类型"]
@@ -167,10 +167,10 @@ src/
       hooks/              文件管理的状态与交互逻辑
       components/         bookmarks/ toolbar/ views/ viewer/ overlays/ 和 UploadInputs.tsx
       lib/                archive、bookmarks、code、drop、entries、kinds、markdown，以及目录和文件相关的查询
-  hooks/                  共用：useDevices useReauthorize useRootMode useToast useTransfers useShell
+  hooks/                  共用：useDevices useReauthorize useRootMode useToast useTasks useShell
   components/
     shell/                Header DeviceSelect LanguagePicker ThemePicker ModuleNav ShellLayout
-    overlays/             共用浮层：ContextMenu Dialog DialogMessage Toast TransferQueue
+    overlays/             共用浮层：ContextMenu Dialog DialogMessage Toast TaskQueue
     NoDevice.tsx ui.tsx
   lib/                    共用：api prefs format theme favicon，以及只含 queryClient 的 queries.ts
   i18n/  test/  types.ts
@@ -199,12 +199,12 @@ src/
 | `target` | 当前设备加 root 方式（`{ serial, root }`），没有设备时为 `null` |
 | `toast`、`flash` | 顶部提示 |
 | `dialog`、`openDialog`、`closeDialog` | 当前对话框；`closeDialog` 传入打开的那个对话框时，只有它仍是当前对话框才关闭 |
-| `transfers`、`startTransfer`、`patchTransfer`、`dismissTransfer` | 传输队列 |
+| `tasks`、`startTask`、`patchTask`、`dismissTask` | 任务队列 |
 | `nav` | 模块导航（`items`、`current`、`onChange`），由 `App` 根据 `MODULES` 生成，`useShellState` 不包含 |
 
 `useShell()` 在没有 Provider 时抛出错误。外壳回调保持稳定，整个值用 `useMemo`。
 
-新增模块的步骤：在 `modules/<名称>/` 下建立页面，页面用 `ShellLayout` 作为骨架，从 `useShell()` 取设备和传输队列；在 `modules/index.ts` 的 `MODULES` 中加一项（`ModuleId` 联合类型、图标、`nav.*` 文案键、`modes`、`Page`，需要时加 `Tip`）。`modes` 声明模块可用的设备模式，当前设备处于其他模式时页面显示 `NoDevice` 的模式提示。`ModuleNav` 仅在模块多于一个时显示，当前模块记录在 `afm.module`，存储的 id 无效时回退到第一个模块。切换模块时页面卸载，模块在 `window` 上注册的监听（例如 `useShortcuts`）随之移除。
+新增模块的步骤：在 `modules/<名称>/` 下建立页面，页面用 `ShellLayout` 作为骨架，从 `useShell()` 取设备和任务队列；在 `modules/index.ts` 的 `MODULES` 中加一项（`ModuleId` 联合类型、图标、`nav.*` 文案键、`modes`、`Page`，需要时加 `Tip`）。`modes` 声明模块可用的设备模式，当前设备处于其他模式时页面显示 `NoDevice` 的模式提示。`ModuleNav` 仅在模块多于一个时显示，当前模块记录在 `afm.module`，存储的 id 无效时回退到第一个模块。切换模块时页面卸载，模块在 `window` 上注册的监听（例如 `useShortcuts`）随之移除。
 
 `ShellLayout` 提供 `min-h-dvh` 容器、`max-w-6xl` 列、顶栏、模块导航和主面板，页面通过 `dropProps`（整窗拖放）、`children`（面板内容）、`panelOverlay`（面板内的绝对定位提示）和 `overlays`（页面自己的浮层）填充。浮层放在面板外面，不能放进带 transform 的元素，否则 `fixed` 定位会失效。
 
@@ -217,7 +217,7 @@ src/
 | `useReauthorize` | `hooks/` | 待授权时“重新请求授权”“重启 adb 服务”的进行状态和错误 | 无 |
 | `useStorage` | `hooks/` | 当前设备的存储空间 | 无 |
 | `useRootMode` | `hooks/` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
-| `useTransfers` | `hooks/` | 传输队列 | 无 |
+| `useTasks` | `hooks/` | 任务队列 | 无 |
 | `useToast` | `hooks/` | 顶部提示 | 无 |
 | `useSelection` | `modules/files/hooks/` | 选中的路径、连选起点 | 无 |
 | `useSelectionActions` | `modules/files/hooks/` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
@@ -255,7 +255,7 @@ flowchart LR
     useDevices
     useReauthorize
     useRootMode
-    useTransfers
+    useTasks
     useToast
   end
 
@@ -298,7 +298,7 @@ flowchart LR
   useShell --> useDevices
   useShell --> useRootMode
   useShell --> useToast
-  useShell --> useTransfers
+  useShell --> useTasks
   useDevices --> api
   useReauthorize --> api
   useRootMode --> api
@@ -317,7 +317,7 @@ flowchart LR
   useFileOps --> format
   useFileOps --> prefs
   useFileOps -.-> useDirectory
-  useFileOps -.-> useTransfers
+  useFileOps -.-> useTasks
   useFileOps -.-> drop
   useFileOps -.-> Dialog
   useClipboard -.-> useToast
@@ -349,7 +349,7 @@ flowchart LR
   App["App.tsx"]
   subgraph shellComps["components/（共用）"]
     shell["shell/<br/>Header、DeviceSelect、<br/>LanguagePicker、ThemePicker、<br/>ModuleNav、ShellLayout"]
-    sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、Toast、<br/>TransferQueue"]
+    sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、Toast、<br/>TaskQueue"]
     noDevice["NoDevice"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
   end
@@ -447,7 +447,7 @@ sequenceDiagram
   participant S as /api/files/upload
   participant T as 电脑临时目录
   participant P as 设备
-  F->>F: startTransfer（uploading）
+  F->>F: startTask（uploading）
   F->>A: api.upload(target, dest, items, onProgress)
   A->>S: XHR multipart：paths（JSON）+ files
   A-->>F: 进度 0 到 1，完成后转为 pushing
@@ -462,7 +462,7 @@ sequenceDiagram
   S->>T: 删除临时文件
   S-->>A: { ok, count }
   A-->>F: resolve
-  F->>F: patchTransfer（done），刷新存储空间和当前目录
+  F->>F: patchTask（done），刷新存储空间和当前目录
 ```
 
 ### 下载
@@ -477,7 +477,7 @@ sequenceDiagram
   participant A as lib/api.ts
   participant S as /api/files/extract
   participant P as 设备
-  F->>F: startTransfer（extracting）
+  F->>F: startTask（extracting）
   F->>A: api.extract(target, path)
   A->>S: POST { serial, path, root? }
   S->>P: unzip -lv 或 tar -tv，列出全部条目
@@ -487,7 +487,7 @@ sequenceDiagram
   S->>P: 删除暂存目录（失败时也删除）
   S-->>A: { path }
   A-->>F: resolve
-  F->>F: patchTransfer（done），刷新存储空间和当前目录
+  F->>F: patchTask（done），刷新存储空间和当前目录
 ```
 
 解压失败时（含安全检查不通过）任务显示错误，并刷新当前目录，因为中途失败时可能已经解出了一部分。
@@ -501,7 +501,7 @@ sequenceDiagram
   participant S as /api/files/compress
   participant T as 电脑临时目录
   participant P as 设备
-  F->>F: startTransfer（compressing）
+  F->>F: startTask（compressing）
   F->>A: api.compress(target, paths, format)
   A->>S: POST { serial, paths, format, root? }
   S->>S: packBase：去重、取公共父目录、得到相对名称
@@ -517,10 +517,10 @@ sequenceDiagram
   end
   S-->>A: { path, skipped? }
   A-->>F: resolve
-  F->>F: patchTransfer（done，有 skipped 时带说明），刷新存储空间和当前目录
+  F->>F: patchTask（done，有 skipped 时带说明），刷新存储空间和当前目录
 ```
 
-压缩失败时任务显示错误，并刷新当前目录。zip 有被跳过的条目时，传输卡片显示说明且不会自动消失。
+压缩失败时任务显示错误，并刷新当前目录。zip 有被跳过的条目时，任务卡片显示说明且不会自动消失。
 
 ### root 模式
 

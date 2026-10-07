@@ -59,7 +59,7 @@ export function FilesPage() {
     flash,
     openDialog,
   } = shell;
-  const { startTransfer, patchTransfer } = shell;
+  const { startTask, patchTask } = shell;
 
   // ---------- 目录与选择 ----------
   const selection = useSelection();
@@ -104,7 +104,7 @@ export function FilesPage() {
     path,
     clip,
     setClip,
-    transfers: { startTransfer, patchTransfer },
+    tasks: { startTask, patchTask },
     reload,
     afterChange,
     refreshStorage,

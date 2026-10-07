@@ -25,7 +25,7 @@ export type {
   UploadResult,
 } from "../shared/types.d.ts";
 
-export type TransferStatus =
+export type TaskStatus =
   | "uploading"
   | "pushing"
   | "pulling"
@@ -36,11 +36,11 @@ export type TransferStatus =
   | "done"
   | "error";
 
-export interface Transfer {
+export interface Task {
   id: string;
   kind: "upload" | "download" | "copy" | "move" | "extract" | "compress";
   label: string;
-  status: TransferStatus;
+  status: TaskStatus;
   /** 0 到 1，仅浏览器传到电脑的阶段可知 */
   progress?: number;
   error?: string;

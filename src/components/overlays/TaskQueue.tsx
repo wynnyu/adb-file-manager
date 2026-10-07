@@ -13,10 +13,10 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import type { MessageKey } from "../../i18n/index.tsx";
 import { useT } from "../../i18n/index.tsx";
-import type { Transfer } from "../../types.ts";
+import type { Task } from "../../types.ts";
 import { spring, springPop } from "../ui.tsx";
 
-const kindIcon: Record<Transfer["kind"], LucideIcon> = {
+const kindIcon: Record<Task["kind"], LucideIcon> = {
   upload: ArrowUpFromLine,
   download: ArrowDownToLine,
   copy: Copy,
@@ -25,7 +25,7 @@ const kindIcon: Record<Transfer["kind"], LucideIcon> = {
   compress: Package,
 };
 /** 写全类名，Tailwind 才扫得到 */
-const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
+const kindTint: Record<Task["kind"], { badge: string; bar: string }> = {
   upload: { badge: "bg-accent/20 text-accent", bar: "bg-accent" },
   download: { badge: "bg-blue/20 text-blue", bar: "bg-blue" },
   copy: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
@@ -34,25 +34,25 @@ const kindTint: Record<Transfer["kind"], { badge: string; bar: string }> = {
   compress: { badge: "bg-peach/20 text-peach", bar: "bg-peach" },
 };
 
-const statusText: Record<Transfer["status"], MessageKey> = {
-  uploading: "transfer.uploading",
-  pushing: "transfer.pushing",
-  pulling: "transfer.pulling",
-  copying: "transfer.copying",
-  moving: "transfer.moving",
-  extracting: "transfer.extracting",
-  compressing: "transfer.compressing",
-  done: "transfer.done",
-  error: "transfer.error",
+const statusText: Record<Task["status"], MessageKey> = {
+  uploading: "task.uploading",
+  pushing: "task.pushing",
+  pulling: "task.pulling",
+  copying: "task.copying",
+  moving: "task.moving",
+  extracting: "task.extracting",
+  compressing: "task.compressing",
+  done: "task.done",
+  error: "task.error",
 };
 
 /** 右下角的传输卡片；children 排在最下面（首次使用的提示），和传输卡片共用这一角，不会互相盖住 */
-export function TransferQueue({
+export function TaskQueue({
   items,
   onDismiss,
   children,
 }: {
-  items: Transfer[];
+  items: Task[];
   onDismiss: (id: string) => void;
   children?: ReactNode;
 }) {

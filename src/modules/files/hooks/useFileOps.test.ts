@@ -16,8 +16,8 @@ const b = file("/sdcard/b.txt");
 function setup({ rootMode = false, online = true, clip = null as Clip | null, t = target as Target | null } = {}) {
   const deps = {
     setClip: vi.fn(),
-    startTransfer: vi.fn(() => "job" as ReturnType<typeof crypto.randomUUID>),
-    patchTransfer: vi.fn(),
+    startTask: vi.fn(() => "job" as ReturnType<typeof crypto.randomUUID>),
+    patchTask: vi.fn(),
     reload: vi.fn(async () => {}),
     afterChange: vi.fn(async () => {}),
     refreshStorage: vi.fn(),
@@ -32,7 +32,7 @@ function setup({ rootMode = false, online = true, clip = null as Clip | null, t 
         path: "/sdcard",
         clip,
         setClip: deps.setClip,
-        transfers: { startTransfer: deps.startTransfer, patchTransfer: deps.patchTransfer },
+        tasks: { startTask: deps.startTask, patchTask: deps.patchTask },
         reload: deps.reload,
         afterChange: deps.afterChange,
         refreshStorage: deps.refreshStorage,
@@ -69,14 +69,14 @@ describe("useFileOps", () => {
         onProgress(0.5);
         onProgress(1);
       });
-      const { result, startTransfer, patchTransfer, reload, refreshStorage } = setup();
+      const { result, startTask, patchTask, reload, refreshStorage } = setup();
       const items = [upItem("photos/1.jpg"), upItem("photos/2.jpg")];
       await act(() => result.current.upload(items));
 
       expect(api.upload).toHaveBeenCalledWith(target, "/sdcard", items, expect.any(Function));
       // 同一个文件夹里的文件只算一项
-      expect(startTransfer).toHaveBeenCalledWith({ kind: "upload", label: "photos", status: "uploading", progress: 0 });
-      expect(patchTransfer.mock.calls).toEqual([
+      expect(startTask).toHaveBeenCalledWith({ kind: "upload", label: "photos", status: "uploading", progress: 0 });
+      expect(patchTask.mock.calls).toEqual([
         ["job", { progress: 0.5 }],
         ["job", { status: "pushing", progress: undefined }],
         ["job", { status: "done" }],
@@ -86,19 +86,19 @@ describe("useFileOps", () => {
     });
 
     it("多项时名称为“某某等 n 项”，可以指定目标目录", async () => {
-      const { result, startTransfer } = setup();
+      const { result, startTask } = setup();
       await act(() => result.current.upload([upItem("a.txt"), upItem("b.txt")], "/sdcard/Download"));
       expect(api.upload).toHaveBeenCalledWith(target, "/sdcard/Download", expect.anything(), expect.any(Function));
-      expect(startTransfer).toHaveBeenCalledWith(
+      expect(startTask).toHaveBeenCalledWith(
         expect.objectContaining({ label: tz("common.itemsEtc", { name: "a.txt", n: 2, rest: 1 }) }),
       );
     });
 
     it("失败时把错误记在传输任务上并刷新（可能已推送一部分）", async () => {
       vi.mocked(api.upload).mockRejectedValue(new Error("空间不足"));
-      const { result, patchTransfer, reload, refreshStorage } = setup();
+      const { result, patchTask, reload, refreshStorage } = setup();
       await act(() => result.current.upload([upItem("a.txt"), upItem("b.txt")]));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "空间不足" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "空间不足" });
       expect(refreshStorage).toHaveBeenCalled();
       expect(reload).toHaveBeenCalledWith(true);
     });
@@ -114,18 +114,18 @@ describe("useFileOps", () => {
 
   describe("download", () => {
     it("下载选中的条目并更新传输状态", async () => {
-      const { result, startTransfer, patchTransfer } = setup();
+      const { result, startTask, patchTask } = setup();
       await act(() => result.current.download([a, b]));
       expect(api.download).toHaveBeenCalledWith(target, [a.path, b.path]);
-      expect(startTransfer).toHaveBeenCalledWith(expect.objectContaining({ kind: "download", status: "pulling" }));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "done" });
+      expect(startTask).toHaveBeenCalledWith(expect.objectContaining({ kind: "download", status: "pulling" }));
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "done" });
     });
 
     it("失败时记下错误", async () => {
       vi.mocked(api.download).mockRejectedValue(new Error("下载已过期"));
-      const { result, patchTransfer } = setup();
+      const { result, patchTask } = setup();
       await act(() => result.current.download([a]));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "下载已过期" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "下载已过期" });
     });
   });
 
@@ -142,9 +142,9 @@ describe("useFileOps", () => {
 
     it("剪切：移动后清空剪贴板，并告知哪些路径移走了", async () => {
       const clip: Clip = { mode: "cut", entries: [folder("/sdcard/DCIM"), a], serial: "A" };
-      const { result, setClip, afterChange, startTransfer } = setup({ clip });
+      const { result, setClip, afterChange, startTask } = setup({ clip });
       await act(() => result.current.paste("/sdcard/Backup"));
-      expect(startTransfer).toHaveBeenCalledWith(expect.objectContaining({ kind: "move", status: "moving" }));
+      expect(startTask).toHaveBeenCalledWith(expect.objectContaining({ kind: "move", status: "moving" }));
       expect(api.move).toHaveBeenCalledWith(target, ["/sdcard/DCIM", a.path], "/sdcard/Backup");
       expect(setClip).toHaveBeenCalledWith(null);
       expect(afterChange).toHaveBeenCalledWith(
@@ -159,9 +159,9 @@ describe("useFileOps", () => {
     it("失败时记下错误并刷新（可能已完成一部分）", async () => {
       vi.mocked(api.copy).mockRejectedValue(new Error("目标已存在"));
       const clip: Clip = { mode: "copy", entries: [a, b], serial: "A" };
-      const { result, patchTransfer, reload, afterChange } = setup({ clip });
+      const { result, patchTask, reload, afterChange } = setup({ clip });
       await act(() => result.current.paste("/sdcard/x"));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "目标已存在" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "目标已存在" });
       expect(reload).toHaveBeenCalledWith(true);
       expect(afterChange).not.toHaveBeenCalled();
     });
@@ -178,20 +178,20 @@ describe("useFileOps", () => {
     const zip = file("/sdcard/a.zip");
 
     it("进度记在传输队列里，成功后刷新存储空间和目录", async () => {
-      const { result, startTransfer, patchTransfer, refreshStorage, afterChange } = setup();
+      const { result, startTask, patchTask, refreshStorage, afterChange } = setup();
       await act(() => result.current.extract(zip));
       expect(api.extract).toHaveBeenCalledWith(target, zip.path);
-      expect(startTransfer).toHaveBeenCalledWith({ kind: "extract", label: "a.zip", status: "extracting" });
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "done" });
+      expect(startTask).toHaveBeenCalledWith({ kind: "extract", label: "a.zip", status: "extracting" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "done" });
       expect(refreshStorage).toHaveBeenCalled();
       expect(afterChange).toHaveBeenCalledWith([], true);
     });
 
     it("失败时记下错误，并刷新目录（可能已经解出一部分）", async () => {
       vi.mocked(api.extract).mockRejectedValue(new Error("压缩包含有指向目录之外的路径"));
-      const { result, patchTransfer, reload, afterChange } = setup();
+      const { result, patchTask, reload, afterChange } = setup();
       await act(() => result.current.extract(zip));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", {
+      expect(patchTask).toHaveBeenLastCalledWith("job", {
         status: "error",
         error: "压缩包含有指向目录之外的路径",
       });
@@ -209,42 +209,42 @@ describe("useFileOps", () => {
   describe("compress", () => {
     it("多项压缩：按所选路径调用，进度记在传输队列里，成功后刷新存储空间和目录", async () => {
       vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/Archive.zip" });
-      const { result, startTransfer, patchTransfer, refreshStorage, afterChange } = setup();
+      const { result, startTask, patchTask, refreshStorage, afterChange } = setup();
       await act(() => result.current.compress([a, b], "zip"));
       expect(api.compress).toHaveBeenCalledWith(target, [a.path, b.path], "zip");
-      expect(startTransfer).toHaveBeenCalledWith({
+      expect(startTask).toHaveBeenCalledWith({
         kind: "compress",
         label: tz("common.itemsEtc", { name: "a.txt", n: 2, rest: 1 }),
         status: "compressing",
       });
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "done" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "done" });
       expect(refreshStorage).toHaveBeenCalled();
       expect(afterChange).toHaveBeenCalledWith([], true);
     });
 
     it("单项以其名称作为标题，格式原样传给接口", async () => {
       vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/a.txt.tar.gz" });
-      const { result, startTransfer } = setup();
+      const { result, startTask } = setup();
       await act(() => result.current.compress([a], "tgz"));
       expect(api.compress).toHaveBeenCalledWith(target, [a.path], "tgz");
-      expect(startTransfer).toHaveBeenCalledWith({ kind: "compress", label: "a.txt", status: "compressing" });
+      expect(startTask).toHaveBeenCalledWith({ kind: "compress", label: "a.txt", status: "compressing" });
     });
 
     it("zip 跳过了符号链接时，完成状态带上说明", async () => {
       vi.mocked(api.compress).mockResolvedValue({ path: "/sdcard/d.zip", skipped: 3 });
-      const { result, patchTransfer } = setup();
+      const { result, patchTask } = setup();
       await act(() => result.current.compress([folder("/sdcard/d")], "zip"));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", {
+      expect(patchTask).toHaveBeenLastCalledWith("job", {
         status: "done",
-        note: tz("transfer.skipped", { n: 3 }),
+        note: tz("task.skipped", { n: 3 }),
       });
     });
 
     it("失败时记下错误并刷新目录", async () => {
       vi.mocked(api.compress).mockRejectedValue(new Error("电脑上的临时空间不足"));
-      const { result, patchTransfer, reload, afterChange } = setup();
+      const { result, patchTask, reload, afterChange } = setup();
       await act(() => result.current.compress([a], "zip"));
-      expect(patchTransfer).toHaveBeenLastCalledWith("job", { status: "error", error: "电脑上的临时空间不足" });
+      expect(patchTask).toHaveBeenLastCalledWith("job", { status: "error", error: "电脑上的临时空间不足" });
       expect(reload).toHaveBeenCalledWith(true);
       expect(afterChange).not.toHaveBeenCalled();
     });
