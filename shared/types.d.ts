@@ -60,6 +60,31 @@ export interface ErrorResponse {
   code?: ErrorCode;
 }
 
+/** 后台任务的状态：canceled 为用户取消 */
+export type JobState = "running" | "done" | "error" | "canceled";
+
+/** 任务当前所处的阶段，前端据此显示状态文字 */
+export type JobPhase = "preparing" | "pulling" | "compressing" | "pushing";
+
+/** 启动任务的接口的响应 */
+export interface JobRef {
+  id: string;
+}
+
+/** GET /api/jobs/:id/events 的 state 事件：任务快照，不含日志；R 为 result 的类型 */
+export interface JobSnapshot<R = unknown> {
+  id: string;
+  state: JobState;
+  phase?: JobPhase;
+  /** 0 到 1，未知时缺省 */
+  progress?: number;
+  /** 当前阶段是否允许取消 */
+  cancelable: boolean;
+  result?: R;
+  error?: string;
+  code?: ErrorCode;
+}
+
 /** POST /api/files/upload 的响应；count 为收到的文件数 */
 export interface UploadResult extends OkResult {
   count: number;

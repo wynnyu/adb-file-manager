@@ -73,4 +73,32 @@ describe("buildZip", () => {
     await expect(buildZip(dir, out)).resolves.toBeUndefined();
     expect(readZip(out).has("f.txt")).toBe(true);
   });
+
+  it("按已处理的输入字节回调进度，结束时为 1", async () => {
+    const out = path.join(root, "progress.zip");
+    const seen: number[] = [];
+    await buildZip(path.join(root, "src"), out, { onProgress: (f) => seen.push(f), total: 1000 + 1 + 6 + 1000 });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((f) => f >= 0 && f <= 1)).toBe(true);
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen);
+  });
+
+  it("signal 已取消时以 AbortError 结束", async () => {
+    const out = path.join(root, "aborted.zip");
+    const controller = new AbortController();
+    controller.abort();
+    await expect(buildZip(path.join(root, "src"), out, { signal: controller.signal })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
+  it("打包过程中取消会结束，不会挂起", async () => {
+    const big = path.join(root, "big");
+    mkdirSync(big);
+    for (let i = 0; i < 200; i++) writeFileSync(path.join(big, `f${i}.bin`), Buffer.alloc(64 * 1024, i));
+    const controller = new AbortController();
+    const done = buildZip(big, path.join(root, "big.zip"), { signal: controller.signal });
+    setTimeout(() => controller.abort(), 5);
+    await expect(done).rejects.toBeDefined();
+  });
 });

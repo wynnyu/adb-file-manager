@@ -10,6 +10,7 @@ import { deviceRoutes } from "./devices.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
 import { langMiddleware } from "./i18n.ts";
+import { jobRoutes } from "./jobs.ts";
 import { previewRoutes } from "./preview.ts";
 import { transferRoutes } from "./transfer.ts";
 
@@ -22,6 +23,7 @@ export function createApp() {
 
   app.use("/api/devices", deviceRoutes());
   app.use("/api/files", fileRoutes(), previewRoutes(), archiveRoutes(), attrRoutes(), transferRoutes());
+  app.use("/api/jobs", jobRoutes());
 
   // 编译后位于 dist/server/，前端产物在 dist/web/；开发时（tsx）该目录不存在，由 vite 提供页面
   const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");

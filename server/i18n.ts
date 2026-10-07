@@ -41,6 +41,7 @@ const zh = {
   packDenied: "部分文件无读取权限，或所在目录无写入权限。可开启 root 模式后重试",
   packDeniedRoot: "部分文件无读取权限，或所在目录无写入权限",
   hostNoSpace: "电脑上的临时空间不足，无法生成 zip。可改用 tar.gz，在设备上直接压缩",
+  jobNotFound: "任务不存在或已过期",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -85,6 +86,7 @@ const en: Record<MsgKey, string> = {
   packDeniedRoot: "Some files are not readable, or the folder is not writable",
   hostNoSpace:
     "Not enough temporary space on the computer to create a zip. Use tar.gz instead, which compresses on the device",
+  jobNotFound: "Task not found or expired",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };

@@ -79,6 +79,15 @@ describe("createApp 的接口挂载", () => {
   });
 
   it.each([
+    ["GET", "/api/jobs/nope/events"],
+    ["POST", "/api/jobs/nope/cancel"],
+  ] as const)("%s %s 对不存在的任务返回 404", async (method, url) => {
+    const { status, body } = await call(method, url);
+    expect(status).toBe(404);
+    expect(body?.error).toBe(msg("jobNotFound"));
+  });
+
+  it.each([
     ["GET", "/api/ls"],
     ["POST", "/api/mkdir"],
     ["POST", "/api/root-check"],

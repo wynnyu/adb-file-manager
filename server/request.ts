@@ -18,7 +18,7 @@ const isRootRequest = (req: Request) => {
  * root 请求失败时复查一次 su：权限被撤销的话清掉缓存，
  * 并以 root_lost 返回，让前端退出 root 模式
  */
-async function rootGuard(req: Request, err: unknown) {
+export async function rootGuard(req: Request, err: unknown) {
   const serial = req.query.serial ?? req.body?.serial;
   if (!isRootRequest(req) || typeof serial !== "string") return err;
   try {

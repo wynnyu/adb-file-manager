@@ -15,18 +15,42 @@ const PRECOMPRESSED =
 
 export const isPrecompressed = (name: string) => PRECOMPRESSED.test(name);
 
+export interface BuildZipOptions {
+  /** 取消时中止打包，promise 以 AbortError 结束，out 可能残留半成品，由调用方清理 */
+  signal?: AbortSignal;
+  /** 已处理的输入字节占比，0 到 1 */
+  onProgress?: (fraction: number) => void;
+  /** 输入的总字节数；缺省时用 archiver 已登记的字节数，扫描未完成时分母偏小 */
+  total?: number;
+}
+
 /** 把 src 目录下的全部内容打成 zip 写到 out，条目名相对 src；含空目录和隐藏文件 */
-export async function buildZip(src: string, out: string) {
+export async function buildZip(src: string, out: string, { signal, onProgress, total }: BuildZipOptions = {}) {
   const zip = new ZipArchive({ zlib: { level: 6 } });
-  const written = pipeline(zip, createWriteStream(out));
+  // pipeline 的 signal 会销毁两端的流，取消后文件句柄随之释放
+  const written = pipeline(zip, createWriteStream(out), { signal });
+  const abort = () => zip.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  if (onProgress) {
+    zip.on("progress", ({ fs }) => {
+      const all = total ?? fs.totalBytes;
+      if (all > 0) onProgress(Math.min(1, fs.processedBytes / all));
+    });
+  }
   // directory 的回调类型只声明了 EntryData，实际接受 ZipEntryData 的 store
   zip.directory(src, false, (entry: EntryData) => {
     const data: ZipEntryData = entry;
     if (data.stats?.isFile() && isPrecompressed(data.name)) data.store = true;
     return data;
   });
-  await zip.finalize();
-  await written;
+  const finalized = zip.finalize();
+  // 取消后 finalize 可能一直不结束，这里不再等它，只避免未处理的 rejection
+  finalized.catch(() => {});
+  try {
+    await Promise.all([finalized, written]);
+  } finally {
+    signal?.removeEventListener("abort", abort);
+  }
 }
 
 /** 电脑临时目录当前可用的字节数 */

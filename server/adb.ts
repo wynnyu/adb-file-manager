@@ -237,31 +237,38 @@ export function cleanStagesOnce(ctx: Ctx) {
   shell(ctx, stageCleanupCmd(BOOT), { timeout: 0 }).catch(() => {});
 }
 
-export async function push(ctx: Ctx, locals: string[], remoteDir: string) {
+/** signal 取消传输；su 模式下收尾用的 rm 不带 signal，取消后也会清理暂存目录 */
+export async function push(ctx: Ctx, locals: string[], remoteDir: string, signal?: AbortSignal) {
   if (ctx.root !== "su") {
-    await run(["-s", ctx.serial, "push", ...locals, remoteDir + "/"], 0);
+    await run(["-s", ctx.serial, "push", ...locals, remoteDir + "/"], 0, signal);
     return;
   }
   const stage = stagingDir();
   const user: Ctx = { serial: ctx.serial, root: false };
   try {
     await checked(user, `mkdir -p ${q(stage)}`);
-    await run(["-s", ctx.serial, "push", ...locals, stage + "/"], 0);
-    await checked(ctx, `mkdir -p ${q(remoteDir)} && cp -R ${q(stage)}/. ${q(remoteDir)}/`);
+    await run(["-s", ctx.serial, "push", ...locals, stage + "/"], 0, signal);
+    await checked(ctx, `mkdir -p ${q(remoteDir)} && cp -R ${q(stage)}/. ${q(remoteDir)}/`, 0, signal);
   } finally {
     await shell(ctx, `rm -rf ${q(stage)}`, { timeout: 0 }).catch(() => {});
   }
 }
 
-export async function pull(ctx: Ctx, remote: string, local: string) {
+/** signal 取消传输；su 模式下收尾用的 rm 不带 signal，取消后也会清理暂存目录 */
+export async function pull(ctx: Ctx, remote: string, local: string, signal?: AbortSignal) {
   if (ctx.root !== "su") {
-    await run(["-s", ctx.serial, "pull", "-a", remote, local], 0);
+    await run(["-s", ctx.serial, "pull", "-a", remote, local], 0, signal);
     return;
   }
   const stage = stagingDir();
   try {
-    await checked(ctx, `mkdir -p ${q(stage)} && cp -R ${q(remote)} ${q(stage)}/ && chmod -R a+rX ${q(stage)}`);
-    await run(["-s", ctx.serial, "pull", "-a", `${stage}/${path.basename(remote)}`, local], 0);
+    await checked(
+      ctx,
+      `mkdir -p ${q(stage)} && cp -R ${q(remote)} ${q(stage)}/ && chmod -R a+rX ${q(stage)}`,
+      0,
+      signal,
+    );
+    await run(["-s", ctx.serial, "pull", "-a", `${stage}/${path.basename(remote)}`, local], 0, signal);
   } finally {
     await shell(ctx, `rm -rf ${q(stage)}`, { timeout: 0 }).catch(() => {});
   }
@@ -272,11 +279,11 @@ export const OK_MARK = "__ADBFM_OK__";
 /** 命令检测到目标已存在时输出的标记，checked 据此抛出 targetExists */
 export const EXISTS_MARK = "__ADBFM_EXISTS__";
 
-/** 执行命令并要求成功，返回去掉成功标记后的输出；默认不限时，短命令传第三个参数 */
-export async function checked(ctx: Ctx, cmd: string, timeout = 0) {
+/** 执行命令并要求成功，返回去掉成功标记后的输出；默认不限时，短命令传第三个参数，长命令可传 signal 取消 */
+export async function checked(ctx: Ctx, cmd: string, timeout = 0, signal?: AbortSignal) {
   // 包进子 shell：2>&1 作用于整条命令；命令里的 exit 只退出子 shell，
   // 整体总是返回 0（新版 adb 会透传退出码，否则会在这里之前就报错，拿不到下面的标记）
-  const out = await shell(ctx, `(${cmd}) 2>&1 && echo ${OK_MARK}; true`, { timeout });
+  const out = await shell(ctx, `(${cmd}) 2>&1 && echo ${OK_MARK}; true`, { timeout, signal });
   if (out.includes(EXISTS_MARK)) throw new AdbError(t("targetExists"), 400);
   if (!out.includes(OK_MARK)) throw new AdbError(cleanError(out.trim()), 400);
   return out.replace(OK_MARK, "");

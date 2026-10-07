@@ -239,8 +239,8 @@ export function parseDu(out: string) {
 }
 
 /** 这些路径合计占用的字节数，用于压缩前估算电脑上需要的空间 */
-export async function diskUsage(ctx: adb.Ctx, paths: string[]) {
-  return parseDu(await adb.shell(ctx, `du -sk ${paths.map(adb.q).join(" ")} 2>/dev/null`, { timeout: 0 }));
+export async function diskUsage(ctx: adb.Ctx, paths: string[], signal?: AbortSignal) {
+  return parseDu(await adb.shell(ctx, `du -sk ${paths.map(adb.q).join(" ")} 2>/dev/null`, { timeout: 0, signal }));
 }
 
 /** 路径之下 adb pull 会跳过的条目数：符号链接、套接字等既不是文件也不是目录的东西 */
