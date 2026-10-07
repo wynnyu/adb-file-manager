@@ -54,7 +54,8 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 | 状态码 | 场景 |
 | --- | --- |
-| 400 | 参数缺失或不合法（包括包名格式不正确）；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件 |
+| 400 | 参数缺失或不合法（包括包名格式不正确）；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件；pm 命令执行失败；安装文件类型不受支持 |
+| 409 | 对关键包执行卸载、停用、清除数据或卸载更新，但没有带 `force: true` |
 | 403 | 非本机访问；设备上没有读取权限；无法获取 root |
 | 404 | 目录或文件不存在；下载 token 已过期；任务不存在或已过期；设备上没有该应用 |
 | 415 | 预览不支持该文件类型 |
@@ -137,7 +138,7 @@ interface ErrorResponse {
 type JobState = "running" | "done" | "error" | "canceled";
 
 /** 任务当前所处的阶段，前端据此显示状态文字 */
-type JobPhase = "preparing" | "pulling" | "compressing" | "pushing";
+type JobPhase = "preparing" | "pulling" | "compressing" | "pushing" | "installing";
 
 /** 启动任务的接口的响应 */
 interface JobRef {
@@ -202,6 +203,9 @@ interface ExtractResult {
 /** 应用对用户 0 的状态：uninstalled 为系统应用被 pm uninstall --user 0 移除，可用 install-existing 恢复 */
 type AppState = "enabled" | "disabled" | "uninstalled";
 
+/** 关键包的角色：core 为系统核心组件，其余为当前的系统界面、设置、启动器、输入法 */
+type CriticalRole = "core" | "systemui" | "settings" | "launcher" | "ime";
+
 /** GET /api/apps 的一项 */
 interface AppEntry {
   pkg: string;
@@ -211,6 +215,8 @@ interface AppEntry {
   uid?: number;
   system: boolean;
   state: AppState;
+  /** 关键包，停用、卸载、清除数据前需强确认；不是关键包时缺省 */
+  critical?: CriticalRole;
 }
 
 /** 应用的一项权限 */
@@ -242,6 +248,26 @@ interface AppDetail {
   /** 系统应用已被更新过，卸载更新可回到出厂版本 */
   updatedSystem: boolean;
   permissions: AppPermission[];
+}
+
+/**
+ * POST /api/apps/uninstall、uninstall-updates、disable、clear 的请求（另带 serial）。
+ * 目标是关键包时必须带 force: true，否则返回 409
+ */
+interface AppActionRequest {
+  pkg: string;
+  force?: boolean;
+}
+
+/** POST /api/apps/uninstall 的请求；user0 只为当前用户卸载（系统应用），keepData 保留数据和缓存 */
+interface AppUninstallRequest extends AppActionRequest {
+  user0?: boolean;
+  keepData?: boolean;
+}
+
+/** POST /api/apps/install 启动的任务的结果；obb 为推送的 OBB 文件数，没有时缺省 */
+interface InstallResult {
+  obb?: number;
 }
 
 /** POST /api/files/compress 的请求；压缩包生成在所选项的公共父目录 */
@@ -363,6 +389,15 @@ interface ChownRequest {
 | GET | `/api/files/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 最后一步 |
 | GET | `/api/apps` | 列出应用 | `api.apps(serial)` |
 | GET | `/api/apps/info` | 读取应用详情 | `api.appInfo(serial, pkg)` |
+| POST | `/api/apps/uninstall` | 卸载，系统应用只为当前用户卸载 | `api.appAction(serial, "uninstall", pkg, opts)` |
+| POST | `/api/apps/uninstall-updates` | 卸载系统应用的更新 | `api.appAction(serial, "uninstall-updates", pkg, opts)` |
+| POST | `/api/apps/restore` | 恢复对用户 0 已卸载的系统应用 | `api.appAction(serial, "restore", pkg)` |
+| POST | `/api/apps/disable` | 停用 | `api.appAction(serial, "disable", pkg, opts)` |
+| POST | `/api/apps/enable` | 启用 | `api.appAction(serial, "enable", pkg)` |
+| POST | `/api/apps/force-stop` | 强行停止 | `api.appAction(serial, "force-stop", pkg)` |
+| POST | `/api/apps/clear` | 清除数据 | `api.appAction(serial, "clear", pkg, opts)` |
+| POST | `/api/apps/extract` | 启动提取 APK 的任务 | `api.extractApk(serial, pkg, hooks)` |
+| POST | `/api/apps/install` | 上传安装包并启动安装任务 | `api.installApps(serial, files, onProgress, signal)` |
 | GET | `/api/jobs/:id/events` | 订阅任务的进度、日志和结果（SSE） | `api.watchJob(id, onUpdate)` |
 | POST | `/api/jobs/:id/cancel` | 取消任务 | `api.cancelJob(id)` |
 
@@ -892,7 +927,7 @@ data: {"id":"6b0c6f0e","state":"done","cancelable":false,"result":{"token":"3f0c
 | 字段 | 说明 |
 | --- | --- |
 | `state` | `running`、`done`、`error`、`canceled` |
-| `phase` | 当前阶段：`preparing`（统计大小）、`pulling`、`compressing`、`pushing`；尚未进入任何阶段时缺省 |
+| `phase` | 当前阶段：`preparing`（统计大小，或解开 `.apks`、`.xapk`）、`pulling`、`compressing`、`pushing`、`installing`；尚未进入任何阶段时缺省 |
 | `progress` | 当前阶段的进度，0 到 1；切换阶段时清除，未知时缺省 |
 | `cancelable` | 当前阶段是否允许取消，结束后为 `false` |
 | `result` | `done` 时为任务的结果，类型随接口而定 |
@@ -929,18 +964,20 @@ res.json(ref satisfies JobRef);
 
 ## 应用
 
-应用接口只读，始终以普通 shell 用户执行，不接受 `root` 参数，只需要 `serial`。`pm` 命令默认作用于用户 0。
+应用接口始终以普通 shell 用户执行，不接受 `root` 参数，只需要 `serial`。`pm` 命令默认作用于用户 0，多用户设备上其他用户的应用不在范围内。
 
 ### GET /api/apps
 
-列出设备上的全部应用，包括对用户 0 已卸载的系统应用。一次 shell 执行四条命令，输出以分隔符隔开：
+列出设备上的全部应用，包括对用户 0 已卸载的系统应用。一次 shell 执行六条命令，输出以分隔符隔开：
 
 1. `pm list packages -f -U -u`：全部包，带 APK 路径和 uid；`-U` 不被支持时降级为 `pm list packages -f -u`，此时没有 `uid`
 2. `pm list packages -s -u`：系统包
 3. `pm list packages -d`：已停用的包
 4. `pm list packages`：当前用户已安装的包
+5. `cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1`：默认启动器，形如 `com.miui.home/.launcher.Launcher`，取斜杠前的包名
+6. `settings get secure default_input_method`：当前输入法，形如 `包名/类名`，未设置时为 `null`
 
-`system` 取自第 2 段；`state` 为 `uninstalled` 表示不在第 4 段中（系统应用被 `pm uninstall --user 0` 移除，APK 仍在系统分区，可用 `pm install-existing` 恢复），否则在第 3 段中为 `disabled`，其余为 `enabled`。第 4 段为空时视为该命令失败，不把应用标为已卸载。路径中可能含 `=`，按最后一个 `=` 切分包名。
+`system` 取自第 2 段；`state` 为 `uninstalled` 表示不在第 4 段中（系统应用被 `pm uninstall --user 0` 移除，APK 仍在系统分区，可用 `pm install-existing` 恢复），否则在第 3 段中为 `disabled`，其余为 `enabled`。第 4 段为空时视为该命令失败，不把应用标为已卸载。`critical` 先查静态表，再比对第 5、6 段的包名（见下文“关键包”）。路径中可能含 `=`，按最后一个 `=` 切分包名。
 
 | 查询参数 | 必填 |
 | --- | --- |
@@ -951,6 +988,7 @@ res.json(ref satisfies JobRef);
 ```json
 [
   { "pkg": "com.android.chrome", "path": "/data/app/~~x/com.android.chrome-y/base.apk", "uid": 10150, "system": true, "state": "enabled" },
+  { "pkg": "com.android.systemui", "path": "/system_ext/priv-app/SystemUI/SystemUI.apk", "uid": 10083, "system": true, "state": "enabled", "critical": "systemui" },
   { "pkg": "com.android.gone", "path": "/system/app/Gone/Gone.apk", "uid": 10051, "system": true, "state": "uninstalled" }
 ]
 ```
@@ -992,6 +1030,93 @@ res.json(ref satisfies JobRef);
 
 错误：包名不合法时 `400`；设备上没有该包时 `404`。
 
+### 关键包
+
+卸载、停用、清除数据、卸载更新会让系统或当前使用的功能失效，对关键包必须带 `force: true`，否则返回 `409`。强行停止、启用、恢复可以随时执行，不检查。关键包包括：
+
+- 静态表（`server/guard.ts` 的 `CRITICAL_PACKAGES`）：`android`、`com.android.phone`、`com.android.providers.settings`、`com.android.shell`、`com.android.server.telecom`、`com.android.packageinstaller`、`com.google.android.packageinstaller`、`com.android.permissioncontroller`、`com.google.android.permissioncontroller` 为 `core`，`com.android.systemui` 为 `systemui`，`com.android.settings` 为 `settings`
+- 设备当前的默认启动器（`launcher`）和输入法（`ime`），随用户的设置变化
+
+服务端在每次操作时重新读取启动器和输入法，不信任前端传来的判断；因此列表里缓存的 `critical` 过期时，前端带了 `force` 也不会误放行，没带则收到 `409`。
+
+### 应用操作
+
+以下接口的请求为 JSON，`serial` 和 `pkg` 必填，成功时响应 `{ "ok": true }`。命令经 `pmRun` 执行（超时 30 秒）：退出码非零，或输出里出现 `Failure [...]`、`Error: ...`、`Failed`、`doesn't exist`、`Unknown package`、`SecurityException` 时，以 `400` 返回 `操作失败：<原因>`。老版本的 `pm` 失败时也可能退出码为 0，所以两者都检查。
+
+| 接口 | 附加参数 | 设备端命令 | 关键包需 `force` |
+| --- | --- | --- | --- |
+| `POST /api/apps/uninstall` | `user0`、`keepData`、`force` | `pm uninstall [-k] [--user 0] <pkg>` | 是 |
+| `POST /api/apps/uninstall-updates` | `force` | `pm uninstall <pkg>`；先读 `dumpsys package` 确认 `updatedSystem` 为 `true`，否则 `400` | 是 |
+| `POST /api/apps/restore` | 无 | `cmd package install-existing <pkg> \|\| pm install-existing <pkg>` | 否 |
+| `POST /api/apps/disable` | `force` | `pm disable-user --user 0 <pkg>` | 是 |
+| `POST /api/apps/enable` | 无 | `pm enable <pkg>` | 否 |
+| `POST /api/apps/force-stop` | 无 | `am force-stop <pkg>` | 否 |
+| `POST /api/apps/clear` | `force` | `pm clear <pkg>` | 是 |
+
+`user0` 与 `keepData` 为布尔值，只有 `true` 才生效。系统应用只能用 `user0: true` 卸载（等同 `pm uninstall --user 0`），APK 仍在系统分区，状态变为 `uninstalled`，可用 `restore` 恢复。`pm uninstall` 对用户安装的应用不带 `--user` 时作用于全部用户。
+
+```json
+{ "serial": "ABC123", "pkg": "com.android.systemui", "force": true }
+```
+
+错误：包名不合法时 `400`；`pm` 失败时 `400`；关键包没有 `force` 时 `409`。
+
+### POST /api/apps/extract
+
+提取应用的 APK，启动一个下载任务，响应 `JobRef`，结果为 `PullResult`，用 `GET /api/files/fetch/:token` 取回。请求 JSON：`serial`、`pkg`。
+
+- `pm path <pkg>` 取得全部 APK 路径。`pm path` 取不到时（对用户 0 已卸载的系统应用）退回 `pm list packages -f -u` 里的主 APK
+- 单个 APK：不落盘，取回时 `adb exec-out cat` 流式返回，文件名为 `<pkg>.apk`，任务立即完成
+- 分包应用：逐个 `adb pull` 到电脑临时目录（阶段 `pulling`，按文件数估算进度），取回时打成 `<pkg>.apks`，各 APK 在 zip 根目录。该文件可直接用 `POST /api/apps/install` 装回去
+
+找不到该包时在启动任务之前返回 `404`。
+
+### POST /api/apps/install
+
+安装 APK。请求为 `multipart/form-data`，`serial` 放在查询参数中。
+
+| 字段 | 说明 |
+| --- | --- |
+| `files` | 一个或多个文件，multer 存到电脑临时目录 |
+| `names` | JSON 字符串，与 `files` 一一对应的文件名数组，避免 multipart 文件名的编码问题；缺省时用 multipart 文件名 |
+
+校验在启动任务之前完成，出错时 multer 存下的文件同步删除：
+
+- 扩展名只允许 `.apk`、`.apks`、`.xapk`，否则 `400`
+- `.apks` 和 `.xapk` 只能单独一个文件，否则 `400`
+- 没有文件时 `400`
+
+响应 `JobRef`，任务结果为 `InstallResult`。阶段依次为：
+
+| 阶段 | 内容 | 可取消 |
+| --- | --- | --- |
+| `preparing` | 仅 `.apks`、`.xapk`：用 `yauzl` 解到临时目录 | 是 |
+| `installing` | 1 个 APK 用 `adb install -r`，多个用 `adb install-multiple -r` | 否 |
+| `pushing` | 仅带 OBB 的 `.xapk`：`adb push` 到 `/sdcard/Android/obb/<包名>/`，按文件数估算进度 | 是 |
+
+任务结束后（包括失败和取消）multer 文件和临时目录都会删除。
+
+分包格式（`server/bundle.ts`）：
+
+- `.apks`（SAI 等工具导出）和 `.xapk`：只取 zip 根目录的 `*.apk`。没有 APK 时报“安装包中没有 APK”
+- 含 `toc.pb` 的 `.apks` 是 bundletool 产物，需按设备配置（ABI、屏幕密度、语言）从 `splits/` 中挑选，不支持，报错并建议改用 SAI 等工具导出
+- `.xapk` 读取 `manifest.json` 的 `package_name` 和 `expansions[].install_path`。`install_path` 必须形如 `Android/obb/<package_name>/<文件>`，不得含 `..`、`.`、空段、反斜杠；校验在解压之前完成，不通过则整包拒绝。本机路径同样不得越出临时目录
+
+安装失败时，`adb install` 输出里的 `INSTALL_FAILED_*` 代码映射为说明：
+
+| 代码 | 说明 |
+| --- | --- |
+| `VERSION_DOWNGRADE` | 版本低于已安装的版本，需先卸载（数据随之清除） |
+| `UPDATE_INCOMPATIBLE` | 签名与已安装的版本不一致，需先卸载（数据随之清除） |
+| `INSUFFICIENT_STORAGE` | 设备存储空间不足 |
+| `NO_MATCHING_ABIS` | 安装包不含适用于此设备 CPU 架构的库 |
+| `OLDER_SDK` | 安装包要求的 Android 版本高于此设备 |
+| `USER_RESTRICTED` | 设备限制了 USB 安装，部分系统（如 MIUI）需在开发者选项中开启“USB 安装” |
+
+其余代码原样附在“安装失败：”之后。老版本的 adb 安装失败时退出码也为 0，所以输出里没有 `Success` 同样视为失败。
+
+任务保存在内存中，上传是同一个请求的一部分：浏览器先传完文件，之后才拿到 `JobRef`。上传阶段由前端用 `XMLHttpRequest.abort()` 取消，之后的阶段用 `POST /api/jobs/:id/cancel`。
+
 ## 前端封装（src/lib/api.ts）
 
 ```ts
@@ -1010,6 +1135,9 @@ interface Target {
 | `storage(serial)` | `Promise<StorageInfo>` | |
 | `apps(serial)` | `Promise<AppEntry[]>` | 经 `modules/apps/lib/queries.ts` 的 `appsQuery` 调用，查询键为 `["apps", serial]` |
 | `appInfo(serial, pkg)` | `Promise<AppDetail>` | 经 `modules/apps/lib/queries.ts` 的 `appQuery` 调用，查询键为 `["app", serial, pkg]` |
+| `appAction(serial, action, pkg, opts?)` | `Promise<OkResult>` | `action` 为 `uninstall`、`uninstall-updates`、`restore`、`disable`、`enable`、`force-stop`、`clear`；`opts` 为 `force`、`user0`、`keepData` |
+| `extractApk(serial, pkg, hooks?)` | `Promise<void>` | 同 `download`：启动任务、等待、触发浏览器下载；`hooks` 同 `download` |
+| `installApps(serial, files, onProgress, signal?)` | `Promise<JobRef>` | 以 `XMLHttpRequest` 上传，`onProgress` 为 0 到 1；`signal` 触发时中止上传并抛出 `JobCanceled`。任务的结果（`InstallResult`）用 `watchJob` 取得 |
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `modules/files/lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
 | `mkdir(target, path)` | `Promise<OkResult>` | |
 | `rename(target, from, to)` | `Promise<OkResult>` | |
@@ -1025,7 +1153,7 @@ interface Target {
 | `watchJob<R>(id, onUpdate)` | `Promise<R>` | 用 `EventSource` 订阅 `/api/jobs/:id/events`，每个 `state` 事件回调一次快照。`done` 时返回 `result`；`error` 时抛出 `Error`（`root_lost` 同时调用 `onRootLost` 的回调）；`canceled` 时抛出 `JobCanceled`；连接断开且 `readyState` 为 `CLOSED` 时抛出网络错误，正在重连时继续等待，服务端会在重连后重发当前快照 |
 | `cancelJob(id)` | `Promise<OkResult>` | |
 | `download(target, paths, hooks?)` | `Promise<void>` | 依次调用 `pull`、`watchJob`，拿到 token 后创建临时 `<a download>` 指向 `/api/files/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成。`hooks.onJob` 在任务启动后回调任务 id，`hooks.onUpdate` 在任务状态变化时回调快照 |
-| `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
+| `upload(target, dest, files, onProgress)` | `Promise<void>` | 与 `installApps` 共用内部的 `xhrForm`，使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
 行为说明：
 
@@ -1043,6 +1171,7 @@ interface Target {
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `apps`、`appInfo` | `modules/apps/lib/queries.ts`，由 `modules/apps/hooks/useApps.ts` 和 `modules/apps/components/AppDetail.tsx` 使用 |
+| `appAction`、`extractApk`、`installApps`，以及 `watchJob`、`cancelJob` | `modules/apps/hooks/useAppOps.ts` |
 | `ls` | `modules/files/lib/queries.ts`，由 `modules/files/hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `modules/files/hooks/useTree.ts` 使用 |
 | `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download`、`watchJob`、`cancelJob` | `modules/files/hooks/useFileOps.ts` |
 | `previewUrl` | `modules/files/components/views/ColumnView.tsx`、`modules/files/components/views/GalleryView.tsx`、`modules/files/components/viewer/Viewer.tsx` |

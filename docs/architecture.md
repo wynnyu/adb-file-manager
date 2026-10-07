@@ -75,18 +75,20 @@ flowchart TB
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> attrs["attrs.ts<br/>属性、递归统计、权限路由"]
   app --> archive["archive.ts<br/>压缩包预览、解压、压缩路由"]
-  app --> apps["apps.ts<br/>应用列表、详情路由"]
+  app --> apps["apps.ts<br/>应用列表、详情、操作、安装路由"]
   app --> jobs["jobs.ts<br/>后台任务、SSE 进度、取消"]
   archive --> zip["zip.ts<br/>电脑端生成 zip"]
-  archive & transfer --> jobs
-  zip & transfer --> tmp["tmp.ts<br/>临时目录、进度估算"]
+  archive & transfer & apps --> jobs
+  apps --> bundle["bundle.ts<br/>.apks、.xapk 解包"]
+  apps --> transfer
+  zip & transfer & apps --> tmp["tmp.ts<br/>临时目录、进度估算"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
   files & transfer & preview & attrs & archive & devices & jobs & apps --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
-  files & attrs --> guard["guard.ts<br/>受保护路径、源与目标关系"]
+  files & attrs & apps --> guard["guard.ts<br/>受保护路径、源与目标关系、关键包"]
   files & transfer & preview & attrs & archive & zip & guard --> fscmds["fs-cmds.ts<br/>设备端文件命令"]
   devices --> fastboot["fastboot.ts<br/>fastboot 设备检测"]
   fastboot --> adb
-  fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip & apps --> adb["adb.ts<br/>底层调用"]
+  fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip & apps & bundle --> adb["adb.ts<br/>底层调用"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
@@ -98,16 +100,17 @@ flowchart TB
 | `files.ts` | `/api/files/ls`、`/api/files/mkdir`、`/api/files/rename`、`/api/files/delete`、`/api/files/copy`、`/api/files/move` |
 | `preview.ts` | `/api/files/preview`（媒体文件，支持 Range）、`/api/files/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `attrs.ts` | `/api/files/stat`（属性、符号链接目标、所在分区）、`/api/files/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/files/chmod`、`/api/files/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
-| `apps.ts` | `/api/apps`（应用列表，一次 shell 取全部包、系统包、已停用包和已安装包四段）、`/api/apps/info`（解析 `dumpsys package` 得到版本、安装信息和权限）；只读，不接受 `root`。`assertPackage` 校验包名（S7 的操作复用），`listCmd`、`parsePackageLine`、`parseAppList`、`parseAppDetail` 为可单独测试的纯函数；已卸载指系统应用被 `pm uninstall --user 0` 移除，即不在 `pm list packages` 的结果中 |
+| `apps.ts` | `/api/apps`（应用列表，一次 shell 取全部包、系统包、已停用包、已安装包、默认启动器和当前输入法六段，并标出关键包）、`/api/apps/info`（解析 `dumpsys package` 得到版本、安装信息和权限）、应用操作（`uninstall`、`uninstall-updates`、`restore`、`disable`、`enable`、`force-stop`、`clear`，由表驱动的 `APP_OPS` 生成）、`/api/apps/extract`（提取 APK 的任务）和 `/api/apps/install`（安装任务）；不接受 `root`，一律作用于用户 0。`assertPackage` 校验包名，`pmRun` 执行 pm 命令并经 `pmFailure` 识别失败输出，`installFailure` 把 `INSTALL_FAILED_*` 转为说明，`currentDefaults` 在服务端复查当前启动器和输入法，`listCmd`、`defaultsCmd`、`parsePackageLine`、`parseAppList`、`parseDefaults`、`parseAppDetail` 为可单独测试的纯函数；已卸载指系统应用被 `pm uninstall --user 0` 移除，即不在 `pm list packages` 的结果中 |
+| `bundle.ts` | `readBundle`：用 `yauzl` 读取 `.apks`、`.xapk`，把根目录的 `*.apk` 和 XAPK 清单声明的 OBB 解到任务目录；含 `toc.pb` 的 bundletool 产物不支持；OBB 的目标路径必须位于 `Android/obb/<包名>/` 之下且不含 `..`，本机路径不得越出任务目录；`localApkName` 把文件名限制为安全字符，adb 会把它拼进设备端命令 |
 | `archive.ts` | `/api/files/archive`（压缩包内的条目，最多 20000 个）、`/api/files/extract`（在设备上解压）、`/api/files/compress`（启动压缩任务，zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
 | `zip.ts` | zip 的电脑端生成：`compressZip` 接收 `JobHandle`，依次预估空间、`adb pull`、打包、`adb push` 并切换任务阶段（推送阶段不可取消），`buildZip` 用 `archiver` 写出 zip（支持 `signal` 取消和进度回调），已压缩的格式直接存储 |
 | `jobs.ts` | 通用后台任务：`startJob(req, run)` 生成 id 后立即返回，`run` 在后台执行并通过 `JobHandle`（`signal`、`phase`、`progress`、`log`）报告阶段、进度和日志；`jobRoutes()` 提供 `/api/jobs/:id/events`（SSE）和 `/api/jobs/:id/cancel`。任务保存在内存中，结束后保留 60 秒；异常经 `request.ts` 的 `rootGuard` 复查，`signal` 已触发时记为取消；进度推送限流到约 250 毫秒一次 |
 | `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例）；`dirBytes`、`watchGrowth` 按目录增长估算 `adb pull` 的进度 |
-| `transfer.ts` | `/api/files/upload`、`/api/files/pull`（启动下载任务）、`/api/files/fetch/:token`；管理下载 token（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
+| `transfer.ts` | `/api/files/upload`、`/api/files/pull`（启动下载任务）、`/api/files/fetch/:token`；管理下载 token（单个文件流式返回，其余 pull 后打包 zip）和临时目录；`registerPull` 已导出，应用的“提取 APK”用它登记下载 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost`（`rootGuard` 同时供 `jobs.ts` 使用） |
-| `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
+| `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部；`CRITICAL_PACKAGES`、`criticalRole`、`assertNotCritical` 把系统核心组件、当前启动器和输入法标为关键包，卸载、停用、清除数据、卸载更新前必须带 `force` |
 | `fastboot.ts` | fastboot 的底层调用（`execFile` 传参数数组，路径取自 `FASTBOOT_PATH`）和设备检测：`devices()` 解析 `fastboot devices -l`，设备首次出现时查询一次 `getvar is-userspace` 和 `product` 并按 serial 缓存，消失时清除；fastboot 不存在时返回 `missing`；`parseFastbootDevices`、`parseGetvar` 为可单独测试的纯函数 |
-| `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；以及设备列表（`parseAdbDevices`、`adbMode` 为纯函数，`cachedName` 供 fastboot 复用名称缓存）、root 检测、push、pull、设备端暂存目录清理。除 `adb.ts` 和 `fastboot.ts` 外，其他模块不直接调用 `child_process` |
+| `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；`install`（单个用 `install -r`，分包用 `install-multiple -r`，输出无 `Success` 视为失败），以及设备列表（`parseAdbDevices`、`adbMode` 为纯函数，`cachedName` 供 fastboot 复用名称缓存）、root 检测、push、pull、设备端暂存目录清理。除 `adb.ts` 和 `fastboot.ts` 外，其他模块不直接调用 `child_process` |
 | `fs-cmds.ts` | 设备端文件命令，基于 `adb.ts` 拼接：列目录、改名、删除、chmod、chown、复制（重名编号与压缩共用 `uniqueTarget`，压缩包的复合扩展名不拆开）、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`）、按字节读取文件（`cat`、`head`、`fileSize`）；`parseLs`、`extractCmd`、`catCmd`、`packCmd`、`parseDu` 为可单独测试的纯函数 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
@@ -178,15 +181,15 @@ src/
       index.ts            对外只导出 AppsPage
       AppsPage.tsx        应用管理的整页：宽屏左列表右详情，窄屏选中后详情替换列表
       types.ts            AppFilter
-      hooks/              useApps：查询、筛选、搜索和选中的应用
-      components/         AppToolbar、AppList、AppDetail、AppBadge
-      lib/                filter（筛选和计数）、queries（["apps", serial] 和 ["app", serial, pkg]）
-  hooks/                  共用：useDevices useReauthorize useRootMode useToast useTasks useShell
+      hooks/              useApps：查询、筛选、搜索和选中的应用；useAppOps：安装、卸载、停用等操作
+      components/         AppToolbar、AppList、AppDetail、AppActions、AppBadge
+      lib/                filter（筛选和计数）、install（安装文件的类型判断和分组）、queries（["apps", serial] 和 ["app", serial, pkg]）
+  hooks/                  共用：useDevices useReauthorize useRootMode useToast useTasks useShell useFileDrop
   components/
     shell/                Header DeviceSelect LanguagePicker ThemePicker ModuleNav ShellLayout
-    overlays/             共用浮层：ContextMenu Dialog DialogMessage Toast TaskQueue
+    overlays/             共用浮层：ContextMenu Dialog DialogMessage DropOverlay Toast TaskQueue
     NoDevice.tsx ui.tsx
-  lib/                    共用：api prefs format theme favicon，以及只含 queryClient 的 queries.ts
+  lib/                    共用：api prefs format theme favicon tasks（任务快照转卡片补丁），以及只含 queryClient 的 queries.ts
   i18n/  test/  types.ts
 ```
 
@@ -233,6 +236,7 @@ src/
 | `useRootMode` | `hooks/` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
 | `useTasks` | `hooks/` | 任务队列 | 无 |
 | `useToast` | `hooks/` | 顶部提示 | 无 |
+| `useFileDrop` | `hooks/` | 拖着文件经过窗口时的状态，放下后把 `DataTransfer` 交给调用方；文件模块用它上传，应用模块用它安装 | 无 |
 | `useSelection` | `modules/files/hooks/` | 选中的路径、连选起点 | 无 |
 | `useSelectionActions` | `modules/files/hooks/` | 单击、Shift 连选、Cmd / Ctrl 多选、全选、方向键 | 无 |
 | `useDirectory` | `modules/files/hooks/` | 当前路径、筛选、目录内容和加载状态 | `afm.path` |
@@ -245,8 +249,9 @@ src/
 | `useViewer` | `modules/files/hooks/` | 查看器打开的文件、在可切换文件中的位置；切换时同步选中，掉线或切换设备后关闭 | 无 |
 | `useMediaPlayer` | `modules/files/hooks/` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
 | `useShortcuts` | `modules/files/hooks/` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应；仅在文件模块激活时注册 | 无 |
-| `useUploadPicker` / `useDropUpload` | `modules/files/hooks/` | 文件选择框、拖放上传 | 无 |
+| `useUploadPicker` | `modules/files/hooks/` | 文件选择框 | 无 |
 | `useApps` | `modules/apps/hooks/` | 应用列表查询、筛选项、搜索词、选中的包名；换设备时清空选择 | `afm.apps.filter` |
+| `useAppOps` | `modules/apps/hooks/` | 安装（每组一张任务卡片，按顺序执行）、强行停止、启用、恢复，以及停用、清除数据、卸载、卸载更新的确认对话框（关键包为强确认）、提取 APK；成功后让 `["apps", serial]` 和 `["app", serial, pkg]` 失效 | 无 |
 
 `App.tsx` 用 `usePref` 保存当前模块（`afm.module`）；`FilesPage.tsx` 中用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）；`useApps` 保存应用筛选项（`afm.apps.filter`，默认“用户”）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
 
@@ -272,6 +277,7 @@ flowchart LR
     useRootMode
     useTasks
     useToast
+    useFileDrop
   end
 
   subgraph filesHooks["modules/files/hooks/"]
@@ -286,11 +292,11 @@ flowchart LR
     useViewer
     useMediaPlayer
     useUploadPicker
-    useDropUpload
   end
 
   subgraph appsHooks["modules/apps/hooks/"]
     useApps
+    useAppOps
   end
 
   subgraph lib["lib/（共用）"]
@@ -299,6 +305,7 @@ flowchart LR
     prefs["prefs.ts"]
     theme["theme.ts"]
     favicon["favicon.ts"]
+    tasks["tasks.ts"]
   end
 
   subgraph filesLib["modules/files/lib/"]
@@ -314,6 +321,7 @@ flowchart LR
   subgraph appsLib["modules/apps/lib/"]
     appsQueries["queries.ts"]
     appsFilter["filter.ts"]
+    appsInstall["install.ts"]
   end
 
   translate["i18n/translate.ts"]
@@ -353,12 +361,18 @@ flowchart LR
   useViewer --> useSelection
   useMediaPlayer --> prefs
   useUploadPicker --> drop
-  useDropUpload --> drop
+  useFileOps --> tasks
 
   useApps --> useShell
   useApps --> appsQueries
   useApps --> appsFilter
   useApps --> prefs
+  useAppOps --> useShell
+  useAppOps --> api
+  useAppOps --> tasks
+  useAppOps --> appsQueries
+  useAppOps --> appsInstall
+  useAppOps -.-> Dialog
   appsQueries --> api
   queries --> api
   api --> translate
@@ -378,7 +392,7 @@ flowchart LR
   App["App.tsx"]
   subgraph shellComps["components/（共用）"]
     shell["shell/<br/>Header、DeviceSelect、<br/>LanguagePicker、ThemePicker、<br/>ModuleNav、ShellLayout"]
-    sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、Toast、<br/>TaskQueue"]
+    sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、DropOverlay、<br/>Toast、TaskQueue"]
     noDevice["NoDevice"]
     ui["ui.tsx<br/>IconButton、PillButton、<br/>Placeholder、弹簧和按压预设"]
   end
@@ -386,12 +400,12 @@ flowchart LR
     toolbar["toolbar/<br/>Toolbar、Breadcrumbs、<br/>SelectionBar、StatusBar"]
     views["views/<br/>FileList、IconGrid、<br/>ColumnView、GalleryView、<br/>FileIcon、ViewSwitch"]
     bm["bookmarks/<br/>QuickLinks、BookmarkForm、<br/>BookmarkIcon"]
-    overlays["overlays/<br/>menus、Properties、<br/>DropOverlay、UsageTip"]
+    overlays["overlays/<br/>menus、Properties、<br/>UsageTip"]
     viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>ArchiveView、CodeView、<br/>MarkdownView、MarkdownParts、<br/>Unsupported"]
     upload["UploadInputs"]
   end
   subgraph appsComps["modules/apps/components/"]
-    appsUi["AppToolbar、AppList、<br/>AppDetail、AppBadge"]
+    appsUi["AppToolbar、AppList、<br/>AppDetail、AppActions、<br/>AppBadge"]
   end
   subgraph lib["lib/（共用）"]
     api["api.ts"]

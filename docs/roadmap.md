@@ -79,9 +79,9 @@
 
 ### S7 应用管理：操作
 
-- [ ] 安装 APK（含拖放、多个、`.apks` / `.xapk` 分包用 `install-multiple`），走 S5 的任务
-- [ ] 卸载（系统应用用 `pm uninstall --user 0`，提供 `cmd package install-existing` 恢复）、停用和启用、强行停止、清除数据、提取 APK（复用下载）
-- [ ] 防呆：SystemUI、设置、启动器、输入法等关键包停用或卸载前强确认
+- [x] 安装 APK（含拖放、多个、`.apks` / `.xapk` 分包用 `install-multiple`），走 S5 的任务
+- [x] 卸载（系统应用用 `pm uninstall --user 0`，提供 `cmd package install-existing` 恢复）、停用和启用、强行停止、清除数据、提取 APK（复用下载）
+- [x] 防呆：SystemUI、设置、启动器、输入法等关键包停用或卸载前强确认
 
 ### S8 prop 管理
 
@@ -166,3 +166,17 @@
 - `firstInstall`、`lastUpdate` 是设备本地时间原文，不带时区，同 `ArchiveEntry.date`，前端原样显示
 - 列表只显示包名；应用名称和图标需要解析 APK，留待后续
 - `Placeholder` 已从文件视图移到 `components/ui.tsx`，新模块直接从那里导入
+
+### S7
+
+- `CriticalRole`（`core`、`systemui`、`settings`、`launcher`、`ime`）在 `shared/types.d.ts`，`AppEntry.critical` 可选。`server/guard.ts` 的 `criticalRole(pkg, { launcher, ime })` 先查静态表 `CRITICAL_PACKAGES`，再比对当前启动器和输入法；`assertNotCritical(role, force)` 对关键包不带 `force: true` 抛出 `409`。卸载、停用、清除数据、卸载更新接入，强行停止、启用、恢复不接入。服务端每次操作都用 `currentDefaults(ctx)` 重新读取启动器和输入法，不信任前端。S9 的 settings 防呆可沿用“后端返回 409，前端带 `force` 重试”的约定
+- `pmRun(ctx, cmd)` 执行 pm、am 命令，退出码非零或输出里有失败迹象都以 `400` 和 `pmFailed` 报出，失败识别在纯函数 `pmFailure(out)`。S8、S9 的 `setprop`、`settings put` 可复用这个思路，但注意 `settings` 的失败输出格式不同，需另写识别
+- 应用操作接口由 `apps.ts` 的表 `APP_OPS` 生成，新增同类操作只需加一项（命令、是否 `guarded`、可选的 `before` 检查）
+- `JobPhase` 新增 `installing`，对应 `TaskStatus` 的 `installing` 和 `task.installing`；安装阶段 `cancelable: false`。`jobTaskPatch(snap)` 在 `src/lib/tasks.ts`，把任务快照转为任务卡片补丁，S11 的刷入任务直接用。`task.preparing` 的文案改为通用的“正在准备”
+- `transfer.ts` 的 `registerPull` 已导出，任何任务都可以把产物登记为一次性下载，前端用 `saveFromJob` 的同一套流程（`api.extractApk` 即是）。分包应用的提取结果是 `.apks`，各 APK 在 zip 根目录，可直接装回去
+- 安装的上传和任务是两步：`api.installApps` 先把文件传到电脑（`XMLHttpRequest`，可用 `AbortSignal` 取消），响应才是 `JobRef`。S11 刷入镜像可照此设计
+- 共用的拖放：`hooks/useFileDrop.ts`（`enabled`、`onDrop(dt)`、`onError`）和 `components/overlays/DropOverlay.tsx`（`show`、`icon`、`children`）；`lib/api.ts` 里 multipart 上传的 XHR 抽成内部的 `xhrForm`，下载抽成 `saveFromJob`
+- `.apks` 只支持 SAI 风格（根目录有 APK）。含 `toc.pb` 的 bundletool 产物需要按设备配置挑选分包，已明确报错，不支持
+- XAPK 的 OBB 解到任务目录后推送到 `/sdcard/Android/obb/<包名>/`，路径经 `bundle.ts` 校验（必须在该目录之下、不含 `..`）。依赖 `yauzl`（和 `@types/yauzl`）
+- 多用户仍只作用于用户 0：卸载、停用、恢复都带或默认 `--user 0`，普通卸载（用户应用）不带 `--user`，在多用户设备上会作用于全部用户。需要支持其他用户时，应用接口要加 `user` 参数并贯穿列表、详情和操作
+- 真机验证（`TCOFINKZKVLV45BY`）只做了不改变设备状态的检查：列表能识别当前启动器（`com.miui.home`）和输入法并标出关键包；关键包不带 `force` 返回 `409`；不存在的包返回 `pmFailed`；提取单 APK 应用和 8 个 APK 的分包应用都得到正确的 `.apk` 和 `.apks`；安装无效 APK 返回 `INSTALL_PARSE_FAILED_NOT_APK` 且临时文件已清理。真正的安装、卸载、停用、清除数据未在真机执行，S7 完成后建议按计划的验证清单手动走一遍
