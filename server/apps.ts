@@ -1,12 +1,24 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import { Router } from "express";
-import type { AppDetail, AppEntry, AppPermission, AppState, JobRef, OkResult, PullResult } from "../shared/types.d.ts";
+import multer from "multer";
+import type {
+  AppDetail,
+  AppEntry,
+  AppPermission,
+  AppState,
+  InstallResult,
+  JobRef,
+  OkResult,
+  PullResult,
+} from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import { localApkName, readBundle } from "./bundle.ts";
 import { assertNotCritical, type CurrentDefaults, criticalRole } from "./guard.ts";
 import { msg as t } from "./i18n.ts";
 import { startJob } from "./jobs.ts";
 import { serialOf, wrap } from "./request.ts";
-import { tmpDir } from "./tmp.ts";
+import { TMP, tmpDir } from "./tmp.ts";
 import { registerPull } from "./transfer.ts";
 
 const SPLIT = "__ADBFM_SPLIT__";
@@ -246,6 +258,42 @@ export async function pmRun(ctx: adb.Ctx, cmd: string) {
   if (reason) throw new adb.AdbError(t("pmFailed", { reason }), 400);
 }
 
+/** installFailure 里有专门文案的失败代码 */
+const INSTALL_FAILURES = {
+  INSTALL_FAILED_VERSION_DOWNGRADE: "installDowngrade",
+  INSTALL_FAILED_UPDATE_INCOMPATIBLE: "installIncompatible",
+  INSTALL_FAILED_INSUFFICIENT_STORAGE: "installNoSpace",
+  INSTALL_FAILED_NO_MATCHING_ABIS: "installNoAbi",
+  INSTALL_FAILED_OLDER_SDK: "installOldSdk",
+  INSTALL_FAILED_USER_RESTRICTED: "installRestricted",
+} as const;
+
+/** 把 adb install 的失败输出转为用户能看懂的说明：常见的代码有专门的文案，其余带上代码原文 */
+export function installFailure(message: string): string {
+  const code = /INSTALL_(?:PARSE_)?FAILED_[A-Z0-9_]+/.exec(message)?.[0];
+  if (code && Object.hasOwn(INSTALL_FAILURES, code)) return t(INSTALL_FAILURES[code as keyof typeof INSTALL_FAILURES]);
+  return t("installFailed", { code: code ?? (message.trim() || t("adbFailed")) });
+}
+
+/** 可安装的文件类型；.apks 和 .xapk 是分包 */
+const INSTALL_EXTS = [".apk", ".apks", ".xapk"];
+const BUNDLE_EXTS = [".apks", ".xapk"];
+
+/** 取上传的 names 字段：JSON 编码的文件名数组，缺省时为空数组（使用 multipart 文件名） */
+function installNamesOf(v: unknown): string[] {
+  if (v === undefined) return [];
+  let names: unknown;
+  try {
+    names = JSON.parse(String(v));
+  } catch {
+    throw new adb.AdbError(t("badInstallNames"), 400);
+  }
+  if (!Array.isArray(names) || !names.every((n) => typeof n === "string")) {
+    throw new adb.AdbError(t("badInstallNames"), 400);
+  }
+  return names;
+}
+
 interface AppOp {
   /** 设备端命令；body 是请求体，布尔参数需严格为 true */
   cmd: (pkg: string, body: Record<string, unknown>) => string;
@@ -350,6 +398,80 @@ export function appRoutes() {
         return registerPull({ kind: "zip", dir }, `${pkg}.apks`);
       });
       res.json(ref satisfies JobRef);
+    }),
+  );
+
+  // 安装：先上传到电脑临时目录，再作为任务执行（解包、adb install、推送 OBB）
+  const upload = multer({ dest: TMP });
+  router.post(
+    "/install",
+    upload.array("files"),
+    wrap(async (req, res) => {
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      const cleanup = (dir?: string) =>
+        Promise.all([
+          ...files.map((f) => fs.rm(f.path, { force: true })),
+          dir ? fs.rm(dir, { recursive: true, force: true }) : undefined,
+        ]);
+      let started = false;
+      try {
+        const serial = serialOf(req);
+        if (!files.length) throw new adb.AdbError(t("noFilesReceived"), 400);
+        // 文件名用单独的 JSON 字段传，避免 multipart 文件名的编码问题
+        const given = installNamesOf(req.body.names);
+        const names = files.map((f, i) => given[i] || f.originalname);
+        const exts = names.map((n) => path.extname(n).toLowerCase());
+        if (!exts.every((e) => INSTALL_EXTS.includes(e))) throw new adb.AdbError(t("badInstallFile"), 400);
+        const bundle = exts.some((e) => BUNDLE_EXTS.includes(e));
+        if (bundle && files.length > 1) throw new adb.AdbError(t("installBundleAlone"), 400);
+
+        const ref = startJob<InstallResult>(req, async (job) => {
+          let dir: string | undefined;
+          try {
+            dir = await tmpDir();
+            let apks: string[];
+            let obb: { local: string; remote: string }[] = [];
+            if (bundle) {
+              job.phase("preparing");
+              ({ apks, obb } = await readBundle(files[0].path, dir, job.signal));
+            } else {
+              // adb 按文件名识别 APK，multer 存下的文件没有扩展名，改名后再装
+              const root = dir;
+              apks = await Promise.all(
+                files.map(async (f, i) => {
+                  const local = path.join(root, localApkName(i, names[i]));
+                  await fs.rename(f.path, local);
+                  return local;
+                }),
+              );
+            }
+            // 装进设备后不能中途取消，否则可能留下装了一半的应用
+            job.phase("installing", { cancelable: false });
+            try {
+              await adb.install(serial, apks, job.signal);
+            } catch (e) {
+              throw e instanceof adb.AdbError ? new adb.AdbError(installFailure(e.message), 400) : e;
+            }
+            if (!obb.length) return {};
+            job.phase("pushing");
+            const ctx: adb.Ctx = { serial, root: false };
+            for (const [i, o] of obb.entries()) {
+              const remoteDir = path.posix.dirname(o.remote);
+              await adb.checked(ctx, `mkdir -p ${adb.q(remoteDir)}`, adb.QUICK_TIMEOUT, job.signal);
+              await adb.push(ctx, [o.local], remoteDir, job.signal);
+              job.progress((i + 1) / obb.length);
+            }
+            return { obb: obb.length };
+          } finally {
+            await cleanup(dir);
+          }
+        });
+        started = true;
+        res.json(ref satisfies JobRef);
+      } finally {
+        // 任务启动后由任务负责清理；启动前出错在这里同步清理
+        if (!started) await cleanup();
+      }
     }),
   );
 

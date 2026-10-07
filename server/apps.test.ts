@@ -3,6 +3,7 @@ import { AdbError } from "./adb.ts";
 import {
   assertPackage,
   defaultsCmd,
+  installFailure,
   listCmd,
   parseAppDetail,
   parseAppList,
@@ -10,6 +11,7 @@ import {
   parsePackageLine,
   pmFailure,
 } from "./apps.ts";
+import { msg } from "./i18n.ts";
 
 describe("assertPackage", () => {
   it.each(["android", "com.foo_bar.x1", "a.b.c", "Com.Foo"])("接受 %s", (pkg) => {
@@ -107,6 +109,35 @@ describe("pmFailure", () => {
       expect(pmFailure(out)).toBeUndefined();
     },
   );
+});
+
+describe("installFailure", () => {
+  it.each([
+    ["adb: failed to install a.apk: Failure [INSTALL_FAILED_VERSION_DOWNGRADE]", "installDowngrade"],
+    [
+      "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package com.x signatures do not match previously installed version]",
+      "installIncompatible",
+    ],
+    ["Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]", "installNoSpace"],
+    ["Failure [INSTALL_FAILED_NO_MATCHING_ABIS: Failed to extract native libraries, res=-113]", "installNoAbi"],
+    ["Failure [INSTALL_FAILED_OLDER_SDK]", "installOldSdk"],
+    ["Failure [INSTALL_FAILED_USER_RESTRICTED: Install canceled by user]", "installRestricted"],
+  ] as const)("%s 映射到专门的文案 %s", (message, key) => {
+    expect(installFailure(message)).toBe(msg(key));
+  });
+
+  it.each([
+    ["Failure [INSTALL_FAILED_DUPLICATE_PERMISSION: x]", "INSTALL_FAILED_DUPLICATE_PERMISSION"],
+    ["Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]", "INSTALL_PARSE_FAILED_NO_CERTIFICATES"],
+    ["Failure [INSTALL_FAILED_ABORTED]", "INSTALL_FAILED_ABORTED"],
+  ])("%s 带上失败代码", (message, code) => {
+    expect(installFailure(message)).toBe(msg("installFailed", { code }));
+  });
+
+  it("没有失败代码时带上原文，原文为空时用通用说明", () => {
+    expect(installFailure("error: device offline")).toBe(msg("installFailed", { code: "error: device offline" }));
+    expect(installFailure("  ")).toBe(msg("installFailed", { code: msg("adbFailed") }));
+  });
 });
 
 describe("parsePackageLine", () => {

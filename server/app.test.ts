@@ -1,8 +1,10 @@
+import fs from "node:fs/promises";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app.ts";
 import { msg } from "./i18n.ts";
+import { TMP } from "./tmp.ts";
 
 let server: Server;
 let base: string;
@@ -75,6 +77,7 @@ describe("createApp 的接口挂载", () => {
     ["POST", "/api/apps/force-stop"],
     ["POST", "/api/apps/clear"],
     ["POST", "/api/apps/extract"],
+    ["POST", "/api/apps/install"],
     ["GET", "/api/devices/storage"],
     ["POST", "/api/devices/root-check"],
   ] as const)("%s %s 不带 serial 时返回 400", async (method, url) => {
@@ -108,6 +111,37 @@ describe("createApp 的接口挂载", () => {
       expect(((await res.json()) as { error: string }).error).toBe(msg("badPackage"));
     },
   );
+
+  describe("POST /api/apps/install 的前置校验", () => {
+    async function install(names: string[], rawNames?: string) {
+      const form = new FormData();
+      form.append("names", rawNames ?? JSON.stringify(names));
+      for (const _ of names) form.append("files", new Blob(["x"]), "blob");
+      const before = await fs.readdir(TMP);
+      const res = await fetch(`${base}/api/apps/install?serial=x`, {
+        method: "POST",
+        headers: { "x-lang": "zh" },
+        body: form,
+      });
+      // 校验失败时 multer 存下的文件要同步删除
+      expect(await fs.readdir(TMP)).toEqual(before);
+      return { status: res.status, error: ((await res.json()) as { error: string }).error };
+    }
+
+    it.each([
+      ["不支持的扩展名", ["a.txt"], "badInstallFile"],
+      ["多个文件里混入不支持的", ["a.apk", "b.zip"], "badInstallFile"],
+      [".apks 与其他文件同时选择", ["a.apks", "b.apk"], "installBundleAlone"],
+      [".xapk 与其他文件同时选择", ["a.xapk", "b.xapk"], "installBundleAlone"],
+    ] as const)("%s返回 400", async (_name, names, key) => {
+      expect(await install([...names])).toEqual({ status: 400, error: msg(key) });
+    });
+
+    it("names 不是文件名数组的 JSON 时返回 400", async () => {
+      expect(await install(["a.apk"], "{oops")).toEqual({ status: 400, error: msg("badInstallNames") });
+      expect(await install(["a.apk"], "[1]")).toEqual({ status: 400, error: msg("badInstallNames") });
+    });
+  });
 
   it.each([
     ["GET", "/api/jobs/nope/events"],

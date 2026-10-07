@@ -274,6 +274,15 @@ export async function pull(ctx: Ctx, remote: string, local: string, signal?: Abo
   }
 }
 
+/**
+ * 安装 APK：1 个用 install，多个（分包）用 install-multiple，均为覆盖安装。不限时，signal 可中途取消。
+ * 老版本的 adb 安装失败时也返回 0，所以输出里没有 Success 同样视为失败
+ */
+export async function install(serial: string, apks: string[], signal?: AbortSignal) {
+  const out = await run(["-s", serial, apks.length > 1 ? "install-multiple" : "install", "-r", ...apks], 0, signal);
+  if (!out.includes("Success")) throw new AdbError(cleanError(out.trim()));
+}
+
 /** checked 成功时命令输出里的标记，也会被 checked 从返回值中去掉 */
 export const OK_MARK = "__ADBFM_OK__";
 /** 命令检测到目标已存在时输出的标记，checked 据此抛出 targetExists */
