@@ -68,7 +68,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 ### 前端结构
 
-前端分为外壳和模块两层：外壳（`App.tsx`、共用的 `hooks/`、`components/`、`lib/`）负责设备、root、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是 `src/modules/` 下的一个目录，文件管理是第一个模块（`modules/files/`）。
+前端分为外壳和模块两层：外壳（`App.tsx`、共用的 `hooks/`、`components/`、`lib/`）负责设备、root、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是 `src/modules/` 下的一个目录，文件管理是第一个模块（`modules/files/`），应用管理是第二个（`modules/apps/`，`index.ts` 只导出 `AppsPage`）。
 
 - `App.tsx` 只负责组装：调用 `useShellState()`，把外壳状态和模块导航放进 `ShellContext`，渲染当前模块的 `Page` 和全局浮层。模块在 `modules/index.ts` 的 `MODULES` 中注册
 - 模块目录内部仍按职责分为 `hooks/`、`components/`、`lib/`：状态和交互逻辑放 `hooks/`，界面放 `components/`，与 React 状态无关的工具函数放 `lib/`；模块专属的类型放模块自己的 `types.ts`，对外只通过模块的 `index.ts` 导出（`files` 只导出 `FilesPage`、`UsageTip`）

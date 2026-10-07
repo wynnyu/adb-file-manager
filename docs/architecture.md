@@ -75,28 +75,30 @@ flowchart TB
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> attrs["attrs.ts<br/>属性、递归统计、权限路由"]
   app --> archive["archive.ts<br/>压缩包预览、解压、压缩路由"]
+  app --> apps["apps.ts<br/>应用列表、详情路由"]
   app --> jobs["jobs.ts<br/>后台任务、SSE 进度、取消"]
   archive --> zip["zip.ts<br/>电脑端生成 zip"]
   archive & transfer --> jobs
   zip & transfer --> tmp["tmp.ts<br/>临时目录、进度估算"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & preview & attrs & archive & devices & jobs --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & transfer & preview & attrs & archive & devices & jobs & apps --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files & attrs --> guard["guard.ts<br/>受保护路径、源与目标关系"]
   files & transfer & preview & attrs & archive & zip & guard --> fscmds["fs-cmds.ts<br/>设备端文件命令"]
   devices --> fastboot["fastboot.ts<br/>fastboot 设备检测"]
   fastboot --> adb
-  fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip --> adb["adb.ts<br/>底层调用"]
+  fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip & apps --> adb["adb.ts<br/>底层调用"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，先清理电脑临时目录，再在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`、任务路由挂在 `/api/jobs`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
+| `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`、应用路由挂在 `/api/apps`、任务路由挂在 `/api/jobs`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
 | `devices.ts` | `deviceRoutes()`：`GET /api/devices`（`listDevices()` 合并 adb 和 fastboot）、`/api/devices/reconnect`、`/api/devices/restart-server`、`/api/devices/root-check`、`/api/devices/storage`；`storage` 读取存储空间 |
 | `files.ts` | `/api/files/ls`、`/api/files/mkdir`、`/api/files/rename`、`/api/files/delete`、`/api/files/copy`、`/api/files/move` |
 | `preview.ts` | `/api/files/preview`（媒体文件，支持 Range）、`/api/files/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `attrs.ts` | `/api/files/stat`（属性、符号链接目标、所在分区）、`/api/files/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/files/chmod`、`/api/files/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
+| `apps.ts` | `/api/apps`（应用列表，一次 shell 取全部包、系统包、已停用包和已安装包四段）、`/api/apps/info`（解析 `dumpsys package` 得到版本、安装信息和权限）；只读，不接受 `root`。`assertPackage` 校验包名（S7 的操作复用），`listCmd`、`parsePackageLine`、`parseAppList`、`parseAppDetail` 为可单独测试的纯函数；已卸载指系统应用被 `pm uninstall --user 0` 移除，即不在 `pm list packages` 的结果中 |
 | `archive.ts` | `/api/files/archive`（压缩包内的条目，最多 20000 个）、`/api/files/extract`（在设备上解压）、`/api/files/compress`（启动压缩任务，zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
 | `zip.ts` | zip 的电脑端生成：`compressZip` 接收 `JobHandle`，依次预估空间、`adb pull`、打包、`adb push` 并切换任务阶段（推送阶段不可取消），`buildZip` 用 `archiver` 写出 zip（支持 `signal` 取消和进度回调），已压缩的格式直接存储 |
 | `jobs.ts` | 通用后台任务：`startJob(req, run)` 生成 id 后立即返回，`run` 在后台执行并通过 `JobHandle`（`signal`、`phase`、`progress`、`log`）报告阶段、进度和日志；`jobRoutes()` 提供 `/api/jobs/:id/events`（SSE）和 `/api/jobs/:id/cancel`。任务保存在内存中，结束后保留 60 秒；异常经 `request.ts` 的 `rootGuard` 复查，`signal` 已触发时记为取消；进度推送限流到约 250 毫秒一次 |
@@ -139,7 +141,7 @@ sequenceDiagram
 
 ## 前端结构
 
-前端分为外壳和模块两层。外壳负责设备、root 模式、语言、主题、提示、对话框、任务队列和模块导航；每个功能模块是一个整页，文件管理是第一个模块，位于 `src/modules/files/`。`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 只负责组装：调用 `useShellState()` 得到外壳状态，加上模块导航后放进 `ShellContext`，渲染当前模块的 `Page`，并在页面之外渲染全局浮层（`TaskQueue`、`Toast`、`Dialog`）。
+前端分为外壳和模块两层。外壳负责设备、root 模式、语言、主题、提示、对话框、任务队列和模块导航；每个功能模块是一个整页，文件管理是第一个模块（`src/modules/files/`），应用管理是第二个（`src/modules/apps/`）。`main.tsx` 依次包裹 `QueryClientProvider`、`I18nProvider` 和 `MotionConfig`，然后渲染 `App`。`App.tsx` 只负责组装：调用 `useShellState()` 得到外壳状态，加上模块导航后放进 `ShellContext`，渲染当前模块的 `Page`，并在页面之外渲染全局浮层（`TaskQueue`、`Toast`、`Dialog`）。
 
 ```mermaid
 flowchart TB
@@ -148,10 +150,12 @@ flowchart TB
   App --> ctx["ShellContext<br/>外壳状态加模块导航"]
   App --> registry["modules/index.ts<br/>MODULES 注册表"]
   registry --> files["modules/files/<br/>FilesPage、UsageTip"]
+  registry --> apps["modules/apps/<br/>AppsPage"]
   ctx -. "useShell()" .-> files
+  ctx -. "useShell()" .-> apps
   ctx -. "useShell()" .-> shellui["components/shell/<br/>Header、ModuleNav、ShellLayout"]
   App --> overlays["components/overlays/<br/>TaskQueue、Toast、Dialog"]
-  files --> shared["hooks/、components/、lib/<br/>共用代码"]
+  files & apps --> shared["hooks/、components/、lib/<br/>共用代码"]
   shared --> i18n["i18n/<br/>中英文文案"]
   shared --> shared_types["shared/types.d.ts<br/>前后端共用类型"]
 ```
@@ -170,6 +174,13 @@ src/
       hooks/              文件管理的状态与交互逻辑
       components/         bookmarks/ toolbar/ views/ viewer/ overlays/ 和 UploadInputs.tsx
       lib/                archive、bookmarks、code、drop、entries、kinds、markdown，以及目录和文件相关的查询
+    apps/                 应用管理模块
+      index.ts            对外只导出 AppsPage
+      AppsPage.tsx        应用管理的整页：宽屏左列表右详情，窄屏选中后详情替换列表
+      types.ts            AppFilter
+      hooks/              useApps：查询、筛选、搜索和选中的应用
+      components/         AppToolbar、AppList、AppDetail、AppBadge
+      lib/                filter（筛选和计数）、queries（["apps", serial] 和 ["app", serial, pkg]）
   hooks/                  共用：useDevices useReauthorize useRootMode useToast useTasks useShell
   components/
     shell/                Header DeviceSelect LanguagePicker ThemePicker ModuleNav ShellLayout
@@ -235,8 +246,9 @@ src/
 | `useMediaPlayer` | `modules/files/hooks/` | 查看器中视频、音频的播放状态、自动播放、音量和静音；空格键播放或暂停 | `afm.volume`、`afm.muted` |
 | `useShortcuts` | `modules/files/hooks/` | 全局快捷键（无状态，读取最新的上下文）；对话框、菜单、属性页或查看器打开时不响应；仅在文件模块激活时注册 | 无 |
 | `useUploadPicker` / `useDropUpload` | `modules/files/hooks/` | 文件选择框、拖放上传 | 无 |
+| `useApps` | `modules/apps/hooks/` | 应用列表查询、筛选项、搜索词、选中的包名；换设备时清空选择 | `afm.apps.filter` |
 
-`App.tsx` 用 `usePref` 保存当前模块（`afm.module`）；`FilesPage.tsx` 中用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
+`App.tsx` 用 `usePref` 保存当前模块（`afm.module`）；`FilesPage.tsx` 中用 `usePref` 保存视图（`afm.view`）、排序（`afm.sort`）和隐藏文件开关（`afm.hidden`）；`useApps` 保存应用筛选项（`afm.apps.filter`，默认“用户”）。其他持久化项：界面语言 `afm.lang`，主题 `afm.flavor`、`afm.accent`，首次使用提示 `afm.tipDismissed`；`TextViewer` 用 `usePref` 保存文本查看的自动换行开关 `afm.textWrap` 和 Markdown 预览开关 `afm.markdownPreview`。
 
 ### 目录缓存
 
@@ -277,6 +289,10 @@ flowchart LR
     useDropUpload
   end
 
+  subgraph appsHooks["modules/apps/hooks/"]
+    useApps
+  end
+
   subgraph lib["lib/（共用）"]
     api["api.ts"]
     format["format.ts"]
@@ -293,6 +309,11 @@ flowchart LR
     markdown["markdown.ts"]
     bookmarks["bookmarks.ts"]
     drop["drop.ts"]
+  end
+
+  subgraph appsLib["modules/apps/lib/"]
+    appsQueries["queries.ts"]
+    appsFilter["filter.ts"]
   end
 
   translate["i18n/translate.ts"]
@@ -334,6 +355,11 @@ flowchart LR
   useUploadPicker --> drop
   useDropUpload --> drop
 
+  useApps --> useShell
+  useApps --> appsQueries
+  useApps --> appsFilter
+  useApps --> prefs
+  appsQueries --> api
   queries --> api
   api --> translate
   entries --> kinds
@@ -354,7 +380,7 @@ flowchart LR
     shell["shell/<br/>Header、DeviceSelect、<br/>LanguagePicker、ThemePicker、<br/>ModuleNav、ShellLayout"]
     sharedOverlays["overlays/<br/>Dialog、DialogMessage、<br/>ContextMenu、Toast、<br/>TaskQueue"]
     noDevice["NoDevice"]
-    ui["ui.tsx<br/>IconButton、PillButton、<br/>弹簧和按压预设"]
+    ui["ui.tsx<br/>IconButton、PillButton、<br/>Placeholder、弹簧和按压预设"]
   end
   subgraph filesComps["modules/files/components/"]
     toolbar["toolbar/<br/>Toolbar、Breadcrumbs、<br/>SelectionBar、StatusBar"]
@@ -363,6 +389,9 @@ flowchart LR
     overlays["overlays/<br/>menus、Properties、<br/>DropOverlay、UsageTip"]
     viewer["viewer/<br/>Viewer、ImageViewer、<br/>VideoPlayer、AudioPlayer、<br/>MediaControls、TextViewer、<br/>ArchiveView、CodeView、<br/>MarkdownView、MarkdownParts、<br/>Unsupported"]
     upload["UploadInputs"]
+  end
+  subgraph appsComps["modules/apps/components/"]
+    appsUi["AppToolbar、AppList、<br/>AppDetail、AppBadge"]
   end
   subgraph lib["lib/（共用）"]
     api["api.ts"]
@@ -380,6 +409,9 @@ flowchart LR
 
   App --> shellComps
   App --> filesComps
+  App --> appsComps
+  appsUi --> ui
+  appsUi --> appsQ["modules/apps/lib/queries.ts"]
   shell & sharedOverlays & noDevice & toolbar & views & bm & overlays & viewer & upload --> ui
   toolbar --> views
   toolbar --> overlays

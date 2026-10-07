@@ -73,9 +73,9 @@
 
 ### S6 应用管理：列表与详情
 
-- [ ] `pm list packages -f -U` 加 `-3` / `-s` / `-d` 区分用户、系统、已停用；`dumpsys package <包名>` 解析版本、安装时间、安装来源、权限
-- [ ] 列表、搜索、筛选；详情面板；应用图标暂不做或经 APK 解析后续补充
-- [ ] 包名格式校验函数，所有拼进 shell 的参数经 `q()`
+- [x] `pm list packages -f -U` 加 `-3` / `-s` / `-d` 区分用户、系统、已停用；`dumpsys package <包名>` 解析版本、安装时间、安装来源、权限
+- [x] 列表、搜索、筛选；详情面板；应用图标暂不做或经 APK 解析后续补充
+- [x] 包名格式校验函数，所有拼进 shell 的参数经 `q()`
 
 ### S7 应用管理：操作
 
@@ -154,3 +154,15 @@
 - 错误信息的语言取自启动任务的请求（`AsyncLocalStorage` 随异步延续传递）；`rootGuard` 已导出，任务里的 root 请求失败同样会以 `root_lost` 报出，需要请求带 `root` 和 `serial` 参数
 - 取消信号已传到 `adb.push` / `adb.pull`（第四个参数）、`adb.checked`（第四个参数）、`cmds.diskUsage`、`cmds.countSkipped` 和 `buildZip`；su 模式的暂存目录清理不带 `signal`，取消后也会执行
 - 进度估算：`tmp.ts` 的 `watchGrowth(dir, total, onProgress)` 每 500 毫秒量一次临时目录大小，上限 0.99；总量来自 `cmds.diskUsage`（`du -sk`，按块计，略大于实际字节数）
+
+### S6
+
+- `assertPackage(v)` 在 `server/apps.ts`，校验失败抛 `AdbError(msg("badPackage"), 400)`，S7 的操作接口复用；拼进命令时仍要经 `adb.q()`
+- `AppState` 为 `enabled`、`disabled`、`uninstalled`。已卸载指用户 0 已卸载的系统应用：它在 `pm list packages -f -u` 中，但不在不带 `-u` 的 `pm list packages` 中，APK 仍在系统分区，可用 `pm install-existing` 恢复。列表是 `-u` 的全集，所以 S7 卸载、恢复后要刷新列表
+- 前端查询键为 `["apps", serial]` 和 `["app", serial, pkg]`（`modules/apps/lib/queries.ts`），S7 的操作完成后让这两个失效
+- 详情面板（`modules/apps/components/AppDetail.tsx`）标题区下方有一个空的操作区 `div`（`empty:hidden`），S7 的按钮放在这里；面板已持有选中的 `AppEntry`，可据 `state`、`system` 决定显示哪些操作
+- `AppDetail.updatedSystem` 表示 `Hidden system packages:` 中也有该包，即系统应用被更新过；S7 的“卸载更新”据此判断
+- 应用接口只读，ctx 固定为 `{ serial, root: false }`，前端只传 `serial`；`pm` 和 `dumpsys` 默认作用于用户 0。S7 的写操作若要支持其他用户或 root，需要另行设计
+- `firstInstall`、`lastUpdate` 是设备本地时间原文，不带时区，同 `ArchiveEntry.date`，前端原样显示
+- 列表只显示包名；应用名称和图标需要解析 APK，留待后续
+- `Placeholder` 已从文件视图移到 `components/ui.tsx`，新模块直接从那里导入

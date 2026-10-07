@@ -54,9 +54,9 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 | 状态码 | 场景 |
 | --- | --- |
-| 400 | 参数缺失或不合法；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件 |
+| 400 | 参数缺失或不合法（包括包名格式不正确）；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件 |
 | 403 | 非本机访问；设备上没有读取权限；无法获取 root |
-| 404 | 目录或文件不存在；下载 token 已过期；任务不存在或已过期 |
+| 404 | 目录或文件不存在；下载 token 已过期；任务不存在或已过期；设备上没有该应用 |
 | 415 | 预览不支持该文件类型 |
 | 416 | 预览请求的范围超出文件大小 |
 | 500 | adb 执行失败，例如未找到 adb、设备断开或未授权 |
@@ -199,6 +199,51 @@ interface ExtractResult {
   path: string;
 }
 
+/** 应用对用户 0 的状态：uninstalled 为系统应用被 pm uninstall --user 0 移除，可用 install-existing 恢复 */
+type AppState = "enabled" | "disabled" | "uninstalled";
+
+/** GET /api/apps 的一项 */
+interface AppEntry {
+  pkg: string;
+  /** APK 在设备上的路径；已卸载的系统应用仍保留原路径 */
+  path: string;
+  /** 老系统的 pm 不支持 -U 时缺省 */
+  uid?: number;
+  system: boolean;
+  state: AppState;
+}
+
+/** 应用的一项权限 */
+interface AppPermission {
+  name: string;
+  /** 运行时权限，需用户授予 */
+  runtime: boolean;
+  /** 只在 requested 中出现时缺省 */
+  granted?: boolean;
+}
+
+/** GET /api/apps/info 的响应；时间为设备本地时间原文，无时区；解析不到的字段缺省 */
+interface AppDetail {
+  pkg: string;
+  versionName?: string;
+  versionCode?: number;
+  minSdk?: number;
+  targetSdk?: number;
+  firstInstall?: string;
+  lastUpdate?: string;
+  /** 安装来源的包名，dumpsys 中为 null 时缺省 */
+  installer?: string;
+  codePath?: string;
+  dataDir?: string;
+  abi?: string;
+  uid?: number;
+  /** pkgFlags 中的标志，如 SYSTEM、HAS_CODE */
+  flags: string[];
+  /** 系统应用已被更新过，卸载更新可回到出厂版本 */
+  updatedSystem: boolean;
+  permissions: AppPermission[];
+}
+
 /** POST /api/files/compress 的请求；压缩包生成在所选项的公共父目录 */
 interface CompressRequest {
   paths: string[];
@@ -316,6 +361,8 @@ interface ChownRequest {
 | POST | `/api/files/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
 | POST | `/api/files/pull` | 启动下载任务 | `api.pull(target, paths)`，`api.download` 第一步 |
 | GET | `/api/files/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 最后一步 |
+| GET | `/api/apps` | 列出应用 | `api.apps(serial)` |
+| GET | `/api/apps/info` | 读取应用详情 | `api.appInfo(serial, pkg)` |
 | GET | `/api/jobs/:id/events` | 订阅任务的进度、日志和结果（SSE） | `api.watchJob(id, onUpdate)` |
 | POST | `/api/jobs/:id/cancel` | 取消任务 | `api.cancelJob(id)` |
 
@@ -880,6 +927,71 @@ res.json(ref satisfies JobRef);
 - 任务函数返回的值成为 `result`；抛出的异常经 `rootGuard` 复查后成为 `error`
 - 需要清理的资源（临时目录等）在任务函数的 `finally` 或 `catch` 里处理，取消同样会走到这里
 
+## 应用
+
+应用接口只读，始终以普通 shell 用户执行，不接受 `root` 参数，只需要 `serial`。`pm` 命令默认作用于用户 0。
+
+### GET /api/apps
+
+列出设备上的全部应用，包括对用户 0 已卸载的系统应用。一次 shell 执行四条命令，输出以分隔符隔开：
+
+1. `pm list packages -f -U -u`：全部包，带 APK 路径和 uid；`-U` 不被支持时降级为 `pm list packages -f -u`，此时没有 `uid`
+2. `pm list packages -s -u`：系统包
+3. `pm list packages -d`：已停用的包
+4. `pm list packages`：当前用户已安装的包
+
+`system` 取自第 2 段；`state` 为 `uninstalled` 表示不在第 4 段中（系统应用被 `pm uninstall --user 0` 移除，APK 仍在系统分区，可用 `pm install-existing` 恢复），否则在第 3 段中为 `disabled`，其余为 `enabled`。第 4 段为空时视为该命令失败，不把应用标为已卸载。路径中可能含 `=`，按最后一个 `=` 切分包名。
+
+| 查询参数 | 必填 |
+| --- | --- |
+| `serial` | 是 |
+
+响应：`AppEntry[]`，按包名排序。
+
+```json
+[
+  { "pkg": "com.android.chrome", "path": "/data/app/~~x/com.android.chrome-y/base.apk", "uid": 10150, "system": true, "state": "enabled" },
+  { "pkg": "com.android.gone", "path": "/system/app/Gone/Gone.apk", "uid": 10051, "system": true, "state": "uninstalled" }
+]
+```
+
+### GET /api/apps/info
+
+读取单个应用的详情，解析 `dumpsys package <pkg>`：在 `Packages:` 段中取 `Package [<pkg>]` 块，按缩进确定范围；`Hidden system packages:` 段中也有该包时 `updatedSystem` 为 `true`。
+
+权限以 `requested permissions:` 为基础列表。`install permissions:` 中的条目为 `runtime: false`，并带 `granted`；`User 0:` 下 `runtime permissions:` 中的条目为 `runtime: true`，并带 `granted`；老系统的 `grantedPermissions:` 视为已授予。只出现在 requested 中的权限没有 `granted`。
+
+| 查询参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `serial` | 是 | |
+| `pkg` | 是 | 包名，格式 `^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*$`，不超过 255 个字符，允许 `android` 这类单段包名 |
+
+响应：`AppDetail`
+
+```json
+{
+  "pkg": "com.example.app",
+  "versionName": "1.2.3",
+  "versionCode": 123,
+  "minSdk": 24,
+  "targetSdk": 33,
+  "firstInstall": "2023-01-01 10:00:00",
+  "lastUpdate": "2023-02-01 11:22:33",
+  "codePath": "/data/app/~~xyz/com.example.app-uvw",
+  "dataDir": "/data/user/0/com.example.app",
+  "abi": "arm64-v8a",
+  "uid": 10150,
+  "flags": ["HAS_CODE"],
+  "updatedSystem": false,
+  "permissions": [
+    { "name": "android.permission.INTERNET", "runtime": false, "granted": true },
+    { "name": "android.permission.CAMERA", "runtime": true, "granted": false }
+  ]
+}
+```
+
+错误：包名不合法时 `400`；设备上没有该包时 `404`。
+
 ## 前端封装（src/lib/api.ts）
 
 ```ts
@@ -896,6 +1008,8 @@ interface Target {
 | `reconnectDevices()`、`restartAdb()` | `Promise<OkResult>` | 设备待授权时的补救操作，由 `hooks/useReauthorize.ts` 调用 |
 | `rootCheck(serial)` | `Promise<{ method: RootMethod }>` | |
 | `storage(serial)` | `Promise<StorageInfo>` | |
+| `apps(serial)` | `Promise<AppEntry[]>` | 经 `modules/apps/lib/queries.ts` 的 `appsQuery` 调用，查询键为 `["apps", serial]` |
+| `appInfo(serial, pkg)` | `Promise<AppDetail>` | 经 `modules/apps/lib/queries.ts` 的 `appQuery` 调用，查询键为 `["app", serial, pkg]` |
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `modules/files/lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
 | `mkdir(target, path)` | `Promise<OkResult>` | |
 | `rename(target, from, to)` | `Promise<OkResult>` | |
@@ -928,6 +1042,7 @@ interface Target {
 | --- | --- |
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
+| `apps`、`appInfo` | `modules/apps/lib/queries.ts`，由 `modules/apps/hooks/useApps.ts` 和 `modules/apps/components/AppDetail.tsx` 使用 |
 | `ls` | `modules/files/lib/queries.ts`，由 `modules/files/hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `modules/files/hooks/useTree.ts` 使用 |
 | `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download`、`watchJob`、`cancelJob` | `modules/files/hooks/useFileOps.ts` |
 | `previewUrl` | `modules/files/components/views/ColumnView.tsx`、`modules/files/components/views/GalleryView.tsx`、`modules/files/components/viewer/Viewer.tsx` |
