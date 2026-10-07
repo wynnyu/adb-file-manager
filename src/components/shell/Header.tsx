@@ -1,32 +1,19 @@
 import { FolderUp, Shield, ShieldAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useShell } from "../../hooks/index.ts";
 import { useT } from "../../i18n/index.tsx";
 import { formatSize } from "../../lib/index.ts";
-import type { Device, StorageInfo } from "../../types.ts";
+import type { StorageInfo } from "../../types.ts";
 import { press, springPop, springSlow } from "../ui.tsx";
 import { DeviceSelect } from "./DeviceSelect.tsx";
 import { LanguagePicker } from "./LanguagePicker.tsx";
 import { ThemePicker } from "./ThemePicker.tsx";
 
-/** 顶栏：应用名和 ROOT 标记、存储用量，右侧是 root 开关、设备、语言和主题 */
-export function Header({
-  online,
-  rootMode,
-  onToggleRoot,
-  storage,
-  devices,
-  serial,
-  onSerialChange,
-}: {
-  online: boolean;
-  rootMode: boolean;
-  onToggleRoot: () => void;
-  storage: StorageInfo | null;
-  devices: Device[];
-  serial: string | null;
-  onSerialChange: (serial: string) => void;
-}) {
+/** 顶栏：应用名和 ROOT 标记、存储用量，右侧是 root 开关、设备、语言和主题；设备和 root 状态取自外壳 */
+export function Header() {
   const t = useT();
+  const { online, rootMode, askEnableRoot, disableRoot, storage, devices, serial, setSerial } = useShell();
+  const onToggleRoot = rootMode ? disableRoot : askEnableRoot;
   return (
     <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -71,7 +58,7 @@ export function Header({
             {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
           </motion.button>
         )}
-        <DeviceSelect devices={devices} serial={serial} onChange={onSerialChange} />
+        <DeviceSelect devices={devices} serial={serial} onChange={setSerial} />
         <LanguagePicker />
         <ThemePicker />
       </div>

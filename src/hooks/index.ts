@@ -9,6 +9,7 @@ export * from "./useProperties.ts";
 export * from "./useReauthorize.ts";
 export * from "./useRootMode.ts";
 export * from "./useSelection.ts";
+export * from "./useShell.ts";
 export * from "./useShortcuts.ts";
 export * from "./useToast.ts";
 export * from "./useTransfers.ts";
