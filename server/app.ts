@@ -2,15 +2,15 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
-import type { ErrorResponse, RootCheckResult } from "../shared/types.d.ts";
+import type { ErrorResponse } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { archiveRoutes } from "./archive.ts";
+import { deviceRoutes } from "./devices.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
 import { langMiddleware } from "./i18n.ts";
 import { previewRoutes } from "./preview.ts";
 import { propertyRoutes } from "./properties.ts";
-import { rootFor, serialOf, wrap } from "./request.ts";
 import { transferRoutes } from "./transfer.ts";
 
 /** 组装 HTTP 服务，不监听端口 */
@@ -20,43 +20,7 @@ export function createApp() {
   app.use(langMiddleware);
   app.use(localOnly);
 
-  app.get(
-    "/api/devices",
-    wrap(async (_req, res) => {
-      res.json(await adb.devices());
-    }),
-  );
-
-  app.post(
-    "/api/devices/reconnect",
-    wrap(async (_req, res) => {
-      await adb.reconnectOffline();
-      res.json({ ok: true });
-    }),
-  );
-
-  app.post(
-    "/api/devices/restart-server",
-    wrap(async (_req, res) => {
-      await adb.restartServer();
-      res.json({ ok: true });
-    }),
-  );
-
-  app.post(
-    "/api/root-check",
-    wrap(async (req, res) => {
-      res.json({ method: await rootFor(serialOf(req), true) } satisfies RootCheckResult);
-    }),
-  );
-
-  app.get(
-    "/api/storage",
-    wrap(async (req, res) => {
-      res.json(await adb.storage({ serial: serialOf(req), root: false }));
-    }),
-  );
-
+  app.use(deviceRoutes());
   app.use(fileRoutes());
   app.use(previewRoutes());
   app.use(archiveRoutes());

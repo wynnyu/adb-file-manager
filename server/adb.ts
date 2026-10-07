@@ -1,7 +1,7 @@
 import { type ChildProcessByStdio, type ExecFileException, execFile, spawn } from "node:child_process";
 import path from "node:path/posix";
 import type { Readable } from "node:stream";
-import type { Device, ErrorCode, RootMethod, StorageInfo } from "../shared/types.d.ts";
+import type { Device, ErrorCode, RootMethod } from "../shared/types.d.ts";
 import { msg as t } from "./i18n.ts";
 
 const ADB = process.env.ADB_PATH || "adb";
@@ -258,10 +258,3 @@ export function execOutStream(ctx: Ctx, cmd: string): ChildProcessByStdio<null, 
 
 /** 执行设备端命令（adb exec-out），以 Buffer 返回 stdout */
 export const execOutBuffer = (ctx: Ctx, cmd: string) => runBuffer(execOut(ctx, cmd));
-
-export async function storage(ctx: Ctx): Promise<StorageInfo> {
-  const out = await shell(ctx, "df -k /sdcard/ | tail -n 1");
-  const [, total, , avail] = out.trim().split(/\s+/).map(Number);
-  if (!total) throw new AdbError(t("noStorage"));
-  return { total: total * 1024, free: avail * 1024 };
-}
