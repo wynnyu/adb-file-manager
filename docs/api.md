@@ -49,13 +49,14 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 | --- | --- | --- |
 | `no_root` | 403 | `POST /api/devices/root-check` 检测到设备无法获取 root |
 | `root_lost` | 403 | 某个 root 请求失败后复查发现 root 已不可用（例如在 root 管理器中撤销了授权）。前端收到后退出 root 模式 |
+| `needs_force` | 409 | 操作有风险，需强确认。`error` 是可直接显示的风险说明，前端弹出强确认后带 `force: true` 重试。属性接口使用该约定，后续的 settings 接口沿用；应用接口的关键包 `409` 尚未带 `code` |
 
 常见状态码：
 
 | 状态码 | 场景 |
 | --- | --- |
 | 400 | 参数缺失或不合法（包括包名格式不正确）；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件；pm 命令执行失败；安装文件类型不受支持 |
-| 409 | 对关键包执行卸载、停用、清除数据或卸载更新，但没有带 `force: true` |
+| 409 | 对关键包执行卸载、停用、清除数据或卸载更新，但没有带 `force: true`；修改有风险的属性或删除属性，但没有带 `force: true`（带 `needs_force`） |
 | 403 | 非本机访问；设备上没有读取权限；无法获取 root |
 | 404 | 目录或文件不存在；下载 token 已过期；任务不存在或已过期；设备上没有该应用 |
 | 415 | 预览不支持该文件类型 |
@@ -126,7 +127,7 @@ interface OkResult {
 }
 
 /** 供前端识别的错误类型，见“响应与错误” */
-type ErrorCode = "no_root" | "root_lost";
+type ErrorCode = "no_root" | "root_lost" | "needs_force";
 
 /** 所有接口出错时的响应；error 可直接显示给用户 */
 interface ErrorResponse {
@@ -270,6 +271,36 @@ interface InstallResult {
   obb?: number;
 }
 
+/** GET /api/props 的一项 */
+interface PropEntry {
+  key: string;
+  /** 多行值以换行符连接 */
+  value: string;
+}
+
+/** GET /api/props 的响应；resetprop 仅在 root 请求时检测，否则为 false */
+interface PropList {
+  props: PropEntry[];
+  resetprop: boolean;
+}
+
+/** POST /api/props/set 的请求。ro.* 需要 root 和 resetprop；有风险的属性不带 force: true 时返回 409 和 needs_force */
+interface PropSetRequest {
+  serial: string;
+  root?: boolean;
+  key: string;
+  value: string;
+  force?: boolean;
+}
+
+/** POST /api/props/delete 的请求；删除需要 root 和 resetprop，且总是要求 force: true */
+interface PropDeleteRequest {
+  serial: string;
+  root?: boolean;
+  key: string;
+  force?: boolean;
+}
+
 /** POST /api/files/compress 的请求；压缩包生成在所选项的公共父目录 */
 interface CompressRequest {
   paths: string[];
@@ -398,6 +429,9 @@ interface ChownRequest {
 | POST | `/api/apps/clear` | 清除数据 | `api.appAction(serial, "clear", pkg, opts)` |
 | POST | `/api/apps/extract` | 启动提取 APK 的任务 | `api.extractApk(serial, pkg, hooks)` |
 | POST | `/api/apps/install` | 上传安装包并启动安装任务 | `api.installApps(serial, files, onProgress, signal)` |
+| GET | `/api/props` | 列出系统属性，root 时检测 resetprop | `api.props(target)` |
+| POST | `/api/props/set` | 修改或新建属性 | `api.setProp(target, key, value, force?)` |
+| POST | `/api/props/delete` | 删除属性 | `api.deleteProp(target, key, force?)` |
 | GET | `/api/jobs/:id/events` | 订阅任务的进度、日志和结果（SSE） | `api.watchJob(id, onUpdate)` |
 | POST | `/api/jobs/:id/cancel` | 取消任务 | `api.cancelJob(id)` |
 
@@ -1117,6 +1151,40 @@ res.json(ref satisfies JobRef);
 
 任务保存在内存中，上传是同一个请求的一部分：浏览器先传完文件，之后才拿到 `JobRef`。上传阶段由前端用 `XMLHttpRequest.abort()` 取消，之后的阶段用 `POST /api/jobs/:id/cancel`。
 
+## 系统属性
+
+属性经 `getprop`、`setprop` 和 root 下的 `resetprop` 读写，实现在 `server/props.ts`。三个接口都支持 `root` 参数：root 模式下 `getprop` 能看到更多属性，也只有 root 模式才能用 `resetprop`。
+
+### GET /api/props
+
+响应：`PropList`。非 root 请求只执行 `getprop`，`resetprop` 固定为 `false`；root 请求在同一次 shell 里追加 resetprop 检测，以 `__ADBFM_SPLIT__` 分隔。属性按键名排序。
+
+`getprop` 的每项为 `[key]: [value]`，值里可以含 `]`；多行值的后续行不以 `[` 开头，并入上一项，以换行符连接。
+
+### POST /api/props/set
+
+请求：`PropSetRequest`。成功时响应 `{ "ok": true }`。校验和执行顺序：
+
+1. 键名须匹配 `^[A-Za-z0-9_][A-Za-z0-9_.\-:@]*$` 且不超过 128 个字符，否则 `400`。`ctl.*` 和 `sys.powerctl` 是控制属性（启停系统服务、重启设备），一律 `400` 拒绝。值须为不含 NUL 和换行、不超过 4096 个字符的字符串，可以为空
+2. `ro.*` 要求 root（否则 `400`，`此操作需要 root 模式`）和 resetprop（否则 `400`，`设备上未找到 resetprop`）
+3. 风险检查：`ro.*` 与 `sys.usb.config`、`persist.sys.usb.config`、`service.adb.root`、`service.adb.tcp.port`、`persist.adb.tcp.port`、`persist.service.adb.enable`（`server/guard.ts` 的 `ADB_PROPS`）有风险，不带 `force: true` 时返回 `409` 和 `needs_force`，`error` 是风险说明（`ro` 属性只在本次开机内生效，系统服务读取到异常值可能无法开机；`adb` 属性可能断开连接）
+4. 执行：非 `ro.*` 用 `setprop`（root 时在 su 下），`ro.*` 用 `resetprop <key> <value>`。键和值都经 `adb.q()` 转义。退出码非零或输出里有 `Failed to set property`、`could not set property`、`property value too long`、resetprop 缺失标记等时，以 `400` 返回 `操作失败：<原因>`
+5. 回读：再执行 `getprop <key>`，与请求的值不一致（比较时忽略首尾空白）时 `400`，`属性未生效`。老版本的 `setprop` 被拒绝时也可能返回 0，所以需要回读
+
+### POST /api/props/delete
+
+请求：`PropDeleteRequest`。成功时响应 `{ "ok": true }`。
+
+- 键名校验同 `set`
+- 要求 root 和 resetprop，否则 `400`
+- 总是有风险：不带 `force: true` 时返回 `409` 和 `needs_force`。`ro.*` 和 `ADB_PROPS` 里的键使用各自的风险说明，其余使用删除的说明（依赖该属性的服务或应用可能异常，`persist.*` 保存的值一并清除）
+- 执行 `resetprop -d <key>`，`persist.*` 加 `-p`（`resetprop -p -d <key>`），同时清除持久化保存的值
+- 回读：`getprop <key>` 应为空，否则 `400`，`属性未生效`
+
+### resetprop 的检测
+
+设备端函数 `adbfm_resetprop` 依次尝试：PATH 中的 `resetprop`、`/data/adb/ksu/bin/resetprop`（KernelSU）、`/data/adb/ap/bin/resetprop`（APatch）、`magisk resetprop`；都没有时输出 `__ADBFM_NO_RESETPROP__` 并返回 127。检测时执行 `adbfm_resetprop -h`，退出码不是 127 即视为可用。`/data/adb` 只有 root 能访问，非 root 请求不检测。
+
 ## 前端封装（src/lib/api.ts）
 
 ```ts
@@ -1138,6 +1206,9 @@ interface Target {
 | `appAction(serial, action, pkg, opts?)` | `Promise<OkResult>` | `action` 为 `uninstall`、`uninstall-updates`、`restore`、`disable`、`enable`、`force-stop`、`clear`；`opts` 为 `force`、`user0`、`keepData` |
 | `extractApk(serial, pkg, hooks?)` | `Promise<void>` | 同 `download`：启动任务、等待、触发浏览器下载；`hooks` 同 `download` |
 | `installApps(serial, files, onProgress, signal?)` | `Promise<JobRef>` | 以 `XMLHttpRequest` 上传，`onProgress` 为 0 到 1；`signal` 触发时中止上传并抛出 `JobCanceled`。任务的结果（`InstallResult`）用 `watchJob` 取得 |
+| `props(target)` | `Promise<PropList>` | 经 `modules/props/lib/queries.ts` 的 `propsQuery` 调用，查询键为 `["props", serial, root]`，修改或删除后让 `["props", serial]` 失效 |
+| `setProp(target, key, value, force?)` | `Promise<OkResult>` | 风险属性不带 `force` 时抛出 `code` 为 `needs_force` 的 `ApiError`，`message` 是风险说明 |
+| `deleteProp(target, key, force?)` | `Promise<OkResult>` | 同上，删除总是需要 `force` |
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `modules/files/lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
 | `mkdir(target, path)` | `Promise<OkResult>` | |
 | `rename(target, from, to)` | `Promise<OkResult>` | |
@@ -1159,7 +1230,7 @@ interface Target {
 
 - GET 请求的 `serial`、`root`、`path` 放在查询参数中，`root` 仅在为 true 时以 `root=1` 传递；POST 请求把 `Target` 展开到 JSON 请求体
 - 每个请求都带 `X-Lang` 请求头，值为当前界面语言
-- 响应状态码不是 2xx 时抛出 `Error`，`message` 为响应中的 `error`；响应不是 JSON 时为 `HTTP 状态码`
+- 响应状态码不是 2xx 时抛出 `ApiError`（继承 `Error`，可选字段 `code?: ErrorCode`），`message` 为响应中的 `error`，`code` 为响应中的 `code`；响应不是 JSON 时 `message` 为 `HTTP 状态码`。调用方用 `e instanceof ApiError && e.code === "needs_force"` 识别需要强确认的情况；`watchJob` 抛出的任务错误同样是 `ApiError`
 - 响应的 `code` 为 `root_lost` 时，先调用 `onRootLost(fn)` 注册的回调，再抛出错误。`useRootMode` 注册该回调，用于退出 root 模式
 - `upload` 遇到网络错误时以“网络错误”（按界面语言）拒绝
 - `EventSource` 无法自定义请求头，`watchJob` 不带 `X-Lang`；任务里的错误信息语言取自启动任务的请求
@@ -1172,6 +1243,8 @@ interface Target {
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `apps`、`appInfo` | `modules/apps/lib/queries.ts`，由 `modules/apps/hooks/useApps.ts` 和 `modules/apps/components/AppDetail.tsx` 使用 |
 | `appAction`、`extractApk`、`installApps`，以及 `watchJob`、`cancelJob` | `modules/apps/hooks/useAppOps.ts` |
+| `props` | `modules/props/lib/queries.ts`，由 `modules/props/hooks/useProps.ts` 使用 |
+| `setProp`、`deleteProp` | `modules/props/hooks/usePropOps.ts` |
 | `ls` | `modules/files/lib/queries.ts`，由 `modules/files/hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `modules/files/hooks/useTree.ts` 使用 |
 | `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download`、`watchJob`、`cancelJob` | `modules/files/hooks/useFileOps.ts` |
 | `previewUrl` | `modules/files/components/views/ColumnView.tsx`、`modules/files/components/views/GalleryView.tsx`、`modules/files/components/viewer/Viewer.tsx` |

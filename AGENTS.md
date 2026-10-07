@@ -68,14 +68,14 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 
 ### 前端结构
 
-前端分为外壳和模块两层：外壳（`App.tsx`、共用的 `hooks/`、`components/`、`lib/`）负责设备、root、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是 `src/modules/` 下的一个目录，文件管理是第一个模块（`modules/files/`），应用管理是第二个（`modules/apps/`，`index.ts` 只导出 `AppsPage`）。
+前端分为外壳和模块两层：外壳（`App.tsx`、共用的 `hooks/`、`components/`、`lib/`）负责设备、root、语言、主题、提示、对话框、传输队列和模块导航；每个功能模块是 `src/modules/` 下的一个目录，文件管理是第一个模块（`modules/files/`），应用管理是第二个（`modules/apps/`，`index.ts` 只导出 `AppsPage`），prop 管理是第三个（`modules/props/`，`index.ts` 只导出 `PropsPage`）。
 
 - `App.tsx` 只负责组装：调用 `useShellState()`，把外壳状态和模块导航放进 `ShellContext`，渲染当前模块的 `Page` 和全局浮层。模块在 `modules/index.ts` 的 `MODULES` 中注册
 - 模块目录内部仍按职责分为 `hooks/`、`components/`、`lib/`：状态和交互逻辑放 `hooks/`，界面放 `components/`，与 React 状态无关的工具函数放 `lib/`；模块专属的类型放模块自己的 `types.ts`，对外只通过模块的 `index.ts` 导出（`files` 只导出 `FilesPage`、`UsageTip`）
 - 共用代码：`src/hooks/`（设备、root、提示、传输队列和 `useShell`）、`src/components/`、`src/lib/`。模块从 `useShell()` 读取设备、`target`、`flash`、`openDialog`、`startTransfer` 等外壳状态，不自己管理这些
-- 依赖规则：模块可以导入 `src/hooks`、`src/components`、`src/lib`、`src/i18n` 和 `src/types.ts`；共用代码不导入 `modules/`；模块之间不互相导入。唯一的例外是 `components/overlays/Dialog.tsx` 的 `bookmark` 类型导入文件模块的 `BookmarkForm` 及 `BookmarkFields` 类型，等后续模块需要自定义表单时再泛化
+- 依赖规则：模块可以导入 `src/hooks`、`src/components`、`src/lib`、`src/i18n` 和 `src/types.ts`；共用代码不导入 `modules/`；模块之间不互相导入。唯一的例外是 `components/overlays/Dialog.tsx` 的 `bookmark` 类型导入文件模块的 `BookmarkForm` 及 `BookmarkFields` 类型；其他模块需要表单时用 `Dialog` 的通用 `form` 类型，不再增加例外
 - hook 中不写 JSX；hooks 与 components 之间只允许 `import type`，模块内部同样如此；`lib/` 不依赖 `hooks/` 和 `components/`
-- 共用组件放 `components/` 下的 `shell/`（顶栏、模块导航、页面骨架）和 `overlays/`（对话框、右键菜单、提示、传输队列），通用按钮等放 `components/ui.tsx`；模块的组件按区域放入模块自己的 `components/` 子目录（文件模块有 `bookmarks/`、`toolbar/`、`views/`、`viewer/`、`overlays/`）
+- 共用组件放 `components/` 下的 `shell/`（顶栏、模块导航、页面骨架）和 `overlays/`（对话框、右键菜单、提示、传输队列），通用按钮、搜索框、分段控件等放 `components/ui.tsx`，通用键值表格是 `components/KeyValueTable.tsx`（prop 管理使用，settings 管理复用）；模块的组件按区域放入模块自己的 `components/` 子目录（文件模块有 `bookmarks/`、`toolbar/`、`views/`、`viewer/`、`overlays/`）
 - 调整模块依赖或新增 hook、持久化项后，同步更新 `docs/architecture.md` 中的图和表
 
 ### React
@@ -115,7 +115,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - 同一类接口用返回 `Router` 的函数组织（`fileRoutes()`、`transferRoutes()`），在 `createApp()` 中挂载
 - 每个异步处理函数都用 `request.ts` 的 `wrap` 包装，异常由它交给 `rootGuard` 和统一的错误处理中间件，不在路由里自行 `res.status(500)`
 - 请求参数通过 `serialOf`、`ctxOf`、`pathsOf`、`adb.assertAbs` 取出和校验，不直接信任 `req.query` / `req.body`
-- 出错时抛出 `AdbError(msg("..."), status, code?)`；错误响应格式固定为 `{ error, code? }`，`code` 仅在前端需要识别时提供（如 `root_lost`）
+- 出错时抛出 `AdbError(msg("..."), status, code?)`；错误响应格式固定为 `{ error, code? }`，`code` 仅在前端需要识别时提供（如 `root_lost`；有风险的操作未带 `force: true` 时返回 `409` 和 `needs_force`，`error` 是风险说明，前端强确认后带 `force: true` 重试）
 - 无返回数据的成功响应为 `{ ok: true }`，有数据时直接返回共享类型中定义的结构
 - `adb.ts` 提供 adb 的底层调用（`run`、`shell`、`checked`、exec-out），各功能模块在自己的文件中拼命令；`fastboot.ts` 是 fastboot 命令的底层调用。除这两个文件外，其他模块不直接调用 `child_process`
 - 新增或修改接口后同步更新 `docs/api.md`

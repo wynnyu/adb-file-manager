@@ -85,9 +85,9 @@
 
 ### S8 prop 管理
 
-- [ ] `getprop` 列表、搜索、分组（ro、persist、sys 等）
-- [ ] 修改：普通 `setprop`；root 下 `resetprop`（检测是否存在）修改 `ro.*`，并警告可能导致无法开机
-- [ ] 键值表格组件写成通用组件，供 S9 复用
+- [x] `getprop` 列表、搜索、分组（ro、persist、sys 等）
+- [x] 修改：普通 `setprop`；root 下 `resetprop`（检测是否存在）修改 `ro.*`，并警告可能导致无法开机
+- [x] 键值表格组件写成通用组件，供 S9 复用
 
 ### S9 settings 管理
 
@@ -180,3 +180,15 @@
 - XAPK 的 OBB 解到任务目录后推送到 `/sdcard/Android/obb/<包名>/`，路径经 `bundle.ts` 校验（必须在该目录之下、不含 `..`）。依赖 `yauzl`（和 `@types/yauzl`）
 - 多用户仍只作用于用户 0：卸载、停用、恢复都带或默认 `--user 0`，普通卸载（用户应用）不带 `--user`，在多用户设备上会作用于全部用户。需要支持其他用户时，应用接口要加 `user` 参数并贯穿列表、详情和操作
 - 真机验证（`TCOFINKZKVLV45BY`）只做了不改变设备状态的检查：列表能识别当前启动器（`com.miui.home`）和输入法并标出关键包；关键包不带 `force` 返回 `409`；不存在的包返回 `pmFailed`；提取单 APK 应用和 8 个 APK 的分包应用都得到正确的 `.apk` 和 `.apks`；安装无效 APK 返回 `INSTALL_PARSE_FAILED_NOT_APK` 且临时文件已清理。真正的安装、卸载、停用、清除数据未在真机执行，S7 完成后建议按计划的验证清单手动走一遍
+
+### S8
+
+- 新模块 `modules/props/`（`PropsPage`）和后端 `server/props.ts`（`propRoutes()`，`/api/props`：`GET /`、`POST /set`、`POST /delete`，都支持 `root`）。文案前缀是 `prop.*` 而非计划中的 `props.*`，因为 `props.*` 已被文件属性页占用
+- `needs_force` 约定：`ErrorCode` 增加 `needs_force`，409 时 `error` 是可直接显示的风险说明，前端据此强确认后带 `force: true` 重试。后端 `guard.ts` 的 `assertPropForce(risk, force)`（`PropRisk` 为 `ro`、`adb`、`delete`，类型放在 `guard.ts`，不在 shared 里，前端用不到）。S9 的 settings 可照此新增风险表和文案；应用接口的关键包 409 仍不带 `code`，前端按操作自行判断，未改
+- `ApiError`（`lib/api.ts`，`extends Error`，`code?: ErrorCode`）：`fail` 现在抛它，`watchJob` 的任务错误也是。前端识别用 `e instanceof ApiError && e.code === "needs_force"`，`usePropOps` 的 `attempt` 是现成的写法：先不带 `force` 调用，捕获后用 `openDialog` 换成 danger 确认框，确认后带 `force: true` 重试。表单对话框 `onSubmit` 里换对话框是安全的，原对话框之后的 `closeDialog(原对话框)` 不会关掉新的
+- `Dialog` 新增 `kind: "form"`：`fields: DialogField[]`（`label`、`initial`，可选 `readOnly`、`required`、`trim`、`mono`）、可选 `message`、`onSubmit(values: string[])`。`bookmark` 例外仍保留，未迁移到 `form`
+- `components/KeyValueTable.tsx` 是通用表格（`rows`、`loading`、`loadingText`、`error`、`emptyText`、`canEdit`、`onEdit`，可选 `onDelete`、`badge`），行类型可带更多字段，键名必须唯一。拷贝、修改、删除的按钮文案在 `kv.*`。S9 的 settings 有三个命名空间，同名键可能重复，行的 `key` 需要拼上命名空间或每个命名空间一张表。`ui.tsx` 新增 `SearchField` 和 `Segmented<T>`
+- resetprop 检测路径（`props.ts` 的 `RESETPROP`）：PATH 中的 `resetprop`、`/data/adb/ksu/bin/resetprop`、`/data/adb/ap/bin/resetprop`、`magisk resetprop`，检测方式是执行 `adbfm_resetprop -h` 看退出码是否为 127。这些路径和 `-h` 的行为只按各工具的约定编写，未在真机确认（本次会话没有连接设备），首次在 root 设备上验证时请确认三种安装方式至少各有一个能被检测到，删除用的 `-d`、`-p -d` 同理
+- `ctl.*` 和 `sys.powerctl` 在 `assertPropKey` 里直接 400 拒绝，不提供强确认通道
+- 值的比较和提交都忽略首尾空白（前端表单 `trim`，后端回读比较也 trim），所以无法设置以空白开头或结尾的值
+- 真机验证（`TCOFINKZKVLV45BY`）本次未做：开始实现时 `adb devices` 列表为空。验证清单仍按计划执行：非 root 列表与分组计数、新建 `debug.adbfm.test`、非 root 修改 `persist.*` 的失败提示、root 下检测 resetprop 并新建、修改再删除 `ro.adbfm.test`（409 强确认）、`sys.usb.config` 触发确认后取消
