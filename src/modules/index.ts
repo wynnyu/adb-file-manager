@@ -1,11 +1,12 @@
-import { FolderOpen, type LucideIcon, Package } from "lucide-react";
+import { FolderOpen, type LucideIcon, Package, SlidersHorizontal } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MessageKey } from "../i18n/index.tsx";
 import type { DeviceMode } from "../types.ts";
 import { AppsPage } from "./apps/index.ts";
 import { FilesPage, UsageTip } from "./files/index.ts";
+import { PropsPage } from "./props/index.ts";
 
-export type ModuleId = "files" | "apps";
+export type ModuleId = "files" | "apps" | "props";
 
 export interface ModuleDef {
   id: ModuleId;
@@ -23,4 +24,5 @@ export interface ModuleDef {
 export const MODULES: ModuleDef[] = [
   { id: "files", icon: FolderOpen, label: "nav.files", modes: ["system"], Page: FilesPage, Tip: UsageTip },
   { id: "apps", icon: Package, label: "nav.apps", modes: ["system"], Page: AppsPage },
+  { id: "props", icon: SlidersHorizontal, label: "nav.props", modes: ["system"], Page: PropsPage },
 ];

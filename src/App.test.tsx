@@ -5,7 +5,7 @@ import App from "./App.tsx";
 import { I18nProvider } from "./i18n/index.tsx";
 import { api } from "./lib/index.ts";
 import { file, newQueryClient, tz } from "./test/utils.tsx";
-import type { AppDetail, AppEntry, Device } from "./types.ts";
+import type { AppDetail, AppEntry, Device, PropList } from "./types.ts";
 
 function setup() {
   render(
@@ -140,6 +140,62 @@ describe("App", () => {
       expect(await screen.findByText(tz("apps.detail.versionValue", { name: "2.0", code: 20 }))).toBeTruthy();
       expect(info).toHaveBeenCalledWith("A", "com.user.notes");
       expect(screen.getByRole("button", { name: /com\.user\.notes/ }).getAttribute("aria-pressed")).toBe("true");
+    });
+  });
+
+  describe("属性模块", () => {
+    const list = (resetprop: boolean): PropList => ({
+      resetprop,
+      props: [
+        { key: "persist.sys.language", value: "zh" },
+        { key: "ro.build.id", value: "TQ3A" },
+        { key: "sys.boot_completed", value: "1" },
+      ],
+    });
+
+    async function openProps(resetprop: boolean) {
+      vi.spyOn(api, "devices").mockResolvedValue({ devices: [phone] });
+      vi.spyOn(api, "storage").mockResolvedValue({ total: 100, free: 40 });
+      vi.spyOn(api, "ls").mockResolvedValue([]);
+      const props = vi.spyOn(api, "props").mockResolvedValue(list(resetprop));
+      setup();
+      const nav = await screen.findByRole("navigation", { name: tz("nav.label") });
+      fireEvent.click(within(nav).getByRole("button", { name: tz("nav.props") }));
+      await screen.findByText("persist.sys.language");
+      return props;
+    }
+
+    it("点导航切到属性页，请求并列出全部属性，ro 行带只读标记", async () => {
+      const props = await openProps(false);
+      expect(props).toHaveBeenCalledWith({ serial: "A", root: false });
+      expect(screen.getAllByRole("listitem")).toHaveLength(3);
+      expect(
+        within(screen.getByText("ro.build.id").closest("li") as HTMLElement).getByText(tz("prop.badge.ro")),
+      ).toBeTruthy();
+    });
+
+    it("切换分组和搜索值后列表随之变化", async () => {
+      await openProps(false);
+      fireEvent.click(screen.getByRole("radio", { name: new RegExp(tz("prop.group.ro")) }));
+      expect(await screen.findAllByRole("listitem")).toHaveLength(1);
+      fireEvent.click(screen.getByRole("radio", { name: new RegExp(tz("prop.group.all")) }));
+      fireEvent.change(screen.getByPlaceholderText(tz("prop.search")), { target: { value: "tq3a" } });
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+      expect(screen.getByText("ro.build.id")).toBeTruthy();
+    });
+
+    it("没有 resetprop 时 ro 行不可修改，也没有删除按钮；非 root 提示开启 root", async () => {
+      await openProps(false);
+      expect(screen.queryByRole("button", { name: tz("kv.edit", { key: "ro.build.id" }) })).toBeNull();
+      expect(screen.getByRole("button", { name: tz("kv.edit", { key: "persist.sys.language" }) })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^删除/ })).toBeNull();
+      expect(screen.getByRole("button", { name: tz("prop.rootHint") })).toBeTruthy();
+    });
+
+    it("有 resetprop 时 ro 行可修改，每行可删除", async () => {
+      await openProps(true);
+      expect(screen.getByRole("button", { name: tz("kv.edit", { key: "ro.build.id" }) })).toBeTruthy();
+      expect(screen.getAllByRole("button", { name: /^删除/ })).toHaveLength(3);
     });
   });
 });
