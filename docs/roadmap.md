@@ -45,14 +45,14 @@
 
 ### S3 前端外壳与模块化
 
-- [ ] 新建外壳组件：顶栏（设备、root、语言、主题）加模块导航；当前模块用 `usePref("afm.module")` 或 hash 记录，不引入路由库
-- [ ] 设备、root 状态（`useDevices`、`useStorage`、`useRootMode`、`target`）提升为 Context
-- [ ] 文件管理整体移为 `FilesPage`，`App.tsx` 只组装外壳
-- [ ] `useShortcuts` 只在文件模块激活时注册
-- [ ] 确定目录规则（例如 `src/modules/files/`、`src/modules/apps/`，各模块内再分 `hooks/`、`components/`），写入 AGENTS.md 的“前端结构”，同步 `docs/architecture.md`
-- [ ] `Header` 的应用图标和名称改为与模块无关；产品新名称若已确定，一并改 `app.name`、`package.json`、README
+- [x] 新建外壳组件：顶栏（设备、root、语言、主题）加模块导航；当前模块用 `usePref("afm.module")` 记录，不引入路由库
+- [x] 设备、root 状态（`useDevices`、`useStorage`、`useRootMode`、`target`）提升为 Context
+- [x] 文件管理整体移为 `FilesPage`，`App.tsx` 只组装外壳
+- [x] `useShortcuts` 只在文件模块激活时注册
+- [x] 确定目录规则（`src/modules/files/`，各模块内再分 `hooks/`、`components/`、`lib/`），写入 AGENTS.md 的“前端结构”，同步 `docs/architecture.md`
+- [x] `Header` 的应用图标和名称改为与模块无关；产品名定为 Modbench / 玩机工具箱，改了 `app.name`、`package.json`、README
 
-关键文件：`src/App.tsx`、`src/components/header/`、`src/hooks/useDevices.ts`、`src/hooks/useRootMode.ts`、`src/hooks/useShortcuts.ts`、`AGENTS.md`、`docs/architecture.md`
+关键文件：`src/App.tsx`、`src/modules/index.ts`、`src/hooks/useShell.ts`、`src/components/shell/`、`AGENTS.md`、`docs/architecture.md`
 
 ### S4 设备模型与 fastboot 检测
 
@@ -61,7 +61,7 @@
 - [ ] `useDevices`：当前设备暂时消失（重启、切模式）时保留选择一段时间，不立即切到其他设备
 - [ ] 各模块声明所需模式，`online` 判断从 `state === "device"` 改为按模式判断；`NoDevice` 显示设备当前模式
 
-关键文件：`shared/types.d.ts`、`server/adb.ts`、`server/devices.ts`（S2 后）、`src/hooks/useDevices.ts`、`src/components/NoDevice.tsx`、`src/components/header/DeviceSelect.tsx`
+关键文件：`shared/types.d.ts`、`server/adb.ts`、`server/devices.ts`（S2 后）、`src/hooks/useDevices.ts`、`src/hooks/useShell.ts`、`src/components/NoDevice.tsx`、`src/components/shell/DeviceSelect.tsx`
 
 ### S5 任务（job）与进度推送
 
@@ -123,3 +123,14 @@
 - 新模块用 `app.use("/api/<模块>", xxxRoutes())` 挂载，Router 内写相对路径；`app.test.ts` 的 `it.each` 表同步补上新接口
 - `properties` 已改为 `attrs`（`attrs.ts`、`attrRoutes()`），S8 可以用 `props.ts` 和 `/api/props`
 - 接口路径：设备相关在 `/api/devices/*`（含 `root-check`、`storage`），文件相关在 `/api/files/*`，旧路径不再保留
+
+### S3
+
+- 目录与依赖规则见 AGENTS.md 的“前端结构”：模块在 `src/modules/<名称>/`，内部分 `hooks/`、`components/`、`lib/`，对外只经模块的 `index.ts`；模块可以导入 `src/hooks`、`src/components`、`src/lib`，共用代码不导入 `modules/`，模块之间不互相导入。文件模块的 `index.ts` 只导出 `FilesPage` 和 `UsageTip`
+- `ShellContext` 的值（`hooks/useShell.ts`）：`devices`、`adbError`、`serial`、`setSerial`、`online`、`storage`、`refreshStorage`、`rootMode`、`askEnableRoot`、`disableRoot`、`target`、`toast`、`flash`、`dialog`、`openDialog`、`closeDialog`、`transfers`、`startTransfer`、`patchTransfer`、`dismissTransfer`、`nav`。`useShellState()` 提供除 `nav` 以外的部分，`nav`（模块列表、当前模块、切换回调）由 `App` 根据 `MODULES` 补上，因为注册表导入了各模块页面，反过来由页面传会形成循环。`closeDialog` 可传入打开的那个对话框，只有它仍是当前对话框才关闭
+- 注册新模块：在 `modules/index.ts` 的 `MODULES` 加一项（同时扩展 `ModuleId`、加 `nav.<id>` 文案），页面用 `ShellLayout` 作骨架并从 `useShell()` 取设备和传输队列；`Tip` 可选，设备在线时显示在传输队列里。只有一个模块时不显示 `ModuleNav`；`afm.module` 中存储的 id 无效时回退到第一个模块。切换模块时页面卸载，`useShortcuts` 的 window 监听随之移除，新模块如需全局监听照此在页面内注册
+- `ShellLayout` 的 `overlays` 属性放页面自己的浮层，与页面共用整窗拖放区域；`TransferQueue`、`Toast`、`Dialog` 在 `App` 中、页面之后渲染，所以传输卡片和提示显示在页面的属性页、右键菜单之上
+- `components/overlays/Dialog.tsx` 的 `bookmark` 类型仍导入文件模块的 `BookmarkForm` 和 `BookmarkFields`，是共用代码导入模块的唯一例外。后续模块需要自定义表单时，把对话框的 `kind` 泛化为可由模块提供内容的形式
+- 保留的内部标识：`afm.` 偏好前缀、电脑临时目录 `adb-file-manager`、设备端 `adbfm-` 前缀、GitHub 仓库地址。改动它们会丢失已有偏好或留下残留，仓库改名由用户自行决定
+- S4 改 `online` 的判断：在 `useShellState`（`hooks/useShell.ts`）中，目前是 `devices.find(...)?.state === "device"`；模块声明所需模式后，`online` 要改为按当前模块判断，`App` 渲染 `TransferQueue` 的 `Tip` 也用到它
+- S5 的传输队列已在外壳中：`useTransfers` 的状态在 `useShellState` 里，模块用 `startTransfer`、`patchTransfer` 登记任务，`TransferQueue` 在 `App` 中渲染，不属于任何模块
