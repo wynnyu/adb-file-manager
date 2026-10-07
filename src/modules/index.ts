@@ -1,10 +1,11 @@
-import { FolderOpen, type LucideIcon } from "lucide-react";
+import { FolderOpen, type LucideIcon, Package } from "lucide-react";
 import type { ComponentType } from "react";
 import type { MessageKey } from "../i18n/index.tsx";
 import type { DeviceMode } from "../types.ts";
+import { AppsPage } from "./apps/index.ts";
 import { FilesPage, UsageTip } from "./files/index.ts";
 
-export type ModuleId = "files";
+export type ModuleId = "files" | "apps";
 
 export interface ModuleDef {
   id: ModuleId;
@@ -21,4 +22,5 @@ export interface ModuleDef {
 /** 模块注册表，顺序即导航顺序；新增模块在这里加一项 */
 export const MODULES: ModuleDef[] = [
   { id: "files", icon: FolderOpen, label: "nav.files", modes: ["system"], Page: FilesPage, Tip: UsageTip },
+  { id: "apps", icon: Package, label: "nav.apps", modes: ["system"], Page: AppsPage },
 ];

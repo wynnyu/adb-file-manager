@@ -1,5 +1,7 @@
 import { getLang, tr } from "../i18n/translate.ts";
 import type {
+  AppDetail,
+  AppEntry,
   ArchiveFormat,
   ArchiveListing,
   DeviceList,
@@ -73,6 +75,11 @@ export const api = {
   rootCheck: (serial: string) => post<RootCheckResult>("/api/devices/root-check", { serial }),
 
   storage: (serial: string) => request<StorageInfo>(`/api/devices/storage?${new URLSearchParams({ serial })}`),
+
+  apps: (serial: string) => request<AppEntry[]>(`/api/apps?${new URLSearchParams({ serial })}`),
+
+  appInfo: (serial: string, pkg: string) =>
+    request<AppDetail>(`/api/apps/info?${new URLSearchParams({ serial, pkg })}`),
 
   ls: (t: Target, path: string) => request<FileEntry[]>(`/api/files/ls?${qs(t, { path })}`),
 
