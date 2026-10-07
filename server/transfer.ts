@@ -43,7 +43,7 @@ export function transferRoutes() {
   const upload = multer({ dest: TMP });
 
   router.post(
-    "/api/upload",
+    "/upload",
     upload.array("files"),
     wrap(async (req, res) => {
       const files = (req.files as Express.Multer.File[] | undefined) ?? [];
@@ -77,7 +77,7 @@ export function transferRoutes() {
 
   // 第一步：登记一次性 token。单个文件不落盘，目录和多选 adb pull 到电脑临时目录
   router.post(
-    "/api/pull",
+    "/pull",
     wrap(async (req, res) => {
       const ctx = await ctxOf(req);
       const paths = pathsOf(req.body.paths);
@@ -106,7 +106,7 @@ export function transferRoutes() {
 
   // 第二步：浏览器下载（单个文件流式返回，目录/多选打包 zip），完成后清理
   router.get(
-    "/api/fetch/:token",
+    "/fetch/:token",
     wrap(async (req, res) => {
       const token = String(req.params.token);
       const job = jobs.get(token);

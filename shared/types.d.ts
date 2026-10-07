@@ -28,7 +28,7 @@ export interface StorageInfo {
   free: number;
 }
 
-/** POST /api/root-check 的响应 */
+/** POST /api/devices/root-check 的响应 */
 export interface RootCheckResult {
   method: RootMethod;
 }
@@ -47,18 +47,18 @@ export interface ErrorResponse {
   code?: ErrorCode;
 }
 
-/** POST /api/upload 的响应；count 为收到的文件数 */
+/** POST /api/files/upload 的响应；count 为收到的文件数 */
 export interface UploadResult extends OkResult {
   count: number;
 }
 
-/** POST /api/pull 的响应：一次性下载 token 和下载后的文件名 */
+/** POST /api/files/pull 的响应：一次性下载 token 和下载后的文件名 */
 export interface PullResult {
   token: string;
   name: string;
 }
 
-/** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
+/** GET /api/files/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 export type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
 
 /** 支持预览和解压的压缩包格式：zip 系（含 apk、jar 等）、tar、tar.gz、tar.bz2 */
@@ -76,25 +76,25 @@ export interface ArchiveEntry {
   link?: string;
 }
 
-/** GET /api/archive 的响应；truncated 时只含前面的部分条目 */
+/** GET /api/files/archive 的响应；truncated 时只含前面的部分条目 */
 export interface ArchiveListing {
   format: ArchiveFormat;
   entries: ArchiveEntry[];
   truncated: boolean;
 }
 
-/** POST /api/extract 的响应：解压出的文件夹或文件 */
+/** POST /api/files/extract 的响应：解压出的文件夹或文件 */
 export interface ExtractResult {
   path: string;
 }
 
-/** POST /api/compress 的请求；压缩包生成在所选项的公共父目录 */
+/** POST /api/files/compress 的请求；压缩包生成在所选项的公共父目录 */
 export interface CompressRequest {
   paths: string[];
   format: ArchiveFormat;
 }
 
-/** POST /api/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
+/** POST /api/files/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
 export interface CompressResult {
   path: string;
   skipped?: number;
@@ -112,7 +112,7 @@ export interface LinkInfo {
   targetSize?: number;
 }
 
-/** 条目所在的分区；读取不到时 GET /api/stat 不返回该字段 */
+/** 条目所在的分区；读取不到时 GET /api/files/stat 不返回该字段 */
 export interface PartitionInfo {
   /** 挂载点 */
   mount: string;
@@ -124,7 +124,7 @@ export interface PartitionInfo {
   free: number;
 }
 
-/** GET /api/stat 的响应；type 对符号链接为 link，目标信息见 link */
+/** GET /api/files/stat 的响应；type 对符号链接为 link，目标信息见 link */
 export interface FileStat {
   name: string;
   path: string;
@@ -150,7 +150,7 @@ export interface FileStat {
   protected: boolean;
 }
 
-/** GET /api/usage 的响应：文件夹的递归统计，不跟随符号链接 */
+/** GET /api/files/usage 的响应：文件夹的递归统计，不跟随符号链接 */
 export interface DirUsage {
   /** 全部非目录条目的大小之和，字节 */
   size: number;
@@ -162,14 +162,14 @@ export interface DirUsage {
   partial: boolean;
 }
 
-/** POST /api/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
+/** POST /api/files/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
 export interface ChmodRequest {
   paths: string[];
   mode: string;
   recursive?: boolean;
 }
 
-/** POST /api/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
+/** POST /api/files/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
 export interface ChownRequest {
   paths: string[];
   owner?: string;

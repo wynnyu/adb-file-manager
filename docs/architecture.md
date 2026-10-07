@@ -66,35 +66,38 @@ flowchart LR
 flowchart TB
   index["index.ts<br/>启动入口，监听端口"] --> app["app.ts<br/>组装中间件和路由"]
   app --> mw["中间件链<br/>express.json、langMiddleware、localOnly"]
-  app --> devRoutes["/api/devices<br/>/api/root-check<br/>/api/storage"]
+  app --> devices["devices.ts<br/>/api/devices 下的设备、root 检测、存储空间路由"]
   app --> files["files.ts<br/>文件操作路由"]
   app --> transfer["transfer.ts<br/>上传、下载路由"]
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
-  app --> properties["properties.ts<br/>属性、递归统计、权限路由"]
+  app --> attrs["attrs.ts<br/>属性、递归统计、权限路由"]
   app --> archive["archive.ts<br/>压缩包预览、解压、压缩路由"]
   archive --> zip["zip.ts<br/>电脑端生成 zip"]
   zip & transfer --> tmp["tmp.ts<br/>临时目录"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & preview & properties & archive & devRoutes --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
-  files & properties --> guard["guard.ts<br/>受保护路径、源与目标关系"]
-  request & guard & files & transfer & preview & properties & archive & zip --> adb["adb.ts<br/>adb 命令封装"]
+  files & transfer & preview & attrs & archive & devices --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & attrs --> guard["guard.ts<br/>受保护路径、源与目标关系"]
+  files & transfer & preview & attrs & archive & zip & guard --> fscmds["fs-cmds.ts<br/>设备端文件命令"]
+  fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip --> adb["adb.ts<br/>底层调用"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
 
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，先清理电脑临时目录，再在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件、设备相关的三个接口、五组路由、静态文件和统一的错误处理 |
-| `files.ts` | `/api/ls`、`/api/mkdir`、`/api/rename`、`/api/delete`、`/api/copy`、`/api/move` |
-| `preview.ts` | `/api/preview`（媒体文件，支持 Range）、`/api/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
-| `properties.ts` | `/api/stat`（属性、符号链接目标、所在分区）、`/api/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/chmod`、`/api/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
-| `archive.ts` | `/api/archive`（压缩包内的条目，最多 20000 个）、`/api/extract`（在设备上解压）、`/api/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
+| `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
+| `devices.ts` | `deviceRoutes()`：`GET /api/devices`、`/api/devices/reconnect`、`/api/devices/restart-server`、`/api/devices/root-check`、`/api/devices/storage`；`storage` 读取存储空间 |
+| `files.ts` | `/api/files/ls`、`/api/files/mkdir`、`/api/files/rename`、`/api/files/delete`、`/api/files/copy`、`/api/files/move` |
+| `preview.ts` | `/api/files/preview`（媒体文件，支持 Range）、`/api/files/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
+| `attrs.ts` | `/api/files/stat`（属性、符号链接目标、所在分区）、`/api/files/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/files/chmod`、`/api/files/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
+| `archive.ts` | `/api/files/archive`（压缩包内的条目，最多 20000 个）、`/api/files/extract`（在设备上解压）、`/api/files/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
 | `zip.ts` | zip 的电脑端生成：`compressZip` 依次预估空间、`adb pull`、打包、`adb push`，`buildZip` 用 `archiver` 写出 zip，已压缩的格式直接存储 |
 | `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例） |
-| `transfer.ts` | `/api/upload`、`/api/pull`、`/api/fetch/:token`；管理下载任务（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
+| `transfer.ts` | `/api/files/upload`、`/api/files/pull`、`/api/files/fetch/:token`；管理下载任务（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 调用 adb，解析 `adb devices`、`find` + `stat` 的输出；封装 push、pull、复制、改名、删除、chmod、chown、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`，重名编号与复制共用 `uniqueTarget`，压缩包的复合扩展名不拆开），以及按字节读取文件（`cat`、`head`、`fileSize`）等操作 |
+| `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；以及设备列表、root 检测、push、pull、设备端暂存目录清理。其他模块不直接调用 `child_process` |
+| `fs-cmds.ts` | 设备端文件命令，基于 `adb.ts` 拼接：列目录、改名、删除、chmod、chown、复制（重名编号与压缩共用 `uniqueTarget`，压缩包的复合扩展名不拆开）、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`）、按字节读取文件（`cat`、`head`、`fileSize`）；`parseLs`、`extractCmd`、`catCmd`、`packCmd`、`parseDu` 为可单独测试的纯函数 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
 ### 一次请求的处理过程
@@ -346,7 +349,7 @@ sequenceDiagram
   end
   D->>Q: fetchQuery（staleTime 0）
   Q->>A: api.ls(target, path)
-  A->>S: GET /api/ls?serial&path[&root=1]
+  A->>S: GET /api/files/ls?serial&path[&root=1]
   S->>P: adb shell find … -exec stat …
   P-->>S: 类型|大小|mtime|atime|路径
   S-->>A: FileEntry[]
@@ -361,7 +364,7 @@ sequenceDiagram
 sequenceDiagram
   participant F as useFileOps
   participant A as lib/api.ts
-  participant S as /api/upload
+  participant S as /api/files/upload
   participant T as 电脑临时目录
   participant P as 设备
   F->>F: startTransfer（uploading）
@@ -384,7 +387,7 @@ sequenceDiagram
 
 ### 下载
 
-下载分两步：先由后端登记任务并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/fetch/:token` 取回。单个文件在第一步只确认存在且可读，取回时用 `adb exec-out cat` 流式返回，不经过电脑临时目录，浏览器立即开始下载；目录或多项在第一步 `adb pull` 到临时目录，取回时打包为 zip，响应结束后临时目录即被删除。未取回的任务 30 分钟后清理。
+下载分两步：先由后端登记任务并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/files/fetch/:token` 取回。单个文件在第一步只确认存在且可读，取回时用 `adb exec-out cat` 流式返回，不经过电脑临时目录，浏览器立即开始下载；目录或多项在第一步 `adb pull` 到临时目录，取回时打包为 zip，响应结束后临时目录即被删除。未取回的任务 30 分钟后清理。
 
 ### 解压
 
@@ -392,7 +395,7 @@ sequenceDiagram
 sequenceDiagram
   participant F as useFileOps
   participant A as lib/api.ts
-  participant S as /api/extract
+  participant S as /api/files/extract
   participant P as 设备
   F->>F: startTransfer（extracting）
   F->>A: api.extract(target, path)
@@ -415,7 +418,7 @@ sequenceDiagram
 sequenceDiagram
   participant F as useFileOps
   participant A as lib/api.ts
-  participant S as /api/compress
+  participant S as /api/files/compress
   participant T as 电脑临时目录
   participant P as 设备
   F->>F: startTransfer（compressing）
@@ -451,7 +454,7 @@ sequenceDiagram
   H->>U: 确认对话框（可勾选“记住选择”）
   U->>H: 确认
   H->>A: api.rootCheck(serial)
-  A->>S: POST /api/root-check
+  A->>S: POST /api/devices/root-check
   S-->>A: { method: "adbd" | "su" }，并写入 rootCache
   H->>H: rootMode = true，之后的请求带 root
   Note over A,S: 之后某次 root 请求失败

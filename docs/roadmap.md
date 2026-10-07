@@ -36,10 +36,10 @@
 
 ### S2 后端模块化与接口命名空间
 
-- [ ] 拆分 `adb.ts`：`adb.ts` 只保留底层（`run`、`shell`、`checked`、`q`、`Ctx`、`AdbError`、push、pull、设备列表、root 检测），导出 `checked` 和输出标记；文件相关命令移到 `fs-cmds.ts` 或并入 `files.ts`
-- [ ] `app.ts` 中的 `/api/devices*`、`/api/root-check`、`/api/storage` 移到 `devices.ts` 的 `deviceRoutes()`
-- [ ] 接口加命名空间：文件相关统一为 `/api/files/*`（ls、mkdir、rename、delete、copy、move、preview、text、stat、usage、chmod、chown、archive、extract、compress、upload、pull、fetch），设备相关为 `/api/devices/*`。个人使用，不保留旧路径
-- [ ] 同步 `src/lib/api.ts`、`docs/api.md`、相关测试；AGENTS.md 中“adb 命令封装在 adb.ts”改为“adb.ts 提供底层调用，各功能模块在自己的文件中拼命令”
+- [x] 拆分 `adb.ts`：`adb.ts` 只保留底层（`run`、`shell`、`checked`、`q`、`Ctx`、`AdbError`、push、pull、设备列表、root 检测），导出 `checked` 和输出标记；文件相关命令移到 `fs-cmds.ts` 或并入 `files.ts`
+- [x] `app.ts` 中的 `/api/devices*`、`/api/devices/root-check`、`/api/devices/storage` 移到 `devices.ts` 的 `deviceRoutes()`
+- [x] 接口加命名空间：文件相关统一为 `/api/files/*`（ls、mkdir、rename、delete、copy、move、preview、text、stat、usage、chmod、chown、archive、extract、compress、upload、pull、fetch），设备相关为 `/api/devices/*`。个人使用，不保留旧路径
+- [x] 同步 `src/lib/api.ts`、`docs/api.md`、相关测试；AGENTS.md 中“adb 命令封装在 adb.ts”改为“adb.ts 提供底层调用，各功能模块在自己的文件中拼命令”
 
 关键文件：`server/adb.ts`、`server/app.ts`、`server/request.ts`、`server/*.ts` 的路由、`src/lib/api.ts`、`docs/api.md`、`AGENTS.md`
 
@@ -115,3 +115,11 @@
 - 解压、打包放在目标目录里的 `.adbfm-extract-*`、`.adbfm-pack-*` 暂存目录位置不固定，不在启动清理范围内
 - 单个文件下载不再经过电脑临时目录，`PullJob` 分为 `stream` 和 `zip` 两种；下载的接口形态不变
 - `vitest.config.ts` 两个 project 都改用 `pool: "vmThreads"`：`pnpm test` 三次 Duration 为 10.85、10.96、10.86 秒，改后为 6.85、7.60、7.12 秒，全部 704 个测试通过，已保留
+
+### S2
+
+- `adb.ts` 只保留底层调用，文件相关的设备端命令都在 `fs-cmds.ts`（基于 `import * as adb`），设备列表、root 检测、存储空间的路由在 `devices.ts`（`storage()` 也在这里）
+- 新模块可复用 `adb.ts` 的 `checked`、`OK_MARK`、`EXISTS_MARK`、`execOutStream`、`execOutBuffer`；`checked` 默认不限时，短命令传第三个参数。其他模块不直接调用 `child_process`
+- 新模块用 `app.use("/api/<模块>", xxxRoutes())` 挂载，Router 内写相对路径；`app.test.ts` 的 `it.each` 表同步补上新接口
+- `properties` 已改为 `attrs`（`attrs.ts`、`attrRoutes()`），S8 可以用 `props.ts` 和 `/api/props`
+- 接口路径：设备相关在 `/api/devices/*`（含 `root-check`、`storage`），文件相关在 `/api/files/*`，旧路径不再保留

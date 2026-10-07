@@ -79,7 +79,7 @@ export function archiveFormat(name: string): ArchiveFormat | null {
 
 export const isArchive = (name: string) => archiveFormat(name) !== null;
 
-/** 查看器的显示方式；与后端 /api/preview 支持的扩展名一致，其余文件交给 /api/text 判断是不是文本 */
+/** 查看器的显示方式；与后端 /api/files/preview 支持的扩展名一致，其余文件交给 /api/files/text 判断是不是文本 */
 export type ViewerKind = "image" | "video" | "audio" | "archive" | "text";
 
 const VIEWER_KINDS: [RegExp, ViewerKind][] = [

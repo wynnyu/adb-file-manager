@@ -6,7 +6,7 @@ import * as fs from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
 import { ctxOf, wrap } from "./request.ts";
 
-/** 可经 /api/preview 读取的媒体文件；浏览器能否解码由前端处理，这里只给出真实类型 */
+/** 可经 /api/files/preview 读取的媒体文件；浏览器能否解码由前端处理，这里只给出真实类型 */
 const MEDIA_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -90,7 +90,7 @@ export function previewRoutes() {
   const router = Router();
 
   router.get(
-    "/api/preview",
+    "/preview",
     wrap(async (req, res) => {
       const p = adb.assertAbs(req.query.path);
       const type = MEDIA_TYPES[posix.extname(p).toLowerCase()];
@@ -124,7 +124,7 @@ export function previewRoutes() {
   );
 
   router.get(
-    "/api/text",
+    "/text",
     wrap(async (req, res) => {
       const p = adb.assertAbs(req.query.path);
       const ctx = await ctxOf(req);

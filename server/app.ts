@@ -5,12 +5,12 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { ErrorResponse } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
 import { archiveRoutes } from "./archive.ts";
+import { attrRoutes } from "./attrs.ts";
 import { deviceRoutes } from "./devices.ts";
 import { fileRoutes } from "./files.ts";
 import { localOnly } from "./guard.ts";
 import { langMiddleware } from "./i18n.ts";
 import { previewRoutes } from "./preview.ts";
-import { propertyRoutes } from "./properties.ts";
 import { transferRoutes } from "./transfer.ts";
 
 /** 组装 HTTP 服务，不监听端口 */
@@ -20,12 +20,8 @@ export function createApp() {
   app.use(langMiddleware);
   app.use(localOnly);
 
-  app.use(deviceRoutes());
-  app.use(fileRoutes());
-  app.use(previewRoutes());
-  app.use(archiveRoutes());
-  app.use(propertyRoutes());
-  app.use(transferRoutes());
+  app.use("/api/devices", deviceRoutes());
+  app.use("/api/files", fileRoutes(), previewRoutes(), archiveRoutes(), attrRoutes(), transferRoutes());
 
   // 编译后位于 dist/server/，前端产物在 dist/web/；开发时（tsx）该目录不存在，由 vite 提供页面
   const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../web");

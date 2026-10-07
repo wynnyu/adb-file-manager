@@ -113,7 +113,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - 请求参数通过 `serialOf`、`ctxOf`、`pathsOf`、`adb.assertAbs` 取出和校验，不直接信任 `req.query` / `req.body`
 - 出错时抛出 `AdbError(msg("..."), status, code?)`；错误响应格式固定为 `{ error, code? }`，`code` 仅在前端需要识别时提供（如 `root_lost`）
 - 无返回数据的成功响应为 `{ ok: true }`，有数据时直接返回共享类型中定义的结构
-- adb 命令封装在 `adb.ts`，其他模块不直接调用 `child_process`
+- `adb.ts` 提供底层调用（`run`、`shell`、`checked`、exec-out），各功能模块在自己的文件中拼命令；其他模块不直接调用 `child_process`
 - 新增或修改接口后同步更新 `docs/api.md`
 
 ### 安全
@@ -131,7 +131,7 @@ CI 依次运行 `pnpm check`、`pnpm test`、`pnpm build`。改完代码至少�
 - 前端测试使用 `src/test/utils.tsx` 中的工具：`providers` 包裹语言和查询缓存，`tz` 从中文词典取期望文案（不在测试里写死文案），`file` / `folder` 构造条目，`deferred` 控制异步完成时机，`newQueryClient` 为每个测试创建独立的 `QueryClient`
 - 与后端的交互用 `vi.spyOn(api, "...")` 替换；需要验证 `root_lost` 等底层行为时替换 `fetch`
 - 按角色和可访问名称查找元素（`getByRole("button", { name: tz("...") })`），不依赖类名和 DOM 结构
-- 后端测试针对纯函数和输出解析（如 `guard.ts`、`adb.ts`），不依赖真实设备；多组输入用 `it.each`
+- 后端测试针对纯函数和输出解析（如 `guard.ts`、`adb.ts`、`fs-cmds.ts`），不依赖真实设备；多组输入用 `it.each`
 - 修复缺陷时补充能复现该缺陷的测试
 
 ### Git

@@ -191,10 +191,12 @@ pnpm test     # 运行单元测试
 
 ```
 server/
-  adb.ts        adb 命令封装：列目录、push / pull、root 检测、复制移动删除等
+  adb.ts        adb 底层调用：run、shell、push / pull、设备列表、root 检测
+  fs-cmds.ts    设备端文件命令：列目录、复制移动删除、压缩解压、读取文件
+  devices.ts    设备接口：设备列表、重新授权、root 检测、存储空间
   app.ts        组装 HTTP 服务；构建后同时托管前端页面
   files.ts      文件操作接口：列目录、新建、重命名、删除、复制、移动、预览
-  properties.ts 属性接口：stat、文件夹递归统计、修改权限和所有者
+  attrs.ts      属性接口：stat、文件夹递归统计、修改权限和所有者
   transfer.ts   上传和下载接口，经电脑临时目录中转
   guard.ts      安全校验：仅限本机访问，受保护路径
   request.ts    请求参数解析和 root 状态缓存

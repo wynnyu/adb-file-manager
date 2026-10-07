@@ -9,7 +9,7 @@
 ### 地址与访问限制
 
 - 后端监听 `127.0.0.1`，端口默认为 3001，可通过环境变量 `PORT` 修改；开发时前端经 Vite 代理访问
-- 所有接口位于 `/api/` 下；构建后，`/api/` 以外的 GET 请求返回前端页面
+- 所有接口位于 `/api/` 下，设备相关的在 `/api/devices/`，文件相关的在 `/api/files/`；构建后，`/api/` 以外的 GET 请求返回前端页面
 - 每个请求都经过 `localOnly` 校验，不满足以下条件时返回 `403`，`error` 按请求语言说明原因：
   - `Host` 去掉端口后为 `localhost`、`127.0.0.1` 或 `[::1]`
   - 若带有 `Origin`，须为上述主机的 `http:` 地址；若带有 `Sec-Fetch-Site`，须为 `same-origin` 或 `none`
@@ -18,7 +18,7 @@
 
 | 参数 | 位置 | 说明 |
 | --- | --- | --- |
-| `serial` | GET 和 `POST /api/upload` 为查询参数，其余 POST 为 JSON 请求体 | 设备序列号，取自 `GET /api/devices`。缺少时返回 `400` |
+| `serial` | GET 和 `POST /api/files/upload` 为查询参数，其余 POST 为 JSON 请求体 | 设备序列号，取自 `GET /api/devices`。缺少时返回 `400` |
 | `root` | 同上 | 值为 `"1"`（查询参数或请求体）或 `true`（请求体）时以 root 身份执行；其余取值视为普通模式 |
 | `path`、`from`、`to`、`dest` | 同上 | 设备上的绝对路径。须以 `/` 开头且不含 NUL 字符，否则返回 `400`；服务端会做规范化（处理 `.`、`..` 和重复的 `/`） |
 | `paths` | JSON 请求体 | 绝对路径数组，也接受单个字符串；为空时返回 `400` |
@@ -31,7 +31,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 ### 响应与错误
 
-成功时返回 JSON（`/api/preview` 和下载接口除外），无返回数据时为 `OkResult`。失败时返回 `ErrorResponse`：
+成功时返回 JSON（`/api/files/preview` 和下载接口除外），无返回数据时为 `OkResult`。失败时返回 `ErrorResponse`：
 
 ```json
 { "error": "目标已存在" }
@@ -47,7 +47,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 
 | `code` | 状态码 | 含义 |
 | --- | --- | --- |
-| `no_root` | 403 | `POST /api/root-check` 检测到设备无法获取 root |
+| `no_root` | 403 | `POST /api/devices/root-check` 检测到设备无法获取 root |
 | `root_lost` | 403 | 某个 root 请求失败后复查发现 root 已不可用（例如在 root 管理器中撤销了授权）。前端收到后退出 root 模式 |
 
 常见状态码：
@@ -99,7 +99,7 @@ interface StorageInfo {
   free: number;
 }
 
-/** POST /api/root-check 的响应 */
+/** POST /api/devices/root-check 的响应 */
 interface RootCheckResult {
   method: RootMethod;
 }
@@ -118,18 +118,18 @@ interface ErrorResponse {
   code?: ErrorCode;
 }
 
-/** POST /api/upload 的响应；count 为收到的文件数 */
+/** POST /api/files/upload 的响应；count 为收到的文件数 */
 interface UploadResult extends OkResult {
   count: number;
 }
 
-/** POST /api/pull 的响应：一次性下载 token 和下载后的文件名 */
+/** POST /api/files/pull 的响应：一次性下载 token 和下载后的文件名 */
 interface PullResult {
   token: string;
   name: string;
 }
 
-/** GET /api/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
+/** GET /api/files/text 的响应：binary 表示不是 UTF-8 文本；truncated 时只含前 limit 字节 */
 type TextPreview = { kind: "text"; text: string; truncated: boolean; limit: number } | { kind: "binary" };
 
 /** 支持预览和解压的压缩包格式：zip 系（含 apk、jar 等）、tar、tar.gz、tar.bz2 */
@@ -147,25 +147,25 @@ interface ArchiveEntry {
   link?: string;
 }
 
-/** GET /api/archive 的响应；truncated 时只含前面的部分条目 */
+/** GET /api/files/archive 的响应；truncated 时只含前面的部分条目 */
 interface ArchiveListing {
   format: ArchiveFormat;
   entries: ArchiveEntry[];
   truncated: boolean;
 }
 
-/** POST /api/extract 的响应：解压出的文件夹或文件 */
+/** POST /api/files/extract 的响应：解压出的文件夹或文件 */
 interface ExtractResult {
   path: string;
 }
 
-/** POST /api/compress 的请求；压缩包生成在所选项的公共父目录 */
+/** POST /api/files/compress 的请求；压缩包生成在所选项的公共父目录 */
 interface CompressRequest {
   paths: string[];
   format: ArchiveFormat;
 }
 
-/** POST /api/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
+/** POST /api/files/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
 interface CompressResult {
   path: string;
   skipped?: number;
@@ -183,7 +183,7 @@ interface LinkInfo {
   targetSize?: number;
 }
 
-/** 条目所在的分区；读取不到时 GET /api/stat 不返回该字段 */
+/** 条目所在的分区；读取不到时 GET /api/files/stat 不返回该字段 */
 interface PartitionInfo {
   /** 挂载点 */
   mount: string;
@@ -195,7 +195,7 @@ interface PartitionInfo {
   free: number;
 }
 
-/** GET /api/stat 的响应；type 对符号链接为 link，目标信息见 link */
+/** GET /api/files/stat 的响应；type 对符号链接为 link，目标信息见 link */
 interface FileStat {
   name: string;
   path: string;
@@ -221,7 +221,7 @@ interface FileStat {
   protected: boolean;
 }
 
-/** GET /api/usage 的响应：文件夹的递归统计，不跟随符号链接 */
+/** GET /api/files/usage 的响应：文件夹的递归统计，不跟随符号链接 */
 interface DirUsage {
   /** 全部非目录条目的大小之和，字节 */
   size: number;
@@ -233,14 +233,14 @@ interface DirUsage {
   partial: boolean;
 }
 
-/** POST /api/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
+/** POST /api/files/chmod 的请求；mode 为 3 到 4 位八进制字符串 */
 interface ChmodRequest {
   paths: string[];
   mode: string;
   recursive?: boolean;
 }
 
-/** POST /api/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
+/** POST /api/files/chown 的请求；owner 和 group 至少给一个，可以是名称或数字 id */
 interface ChownRequest {
   paths: string[];
   owner?: string;
@@ -256,26 +256,26 @@ interface ChownRequest {
 | GET | `/api/devices` | 列出设备 | `api.devices()` |
 | POST | `/api/devices/reconnect` | 重新请求授权 | `api.reconnectDevices()` |
 | POST | `/api/devices/restart-server` | 重启 adb 服务 | `api.restartAdb()` |
-| POST | `/api/root-check` | 检测 root 方式 | `api.rootCheck(serial)` |
-| GET | `/api/storage` | 查询存储空间 | `api.storage(serial)` |
-| GET | `/api/ls` | 列出目录 | `api.ls(target, path)` |
-| POST | `/api/mkdir` | 新建文件夹 | `api.mkdir(target, path)` |
-| POST | `/api/rename` | 重命名 | `api.rename(target, from, to)` |
-| POST | `/api/delete` | 删除 | `api.remove(target, paths)` |
-| POST | `/api/copy` | 复制到目录 | `api.copy(target, paths, dest)` |
-| POST | `/api/move` | 移动到目录 | `api.move(target, paths, dest)` |
-| GET | `/api/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
-| GET | `/api/text` | 以文本读取文件开头 | `api.text(target, path)` |
-| GET | `/api/archive` | 列出压缩包内的条目 | `api.archive(target, path)` |
-| POST | `/api/extract` | 在设备上解压压缩包 | `api.extract(target, path)` |
-| POST | `/api/compress` | 把文件和文件夹压缩为 zip 或 tar 系压缩包 | `api.compress(target, paths, format)` |
-| GET | `/api/stat` | 读取属性 | `api.stat(target, path)` |
-| GET | `/api/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
-| POST | `/api/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
-| POST | `/api/chown` | 修改所有者和用户组 | `api.chown(target, paths, owner, group, recursive)` |
-| POST | `/api/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
-| POST | `/api/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
-| GET | `/api/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
+| POST | `/api/devices/root-check` | 检测 root 方式 | `api.rootCheck(serial)` |
+| GET | `/api/devices/storage` | 查询存储空间 | `api.storage(serial)` |
+| GET | `/api/files/ls` | 列出目录 | `api.ls(target, path)` |
+| POST | `/api/files/mkdir` | 新建文件夹 | `api.mkdir(target, path)` |
+| POST | `/api/files/rename` | 重命名 | `api.rename(target, from, to)` |
+| POST | `/api/files/delete` | 删除 | `api.remove(target, paths)` |
+| POST | `/api/files/copy` | 复制到目录 | `api.copy(target, paths, dest)` |
+| POST | `/api/files/move` | 移动到目录 | `api.move(target, paths, dest)` |
+| GET | `/api/files/preview` | 读取图片、视频、音频，支持 Range | `api.previewUrl(target, path)` |
+| GET | `/api/files/text` | 以文本读取文件开头 | `api.text(target, path)` |
+| GET | `/api/files/archive` | 列出压缩包内的条目 | `api.archive(target, path)` |
+| POST | `/api/files/extract` | 在设备上解压压缩包 | `api.extract(target, path)` |
+| POST | `/api/files/compress` | 把文件和文件夹压缩为 zip 或 tar 系压缩包 | `api.compress(target, paths, format)` |
+| GET | `/api/files/stat` | 读取属性 | `api.stat(target, path)` |
+| GET | `/api/files/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
+| POST | `/api/files/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
+| POST | `/api/files/chown` | 修改所有者和用户组 | `api.chown(target, paths, owner, group, recursive)` |
+| POST | `/api/files/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
+| POST | `/api/files/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
+| GET | `/api/files/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
 
 ## 设备
 
@@ -301,7 +301,7 @@ interface ChownRequest {
 
 前端每 2 秒轮询一次（`useDevices`）。
 
-### POST /api/root-check
+### POST /api/devices/root-check
 
 重新检测设备获取 root 的方式，结果写入缓存，供之后的 root 请求使用。
 
@@ -319,7 +319,7 @@ interface ChownRequest {
 
 无法获取 root 时返回 `403`，`code` 为 `no_root`，`error` 说明原因：未找到 su、su 未切换到 root，或授权被拒绝。设备未连接等连接问题按普通错误返回 `500`。
 
-### GET /api/storage
+### GET /api/devices/storage
 
 查询 `/sdcard` 所在分区的容量（`df -k /sdcard/`），始终以普通 shell 用户执行。
 
@@ -337,7 +337,7 @@ interface ChownRequest {
 
 以下接口均接受[公共参数](#公共参数)中的 `serial` 和 `root`。
 
-### GET /api/ls
+### GET /api/files/ls
 
 列出目录的直接子项。
 
@@ -358,7 +358,7 @@ interface ChownRequest {
 
 错误：路径不存在或不是目录时 `404`；没有读取权限时 `403`。
 
-### POST /api/mkdir
+### POST /api/files/mkdir
 
 新建文件夹，等同 `mkdir -p`：已存在时不报错，缺少的上层目录一并创建。
 
@@ -368,7 +368,7 @@ interface ChownRequest {
 
 响应：`{ "ok": true }`
 
-### POST /api/rename
+### POST /api/files/rename
 
 把 `from` 改名或移动为 `to`。
 
@@ -380,7 +380,7 @@ interface ChownRequest {
 
 错误：`to` 已存在时 `400`；`from` 是受保护路径时 `400`。
 
-### POST /api/delete
+### POST /api/files/delete
 
 递归删除（`rm -rf`）。
 
@@ -392,7 +392,7 @@ interface ChownRequest {
 
 错误：任一路径受保护时 `400`，不会删除任何内容。
 
-### POST /api/copy
+### POST /api/files/copy
 
 把 `paths` 中的每一项复制到目录 `dest` 下。重名时依次命名为“名称 2.扩展名”“名称 3.扩展名”……，不会覆盖已有内容；目录名中的点不视为扩展名。
 
@@ -404,7 +404,7 @@ interface ChownRequest {
 
 错误：`dest` 是某个源或其子目录时 `400`。多项时按顺序逐项复制，中途失败时已复制的部分保留。
 
-### POST /api/move
+### POST /api/files/move
 
 把 `paths` 中的每一项移动到目录 `dest` 下，名称不变。已在 `dest` 中的项跳过。
 
@@ -429,7 +429,7 @@ interface ChownRequest {
 
 ## 查看文件
 
-### GET /api/preview
+### GET /api/files/preview
 
 以字节流返回设备上的图片、视频或音频（`adb exec-out`），供分栏视图、画廊视图的缩略图和页面内查看器使用。
 
@@ -475,7 +475,7 @@ interface ChownRequest {
 
 响应头始终包含 `Accept-Ranges: bytes`；成功时另有 `X-Content-Type-Options: nosniff`、`Cache-Control: no-store` 和 `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`，SVG 中的脚本不会执行。客户端断开时终止 adb 进程。
 
-### GET /api/text
+### GET /api/files/text
 
 读取文件开头作为文本，供查看器显示图片、视频、音频以外的文件。
 
@@ -510,7 +510,7 @@ interface ChownRequest {
 
 设备上缺少对应命令时返回 `501`，提示缺少 `unzip` 或 `tar`。toybox 的 `tar` 支持 `z` 和 `j`，不支持 xz。
 
-### GET /api/archive
+### GET /api/files/archive
 
 列出压缩包内的全部条目，供查看器显示目录树。
 
@@ -540,7 +540,7 @@ interface ChownRequest {
 
 错误：扩展名不受支持时 `415`；文件不存在时 `404`；无读取权限时 `403`；压缩包损坏或命令执行失败时 `400`；设备缺少命令时 `501`。
 
-### POST /api/extract
+### POST /api/files/extract
 
 在设备上把压缩包解压到它所在的目录，不覆盖已有内容。
 
@@ -564,9 +564,9 @@ interface ChownRequest {
 - 路径含 `..` 段（zip-slip）
 - 路径位于某个符号链接条目之下（先放置指向目录之外的链接，再经由链接写出）
 
-错误：除上述外，与 `GET /api/archive` 相同。
+错误：除上述外，与 `GET /api/files/archive` 相同。
 
-### POST /api/compress
+### POST /api/files/compress
 
 把一个或多个文件、文件夹压缩为压缩包，不覆盖已有内容。
 
@@ -598,7 +598,7 @@ interface ChownRequest {
 
 以下接口均接受[公共参数](#公共参数)中的 `serial` 和 `root`。
 
-### GET /api/stat
+### GET /api/files/stat
 
 读取单个条目的属性，符号链接不跟随，目标信息放在 `link` 中。
 
@@ -623,11 +623,11 @@ interface ChownRequest {
 
 - `stat -c` 的格式依次降级：完整格式、不含 SELinux 上下文、只含基本字段。老设备上不支持的字段缺省，不报错
 - 分区信息来自 `df -k` 和 `/proc/mounts`，读取失败时不返回 `partition`
-- `protected` 为 `true` 时，`POST /api/chmod` 和 `POST /api/chown` 会拒绝该路径
+- `protected` 为 `true` 时，`POST /api/files/chmod` 和 `POST /api/files/chown` 会拒绝该路径
 
 错误：路径不存在时 `404`；无权限读取时 `403`。
 
-### GET /api/usage
+### GET /api/files/usage
 
 递归统计文件夹的总大小、文件数和子文件夹数。统计的是各条目的实际字节数，不是磁盘占用；不跟随符号链接，符号链接按一个文件计，大小为链接自身的大小。
 
@@ -647,7 +647,7 @@ interface ChownRequest {
 
 错误：路径不存在时 `404`；不是目录时 `400`。
 
-### POST /api/chmod
+### POST /api/files/chmod
 
 修改权限位。
 
@@ -659,7 +659,7 @@ interface ChownRequest {
 
 错误：`mode` 不合法时 `400`；任一路径受保护时 `400`，不会修改任何内容；设备拒绝时返回设备给出的错误信息。
 
-### POST /api/chown
+### POST /api/files/chown
 
 修改所有者或用户组。
 
@@ -673,7 +673,7 @@ interface ChownRequest {
 
 ## 传输
 
-### POST /api/upload
+### POST /api/files/upload
 
 上传文件或文件夹到设备。文件先保存到电脑临时目录，再 `adb push` 到设备；su 模式下额外经设备上的 `/data/local/tmp` 中转。
 
@@ -700,7 +700,7 @@ interface ChownRequest {
 
 错误：没有收到文件，或 `paths` 不是字符串数组的 JSON 时 `400`。
 
-### POST /api/pull
+### POST /api/files/pull
 
 下载的第一步：登记一次性 token。只选了一个文件时，先确认文件存在且可读（不存在为 `404`，无读取权限为 `403`），不落盘；目录和多选则 `adb pull` 到电脑临时目录。
 
@@ -724,9 +724,9 @@ interface ChownRequest {
 
 token 30 分钟内有效，过期后临时文件（若有）被删除。
 
-### GET /api/fetch/:token
+### GET /api/files/fetch/:token
 
-下载的第二步：返回 `POST /api/pull` 准备好的内容，`Content-Disposition` 为 attachment。
+下载的第二步：返回 `POST /api/files/pull` 准备好的内容，`Content-Disposition` 为 attachment。
 
 - 单个文件不经过电脑临时目录，用 `adb exec-out cat` 流式返回（root 为 su 方式时由 su 提权读取），带 `Content-Length`，浏览器立即开始下载。取回时重新读取文件大小，文件已被删除则返回 `404`
 - 目录或多项打包为 zip 流式返回（压缩级别 1），不带 `Content-Length`
@@ -752,7 +752,7 @@ interface Target {
 | `ls(target, path)` | `Promise<FileEntry[]>` | 通常经 `lib/queries.ts` 的 `lsQuery` 调用，结果由 TanStack Query 缓存 |
 | `mkdir(target, path)` | `Promise<OkResult>` | |
 | `rename(target, from, to)` | `Promise<OkResult>` | |
-| `remove(target, paths)` | `Promise<OkResult>` | 对应 `/api/delete` |
+| `remove(target, paths)` | `Promise<OkResult>` | 对应 `/api/files/delete` |
 | `copy(target, paths, dest)` | `Promise<OkResult>` | |
 | `move(target, paths, dest)` | `Promise<OkResult>` | |
 | `previewUrl(target, path)` | `string` | 只拼接地址，供 `<img>`、`<video>`、`<audio>` 的 `src` 使用；媒体元素自行发出 Range 请求 |
@@ -760,7 +760,7 @@ interface Target {
 | `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
 | `extract(target, path)` | `Promise<ExtractResult>` | 耗时随压缩包大小而定，没有进度 |
 | `compress(target, paths, format)` | `Promise<CompressResult>` | zip 需经电脑中转，耗时随大小而定，没有进度 |
-| `download(target, paths)` | `Promise<void>` | 调用 `/api/pull` 后创建临时 `<a download>` 指向 `/api/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
+| `download(target, paths)` | `Promise<void>` | 调用 `/api/files/pull` 后创建临时 `<a download>` 指向 `/api/files/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
 行为说明：

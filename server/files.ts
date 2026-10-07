@@ -11,7 +11,7 @@ export function fileRoutes() {
   const router = Router();
 
   router.get(
-    "/api/ls",
+    "/ls",
     wrap(async (req, res) => {
       const dir = adb.assertAbs(req.query.path);
       res.json(await fs.ls(await ctxOf(req), dir));
@@ -19,7 +19,7 @@ export function fileRoutes() {
   );
 
   router.post(
-    "/api/mkdir",
+    "/mkdir",
     wrap(async (req, res) => {
       await fs.mkdir(await ctxOf(req), adb.assertAbs(req.body.path));
       res.json({ ok: true } satisfies OkResult);
@@ -27,7 +27,7 @@ export function fileRoutes() {
   );
 
   router.post(
-    "/api/rename",
+    "/rename",
     wrap(async (req, res) => {
       const from = adb.assertAbs(req.body.from);
       const to = adb.assertAbs(req.body.to);
@@ -39,7 +39,7 @@ export function fileRoutes() {
   );
 
   router.post(
-    "/api/delete",
+    "/delete",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const ctx = await ctxOf(req);
@@ -51,7 +51,7 @@ export function fileRoutes() {
 
   // 复制 / 移动到目录：paths 是源，dest 是目标目录
   router.post(
-    "/api/copy",
+    "/copy",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const dest = adb.assertAbs(req.body.dest);
@@ -63,7 +63,7 @@ export function fileRoutes() {
   );
 
   router.post(
-    "/api/move",
+    "/move",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const dest = adb.assertAbs(req.body.dest);

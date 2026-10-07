@@ -151,18 +151,18 @@ export async function usage(ctx: adb.Ctx, p: string, signal?: AbortSignal): Prom
 }
 
 /** 属性相关接口：查看信息，修改权限和所有者 */
-export function propertyRoutes() {
+export function attrRoutes() {
   const router = Router();
 
   router.get(
-    "/api/stat",
+    "/stat",
     wrap(async (req, res) => {
       res.json(await stat(await ctxOf(req), adb.assertAbs(req.query.path)));
     }),
   );
 
   router.get(
-    "/api/usage",
+    "/usage",
     wrap(async (req, res) => {
       // 客户端关闭页面或取消请求时终止设备上的 find
       const ac = new AbortController();
@@ -174,7 +174,7 @@ export function propertyRoutes() {
   );
 
   router.post(
-    "/api/chmod",
+    "/chmod",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const mode = fs.parseModeInput(req.body.mode);
@@ -186,7 +186,7 @@ export function propertyRoutes() {
   );
 
   router.post(
-    "/api/chown",
+    "/chown",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const owner = fs.parseOwnerInput(req.body.owner);

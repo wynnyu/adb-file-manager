@@ -191,10 +191,12 @@ Project structure:
 
 ```
 server/
-  adb.ts        adb wrapper: listing, push / pull, root detection, copy / move / delete
+  adb.ts        low-level adb calls: run, shell, push / pull, device list, root detection
+  fs-cmds.ts    on-device file commands: list, copy / move / delete, compress / extract, read
+  devices.ts    device endpoints: device list, reauthorize, root check, storage
   app.ts        assembles the HTTP server; serves the frontend after a build
   files.ts      file operation endpoints: list, create, rename, delete, copy, move, preview
-  properties.ts property endpoints: stat, recursive folder usage, chmod and chown
+  attrs.ts      attribute endpoints: stat, recursive folder usage, chmod and chown
   transfer.ts   upload and download endpoints, staged through a temporary directory on the computer
   guard.ts      security checks: local-only access, protected paths
   request.ts    request parameter parsing and root status cache

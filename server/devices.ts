@@ -15,14 +15,14 @@ export function deviceRoutes() {
   const router = Router();
 
   router.get(
-    "/api/devices",
+    "/",
     wrap(async (_req, res) => {
       res.json(await adb.devices());
     }),
   );
 
   router.post(
-    "/api/devices/reconnect",
+    "/reconnect",
     wrap(async (_req, res) => {
       await adb.reconnectOffline();
       res.json({ ok: true });
@@ -30,7 +30,7 @@ export function deviceRoutes() {
   );
 
   router.post(
-    "/api/devices/restart-server",
+    "/restart-server",
     wrap(async (_req, res) => {
       await adb.restartServer();
       res.json({ ok: true });
@@ -38,14 +38,14 @@ export function deviceRoutes() {
   );
 
   router.post(
-    "/api/root-check",
+    "/root-check",
     wrap(async (req, res) => {
       res.json({ method: await rootFor(serialOf(req), true) } satisfies RootCheckResult);
     }),
   );
 
   router.get(
-    "/api/storage",
+    "/storage",
     wrap(async (req, res) => {
       res.json(await storage({ serial: serialOf(req), root: false }));
     }),

@@ -151,7 +151,7 @@ export function archiveRoutes() {
   const router = Router();
 
   router.get(
-    "/api/archive",
+    "/archive",
     wrap(async (req, res) => {
       const p = adb.assertAbs(req.query.path);
       const format = archiveFormat(p);
@@ -169,7 +169,7 @@ export function archiveRoutes() {
   );
 
   router.post(
-    "/api/extract",
+    "/extract",
     wrap(async (req, res) => {
       const p = adb.assertAbs(req.body.path);
       const format = archiveFormat(p);
@@ -184,7 +184,7 @@ export function archiveRoutes() {
   );
 
   router.post(
-    "/api/compress",
+    "/compress",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
       const format = formatOf(req.body.format);

@@ -61,58 +61,58 @@ export const api = {
   reconnectDevices: () => post<OkResult>("/api/devices/reconnect", {}),
   restartAdb: () => post<OkResult>("/api/devices/restart-server", {}),
 
-  rootCheck: (serial: string) => post<RootCheckResult>("/api/root-check", { serial }),
+  rootCheck: (serial: string) => post<RootCheckResult>("/api/devices/root-check", { serial }),
 
-  storage: (serial: string) => request<StorageInfo>(`/api/storage?${new URLSearchParams({ serial })}`),
+  storage: (serial: string) => request<StorageInfo>(`/api/devices/storage?${new URLSearchParams({ serial })}`),
 
-  ls: (t: Target, path: string) => request<FileEntry[]>(`/api/ls?${qs(t, { path })}`),
+  ls: (t: Target, path: string) => request<FileEntry[]>(`/api/files/ls?${qs(t, { path })}`),
 
-  mkdir: (t: Target, path: string) => post<OkResult>("/api/mkdir", { ...t, path }),
+  mkdir: (t: Target, path: string) => post<OkResult>("/api/files/mkdir", { ...t, path }),
 
-  rename: (t: Target, from: string, to: string) => post<OkResult>("/api/rename", { ...t, from, to }),
+  rename: (t: Target, from: string, to: string) => post<OkResult>("/api/files/rename", { ...t, from, to }),
 
-  remove: (t: Target, paths: string[]) => post<OkResult>("/api/delete", { ...t, paths }),
+  remove: (t: Target, paths: string[]) => post<OkResult>("/api/files/delete", { ...t, paths }),
 
-  copy: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/copy", { ...t, paths, dest }),
+  copy: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/files/copy", { ...t, paths, dest }),
 
-  move: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/move", { ...t, paths, dest }),
+  move: (t: Target, paths: string[], dest: string) => post<OkResult>("/api/files/move", { ...t, paths, dest }),
 
   /** 图片、视频、音频的地址，直接用作媒体元素的 src */
-  previewUrl: (t: Target, path: string) => `/api/preview?${qs(t, { path })}`,
+  previewUrl: (t: Target, path: string) => `/api/files/preview?${qs(t, { path })}`,
 
-  stat: (t: Target, path: string) => request<FileStat>(`/api/stat?${qs(t, { path })}`),
+  stat: (t: Target, path: string) => request<FileStat>(`/api/files/stat?${qs(t, { path })}`),
 
   /** 文件夹的递归统计，目录大时较慢，可用 signal 取消 */
   usage: (t: Target, path: string, signal?: AbortSignal) =>
-    request<DirUsage>(`/api/usage?${qs(t, { path })}`, { signal }),
+    request<DirUsage>(`/api/files/usage?${qs(t, { path })}`, { signal }),
 
   chmod: (t: Target, paths: string[], mode: string, recursive: boolean) =>
-    post<OkResult>("/api/chmod", { ...t, paths, mode, recursive }),
+    post<OkResult>("/api/files/chmod", { ...t, paths, mode, recursive }),
 
   /** owner 和 group 至少给一个 */
   chown: (t: Target, paths: string[], owner: string | undefined, group: string | undefined, recursive: boolean) =>
-    post<OkResult>("/api/chown", { ...t, paths, owner, group, recursive }),
+    post<OkResult>("/api/files/chown", { ...t, paths, owner, group, recursive }),
 
   /** 以文本读取文件开头，不是 UTF-8 文本时为 binary */
-  text: (t: Target, path: string) => request<TextPreview>(`/api/text?${qs(t, { path })}`),
+  text: (t: Target, path: string) => request<TextPreview>(`/api/files/text?${qs(t, { path })}`),
 
   /** 压缩包里的条目 */
-  archive: (t: Target, path: string) => request<ArchiveListing>(`/api/archive?${qs(t, { path })}`),
+  archive: (t: Target, path: string) => request<ArchiveListing>(`/api/files/archive?${qs(t, { path })}`),
 
   /** 在设备上解压，返回解出的文件夹或文件；耗时随压缩包大小而定 */
-  extract: (t: Target, path: string) => post<ExtractResult>("/api/extract", { ...t, path }),
+  extract: (t: Target, path: string) => post<ExtractResult>("/api/files/extract", { ...t, path }),
 
   /**
    * 压缩到所选项的公共父目录，返回生成的压缩包；zip 在电脑上生成，需要经过电脑中转，耗时随大小而定
    */
   compress: (t: Target, paths: string[], format: ArchiveFormat) =>
-    post<CompressResult>("/api/compress", { ...t, paths, format }),
+    post<CompressResult>("/api/files/compress", { ...t, paths, format }),
 
   /** adb pull 到电脑，然后触发浏览器下载 */
   async download(t: Target, paths: string[]) {
-    const { token } = await post<PullResult>("/api/pull", { ...t, paths });
+    const { token } = await post<PullResult>("/api/files/pull", { ...t, paths });
     const a = document.createElement("a");
-    a.href = `/api/fetch/${token}`;
+    a.href = `/api/files/fetch/${token}`;
     a.download = "";
     document.body.appendChild(a);
     a.click();
@@ -126,7 +126,7 @@ export const api = {
       form.append("paths", JSON.stringify(files.map((f) => f.path)));
       for (const f of files) form.append("files", f.file, "blob");
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `/api/upload?${qs(t, { path: dest })}`);
+      xhr.open("POST", `/api/files/upload?${qs(t, { path: dest })}`);
       xhr.setRequestHeader("X-Lang", getLang());
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
       xhr.onload = () => {
