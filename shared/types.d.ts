@@ -214,3 +214,47 @@ export interface ChownRequest {
   group?: string;
   recursive?: boolean;
 }
+
+/** 应用对用户 0 的状态：uninstalled 为系统应用被 pm uninstall --user 0 移除，可用 install-existing 恢复 */
+export type AppState = "enabled" | "disabled" | "uninstalled";
+
+/** GET /api/apps 的一项 */
+export interface AppEntry {
+  pkg: string;
+  /** APK 在设备上的路径；已卸载的系统应用仍保留原路径 */
+  path: string;
+  uid?: number;
+  system: boolean;
+  state: AppState;
+}
+
+/** 应用的一项权限 */
+export interface AppPermission {
+  name: string;
+  /** 运行时权限，需用户授予 */
+  runtime: boolean;
+  /** 只在 requested 中出现时缺省 */
+  granted?: boolean;
+}
+
+/** GET /api/apps/info 的响应；时间为设备本地时间原文，无时区 */
+export interface AppDetail {
+  pkg: string;
+  versionName?: string;
+  versionCode?: number;
+  minSdk?: number;
+  targetSdk?: number;
+  firstInstall?: string;
+  lastUpdate?: string;
+  /** 安装来源的包名 */
+  installer?: string;
+  codePath?: string;
+  dataDir?: string;
+  abi?: string;
+  uid?: number;
+  /** pkgFlags 中的标志，如 SYSTEM、HAS_CODE */
+  flags: string[];
+  /** 系统应用已被更新过，卸载更新可回到出厂版本 */
+  updatedSystem: boolean;
+  permissions: AppPermission[];
+}

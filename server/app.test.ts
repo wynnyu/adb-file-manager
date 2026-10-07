@@ -25,6 +25,7 @@ const PARAMS = {
   mode: "644",
   owner: "root",
   format: "tgz",
+  pkg: "com.example.app",
 };
 
 /** preview、archive、extract 会先按扩展名判断类型，需要给出对应类型的路径 */
@@ -36,7 +37,7 @@ const PATHS: Record<string, string> = {
 
 async function call(method: "GET" | "POST", url: string) {
   const params = { ...PARAMS, path: PATHS[url] ?? PARAMS.path };
-  const query = method === "GET" ? `?${new URLSearchParams({ path: params.path })}` : "";
+  const query = method === "GET" ? `?${new URLSearchParams({ path: params.path, pkg: params.pkg })}` : "";
   const res = await fetch(base + url + query, {
     method,
     headers: { "content-type": "application/json", "x-lang": "zh" },
@@ -64,6 +65,8 @@ describe("createApp 的接口挂载", () => {
     ["POST", "/api/files/compress"],
     ["POST", "/api/files/upload"],
     ["POST", "/api/files/pull"],
+    ["GET", "/api/apps"],
+    ["GET", "/api/apps/info"],
     ["GET", "/api/devices/storage"],
     ["POST", "/api/devices/root-check"],
   ] as const)("%s %s 不带 serial 时返回 400", async (method, url) => {
@@ -76,6 +79,13 @@ describe("createApp 的接口挂载", () => {
     const { status, body } = await call("GET", "/api/files/fetch/nope");
     expect(status).toBe(404);
     expect(body?.error).toBe(msg("downloadExpired"));
+  });
+
+  it("GET /api/apps/info 包名不合法时返回 400", async () => {
+    const query = new URLSearchParams({ serial: "x", pkg: "com.a;rm -rf" });
+    const res = await fetch(`${base}/api/apps/info?${query}`, { headers: { "x-lang": "zh" } });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toBe(msg("badPackage"));
   });
 
   it.each([

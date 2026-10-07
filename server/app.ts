@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { ErrorResponse } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import { appRoutes } from "./apps.ts";
 import { archiveRoutes } from "./archive.ts";
 import { attrRoutes } from "./attrs.ts";
 import { deviceRoutes } from "./devices.ts";
@@ -23,6 +24,7 @@ export function createApp() {
 
   app.use("/api/devices", deviceRoutes());
   app.use("/api/files", fileRoutes(), previewRoutes(), archiveRoutes(), attrRoutes(), transferRoutes());
+  app.use("/api/apps", appRoutes());
   app.use("/api/jobs", jobRoutes());
 
   // 编译后位于 dist/server/，前端产物在 dist/web/；开发时（tsx）该目录不存在，由 vite 提供页面

@@ -1,4 +1,8 @@
 export type {
+  AppDetail,
+  AppEntry,
+  AppPermission,
+  AppState,
   ArchiveEntry,
   ArchiveFormat,
   ArchiveListing,

@@ -42,6 +42,8 @@ const zh = {
   packDeniedRoot: "部分文件无读取权限，或所在目录无写入权限",
   hostNoSpace: "电脑上的临时空间不足，无法生成 zip。可改用 tar.gz，在设备上直接压缩",
   jobNotFound: "任务不存在或已过期",
+  badPackage: "包名格式不正确",
+  noPackage: "设备上未找到应用：{pkg}",
 };
 
 export type MsgKey = keyof typeof zh;
@@ -87,6 +89,8 @@ const en: Record<MsgKey, string> = {
   hostNoSpace:
     "Not enough temporary space on the computer to create a zip. Use tar.gz instead, which compresses on the device",
   jobNotFound: "Task not found or expired",
+  badPackage: "Invalid package name",
+  noPackage: "Package not found on the device: {pkg}",
 };
 
 const DICTS: Record<Lang, Record<MsgKey, string>> = { zh, en };
