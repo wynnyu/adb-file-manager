@@ -1,7 +1,8 @@
 import { AnimatePresence } from "motion/react";
-import { Dialog, Toast, TransferQueue, UsageTip } from "./components/overlays/index.ts";
-import { FilesPage } from "./FilesPage.tsx";
+import { Dialog, Toast, TransferQueue } from "./components/overlays/index.ts";
 import { ShellContext, useShellState } from "./hooks/index.ts";
+import { UsageTip } from "./modules/files/components/overlays/index.ts";
+import { FilesPage } from "./modules/files/FilesPage.tsx";
 
 export default function App() {
   const shell = useShellState();

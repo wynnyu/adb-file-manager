@@ -2,8 +2,8 @@ import { Check, type LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n/index.tsx";
-import type { BookmarkFields } from "../../lib/index.ts";
-import { BookmarkForm, BookmarkPreview } from "../bookmarks/index.ts";
+import { BookmarkForm, BookmarkPreview } from "../../modules/files/components/bookmarks/index.ts";
+import type { BookmarkFields } from "../../modules/files/lib/index.ts";
 import { PillButton, spring } from "../ui.tsx";
 import { type DialogMessage, DialogMessageBody } from "./DialogMessage.tsx";
 

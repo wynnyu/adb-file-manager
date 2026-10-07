@@ -1,4 +1,4 @@
-import { loadPref, savePref } from "../lib/prefs.ts";
+import { loadPref, savePref } from "../lib/index.ts";
 import { en } from "./en.ts";
 import { type MessageKey, zh } from "./zh.ts";
 
