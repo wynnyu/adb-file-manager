@@ -2,6 +2,7 @@ import posix from "node:path/posix";
 import { Router } from "express";
 import type { DirUsage, FileStat, LinkInfo, OkResult, PartitionInfo } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import * as fs from "./fs-cmds.ts";
 import { assertSafeTargets, isProtectedPath } from "./guard.ts";
 import { msg as t } from "./i18n.ts";
 import { ctxOf, pathsOf, wrap } from "./request.ts";
@@ -145,7 +146,7 @@ export function parseUsage(out: string): DirUsage {
 }
 
 export async function usage(ctx: adb.Ctx, p: string, signal?: AbortSignal): Promise<DirUsage> {
-  if (!(await adb.isDir(ctx, p))) throw new adb.AdbError(t("notDir", { path: p }), 400);
+  if (!(await fs.isDir(ctx, p))) throw new adb.AdbError(t("notDir", { path: p }), 400);
   return parseUsage(await adb.shell(ctx, usageCmd(p), { signal, timeout: USAGE_TIMEOUT }));
 }
 
@@ -176,10 +177,10 @@ export function propertyRoutes() {
     "/api/chmod",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
-      const mode = adb.parseModeInput(req.body.mode);
+      const mode = fs.parseModeInput(req.body.mode);
       const ctx = await ctxOf(req);
       await assertSafeTargets(ctx, paths, "change");
-      await adb.chmod(ctx, paths, mode, req.body.recursive === true);
+      await fs.chmod(ctx, paths, mode, req.body.recursive === true);
       res.json({ ok: true } satisfies OkResult);
     }),
   );
@@ -188,12 +189,12 @@ export function propertyRoutes() {
     "/api/chown",
     wrap(async (req, res) => {
       const paths = pathsOf(req.body.paths);
-      const owner = adb.parseOwnerInput(req.body.owner);
-      const group = adb.parseOwnerInput(req.body.group);
+      const owner = fs.parseOwnerInput(req.body.owner);
+      const group = fs.parseOwnerInput(req.body.group);
       if (!owner && !group) throw new adb.AdbError(t("missingOwner"), 400);
       const ctx = await ctxOf(req);
       await assertSafeTargets(ctx, paths, "change");
-      await adb.chown(ctx, paths, owner, group, req.body.recursive === true);
+      await fs.chown(ctx, paths, owner, group, req.body.recursive === true);
       res.json({ ok: true } satisfies OkResult);
     }),
   );

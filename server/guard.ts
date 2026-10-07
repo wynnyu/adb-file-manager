@@ -2,6 +2,7 @@ import posix from "node:path/posix";
 import type { NextFunction, Request, Response } from "express";
 import type { ErrorResponse } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import * as fs from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
 
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
@@ -53,13 +54,13 @@ export function isProtected(p: string) {
 
 /** 路径本身或其真实路径是否受保护 */
 export async function isProtectedPath(ctx: adb.Ctx, p: string) {
-  const [real] = await adb.realpaths(ctx, [p]);
+  const [real] = await fs.realpaths(ctx, [p]);
   return isProtected(p) || isProtected(real);
 }
 
 /** purpose 决定报错文案：delete 为删除或移动，change 为修改权限或所有者 */
 export async function assertSafeTargets(ctx: adb.Ctx, paths: string[], purpose: "delete" | "change" = "delete") {
-  const real = await adb.realpaths(ctx, paths);
+  const real = await fs.realpaths(ctx, paths);
   paths.forEach((p, i) => {
     if (isProtected(p) || isProtected(real[i])) {
       const shown = real[i] !== p ? msg("resolvesTo", { path: p, real: real[i] }) : p;
@@ -70,7 +71,7 @@ export async function assertSafeTargets(ctx: adb.Ctx, paths: string[], purpose: 
 
 /** 目标目录不能是源本身或它的子目录（按真实路径判断） */
 export async function assertNotInside(ctx: adb.Ctx, sources: string[], dest: string) {
-  const [realDest, ...realSrc] = await adb.realpaths(ctx, [dest, ...sources]);
+  const [realDest, ...realSrc] = await fs.realpaths(ctx, [dest, ...sources]);
   realSrc.forEach((s, i) => {
     if (realDest === s || realDest.startsWith(s + "/")) {
       throw new adb.AdbError(msg("intoItself", { name: posix.basename(sources[i]) }), 400);

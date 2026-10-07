@@ -5,6 +5,7 @@ import posix from "node:path/posix";
 import { pipeline } from "node:stream/promises";
 import { type EntryData, ZipArchive, type ZipEntryData } from "archiver";
 import * as adb from "./adb.ts";
+import * as cmds from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
 import { TMP, tmpDir } from "./tmp.ts";
 
@@ -41,8 +42,8 @@ async function hostFree() {
 export async function compressZip(ctx: adb.Ctx, base: string, names: string[], name: string) {
   const paths = names.map((n) => posix.join(base, n));
   // 拉取的副本和 zip 本身同时存在，按源大小的两倍预留空间
-  if ((await adb.diskUsage(ctx, paths)) * 2 > (await hostFree())) throw new adb.AdbError(msg("hostNoSpace"), 507);
-  const skipped = await adb.countSkipped(ctx, paths);
+  if ((await cmds.diskUsage(ctx, paths)) * 2 > (await hostFree())) throw new adb.AdbError(msg("hostNoSpace"), 507);
+  const skipped = await cmds.countSkipped(ctx, paths);
   const dir = await tmpDir();
   try {
     const src = path.join(dir, "src");
@@ -55,7 +56,7 @@ export async function compressZip(ctx: adb.Ctx, base: string, names: string[], n
     const built = path.join(dir, "pack.zip");
     await buildZip(src, built);
     // push 以本地文件名作为设备上的名字，所以最后才定名并改名，缩小与其他写入撞名的时间窗口
-    const final = await adb.uniqueName(ctx, base, name, adb.ARCHIVE_EXT.zip);
+    const final = await cmds.uniqueName(ctx, base, name, cmds.ARCHIVE_EXT.zip);
     const named = path.join(dir, final);
     await fs.rename(built, named);
     await adb.push(ctx, [named], base);

@@ -7,6 +7,7 @@ import { Router } from "express";
 import multer from "multer";
 import type { PullResult, UploadResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import * as cmds from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
 import { ctxOf, pathsOf, uploadPathsOf, wrap } from "./request.ts";
 import { TMP, tmpDir } from "./tmp.ts";
@@ -64,7 +65,7 @@ export function transferRoutes() {
           await fs.rename(f.path, target);
           tops.add(path.join(stage, parts[0]));
         }
-        await adb.mkdir(ctx, dest);
+        await cmds.mkdir(ctx, dest);
         await adb.push(ctx, [...tops], dest);
         res.json({ ok: true, count: files.length } satisfies UploadResult);
       } finally {
@@ -80,12 +81,12 @@ export function transferRoutes() {
     wrap(async (req, res) => {
       const ctx = await ctxOf(req);
       const paths = pathsOf(req.body.paths);
-      const single = paths.length === 1 && !(await adb.isDir(ctx, paths[0]));
+      const single = paths.length === 1 && !(await cmds.isDir(ctx, paths[0]));
       const name = downloadName(paths, single);
       let job: PullSource;
       if (single) {
         // 先确认文件存在且可读，404 / 403 在这一步以 JSON 返回
-        await adb.fileSize(ctx, paths[0]);
+        await cmds.fileSize(ctx, paths[0]);
         job = { kind: "stream", ctx, path: paths[0] };
       } else {
         const dir = await tmpDir();
@@ -113,9 +114,9 @@ export function transferRoutes() {
       res.on("close", () => dropJob(token));
       if (job.kind === "stream") {
         // su 模式下 cat 已经通过 exec-out 提权，不需要经过设备上的暂存目录
-        res.setHeader("Content-Length", await adb.fileSize(job.ctx, job.path));
+        res.setHeader("Content-Length", await cmds.fileSize(job.ctx, job.path));
         res.attachment(job.name);
-        const child = adb.cat(job.ctx, job.path);
+        const child = cmds.cat(job.ctx, job.path);
         res.on("close", () => child.kill());
         child.stdout.pipe(res);
         return;

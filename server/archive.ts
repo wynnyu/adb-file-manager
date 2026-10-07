@@ -2,6 +2,7 @@ import posix from "node:path/posix";
 import { Router } from "express";
 import type { ArchiveEntry, ArchiveFormat, ArchiveListing, CompressResult, ExtractResult } from "../shared/types.d.ts";
 import * as adb from "./adb.ts";
+import * as fs from "./fs-cmds.ts";
 import { msg } from "./i18n.ts";
 import { ctxOf, pathsOf, wrap } from "./request.ts";
 import { compressZip } from "./zip.ts";
@@ -28,7 +29,7 @@ export function extractName(name: string) {
 
 /** 校验请求里的压缩格式 */
 function formatOf(v: unknown): ArchiveFormat {
-  if (typeof v !== "string" || !Object.hasOwn(adb.ARCHIVE_EXT, v)) throw new adb.AdbError(msg("notArchive"), 415);
+  if (typeof v !== "string" || !Object.hasOwn(fs.ARCHIVE_EXT, v)) throw new adb.AdbError(msg("notArchive"), 415);
   return v as ArchiveFormat;
 }
 
@@ -56,7 +57,7 @@ export function packBase(paths: string[]): PackPlan {
 
 /** 压缩包的文件名：单项沿用其名字（a.jpg 为 a.jpg.zip），多项统一为 Archive */
 export function packName(names: string[], format: ArchiveFormat) {
-  return `${names.length === 1 ? posix.basename(names[0]) : "Archive"}${adb.ARCHIVE_EXT[format]}`;
+  return `${names.length === 1 ? posix.basename(names[0]) : "Archive"}${fs.ARCHIVE_EXT[format]}`;
 }
 
 /** 去掉开头的 ./ 和末尾的 /；空串和 . 表示压缩包根，返回 null */
@@ -141,7 +142,7 @@ export function topLevelSingle(entries: ArchiveEntry[]) {
 
 /** 读出压缩包的全部条目 */
 async function listEntries(ctx: adb.Ctx, p: string, format: ArchiveFormat) {
-  const out = await adb.listArchive(ctx, p, format);
+  const out = await fs.listArchive(ctx, p, format);
   return format === "zip" ? parseZipList(out) : parseTarList(out);
 }
 
@@ -157,7 +158,7 @@ export function archiveRoutes() {
       if (!format) throw new adb.AdbError(msg("notArchive"), 415);
       const ctx = await ctxOf(req);
       // 先确认文件存在且可读，否则列不出内容会被当成空压缩包
-      await adb.fileSize(ctx, p);
+      await fs.fileSize(ctx, p);
       const entries = await listEntries(ctx, p, format);
       res.json({
         format,
@@ -174,10 +175,10 @@ export function archiveRoutes() {
       const format = archiveFormat(p);
       if (!format) throw new adb.AdbError(msg("notArchive"), 415);
       const ctx = await ctxOf(req);
-      await adb.fileSize(ctx, p);
+      await fs.fileSize(ctx, p);
       const entries = await listEntries(ctx, p, format);
       assertSafeEntries(entries);
-      const result = await adb.extract(ctx, p, format, topLevelSingle(entries), extractName(posix.basename(p)));
+      const result = await fs.extract(ctx, p, format, topLevelSingle(entries), extractName(posix.basename(p)));
       res.json({ path: result } satisfies ExtractResult);
     }),
   );
@@ -190,12 +191,12 @@ export function archiveRoutes() {
       const ctx = await ctxOf(req);
       const { base, names } = packBase(paths);
       // 先确认都存在，不存在时给出明确的 404，而不是工具的报错
-      for (const n of names) await adb.isDir(ctx, posix.join(base, n));
+      for (const n of names) await fs.isDir(ctx, posix.join(base, n));
       const name = packName(names, format);
       const result: CompressResult =
         format === "zip"
           ? await compressZip(ctx, base, names, name)
-          : { path: await adb.pack(ctx, base, names, format, name) };
+          : { path: await fs.pack(ctx, base, names, format, name) };
       res.json(result.skipped ? result : ({ path: result.path } satisfies CompressResult));
     }),
   );

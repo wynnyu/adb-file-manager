@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AdbError, parseModeInput, parseOwnerInput } from "./adb.ts";
+import { AdbError } from "./adb.ts";
+import { parseModeInput, parseOwnerInput } from "./fs-cmds.ts";
 import { parsePartition, parseStat, parseUsage, statCmd, usageCmd } from "./properties.ts";
 
 const DF = "/dev/fuse 120000000 40000000 80000000 34% /storage/emulated";
