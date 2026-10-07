@@ -11,8 +11,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import type { MouseEvent, ReactNode } from "react";
-import { IconButton, spring, springPop } from "../../../../components/ui.tsx";
+import type { MouseEvent } from "react";
+import { IconButton, Placeholder, spring, springPop } from "../../../../components/ui.tsx";
 import { useI18n } from "../../../../i18n/index.tsx";
 import { formatDate, formatSize } from "../../../../lib/index.ts";
 import type { FileEntry } from "../../../../types.ts";
@@ -89,28 +89,6 @@ function SortHeader({
         )}
       </AnimatePresence>
     </button>
-  );
-}
-
-export function Placeholder({
-  icon,
-  text,
-  tone = "bg-surface0 text-muted",
-}: {
-  icon: ReactNode;
-  text: string;
-  tone?: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      className="flex flex-col items-center gap-3 py-20 text-center"
-    >
-      <span className={`grid size-16 place-items-center rounded-circle ${tone}`}>{icon}</span>
-      <p className="max-w-md font-semibold">{text}</p>
-    </motion.div>
   );
 }
 

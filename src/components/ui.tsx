@@ -63,3 +63,26 @@ export function PillButton({
     </motion.button>
   );
 }
+
+/** 居中的占位提示：空结果、错误等；icon 放在圆形底色里，tone 决定底色和图标颜色 */
+export function Placeholder({
+  icon,
+  text,
+  tone = "bg-surface0 text-muted",
+}: {
+  icon: ReactNode;
+  text: string;
+  tone?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      className="flex flex-col items-center gap-3 py-20 text-center"
+    >
+      <span className={`grid size-16 place-items-center rounded-circle ${tone}`}>{icon}</span>
+      <p className="max-w-md font-semibold">{text}</p>
+    </motion.div>
+  );
+}

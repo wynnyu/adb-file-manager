@@ -1,14 +1,13 @@
 import { Download, FolderOpen, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { IconButton } from "../../../../components/ui.tsx";
+import { IconButton, Placeholder } from "../../../../components/ui.tsx";
 import type { Lang } from "../../../../i18n/index.tsx";
 import { useI18n } from "../../../../i18n/index.tsx";
 import { api, formatDate, formatSize, type Target } from "../../../../lib/index.ts";
 import type { FileEntry } from "../../../../types.ts";
 import { kindLabel } from "../../lib/index.ts";
 import { FileIcon, isPreviewable } from "./FileIcon.tsx";
-import { Placeholder } from "./FileList.tsx";
 
 interface Props {
   target: Target;
