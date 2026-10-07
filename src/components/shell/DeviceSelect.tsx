@@ -16,12 +16,12 @@ const stateStyle: Record<DeviceMode, [MessageKey, string]> = {
   fastbootd: ["device.mode.fastbootd", "bg-blue"],
 };
 
-/** 连上时 ping 一次提示状态变化；key 跟着 mode 走，模式不变就不重放 */
-function Dot({ mode }: { mode: DeviceMode }) {
-  const color = stateStyle[mode][1];
+/** 连上时 ping 一次提示状态变化；key 跟着 mode 走，模式不变就不重放。等待重新连接时用灰色圆点 */
+function Dot({ mode, reconnecting = false }: { mode: DeviceMode; reconnecting?: boolean }) {
+  const color = reconnecting ? "bg-overlay0" : stateStyle[mode][1];
   return (
     <span className="relative flex size-2.5">
-      {mode === "system" && (
+      {mode === "system" && !reconnecting && (
         <span
           key={mode}
           className={`absolute inset-0 animate-ping rounded-circle opacity-60 [animation-iteration-count:1] ${color}`}
@@ -34,11 +34,17 @@ function Dot({ mode }: { mode: DeviceMode }) {
 
 export function DeviceSelect({
   devices,
+  device,
+  reconnecting = false,
   fastbootMissing = false,
   serial,
   onChange,
 }: {
   devices: Device[];
+  /** 当前设备；重新连接的宽限期内不在 devices 里，是它最近一次出现时的条目 */
+  device: Device | null;
+  /** 当前设备已消失，正在等它重启或换模式后重新出现 */
+  reconnecting?: boolean;
   fastbootMissing?: boolean;
   serial: string | null;
   onChange: (serial: string) => void;
@@ -46,7 +52,7 @@ export function DeviceSelect({
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = devices.find((d) => d.serial === serial);
+  const current = device;
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +77,7 @@ export function DeviceSelect({
           {/* 窄屏只留图标，连接状态改用角标 */}
           {current && (
             <span className="absolute right-0 bottom-0 flex rounded-circle ring-2 ring-surface0 sm:hidden">
-              <Dot mode={current.mode} />
+              <Dot mode={current.mode} reconnecting={reconnecting} />
             </span>
           )}
         </span>
@@ -90,8 +96,8 @@ export function DeviceSelect({
           <span className="flex items-center gap-1.5 text-xs text-subtext1">
             {current ? (
               <>
-                <Dot mode={current.mode} />
-                {t(stateStyle[current.mode][0])}
+                <Dot mode={current.mode} reconnecting={reconnecting} />
+                {reconnecting ? t("device.reconnecting") : t(stateStyle[current.mode][0])}
               </>
             ) : (
               t("device.waiting")

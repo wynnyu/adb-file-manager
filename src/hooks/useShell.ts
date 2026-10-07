@@ -11,6 +11,10 @@ import { type Transfers, useTransfers } from "./useTransfers.ts";
 /** 外壳提供给各模块的状态：设备、root、提示、对话框和传输队列 */
 export interface Shell {
   devices: Device[];
+  /** 当前设备；重新连接的宽限期内是它最近一次出现时的条目，没有选中设备时为 null */
+  device: Device | null;
+  /** 当前设备已消失，正在等它重启或换模式后重新出现 */
+  reconnecting: boolean;
   adbError: string | null;
   /** 电脑上找不到 fastboot，fastboot 设备无法检测 */
   fastbootMissing: boolean;
@@ -58,8 +62,8 @@ export function useShellState(): ShellState {
   const { toast, flash } = useToast();
   const { transfers, startTransfer, patchTransfer, dismissTransfer } = useTransfers();
 
-  const { devices, adbError, fastbootMissing, serial, setSerial } = useDevices();
-  const online = devices.find((d) => d.serial === serial)?.mode === "system";
+  const { devices, device, reconnecting, adbError, fastbootMissing, serial, setSerial } = useDevices();
+  const online = !reconnecting && device?.mode === "system";
   const { storage, refreshStorage } = useStorage(serial, online);
   const { rootMode, askEnableRoot, disableRoot } = useRootMode({ serial, online, flash, openDialog: setDialog });
   const target = useMemo<Target | null>(() => (serial ? { serial, root: rootMode } : null), [serial, rootMode]);
@@ -67,6 +71,8 @@ export function useShellState(): ShellState {
   return useMemo(
     () => ({
       devices,
+      device,
+      reconnecting,
       adbError,
       fastbootMissing,
       serial,
@@ -90,6 +96,8 @@ export function useShellState(): ShellState {
     }),
     [
       devices,
+      device,
+      reconnecting,
       adbError,
       fastbootMissing,
       serial,

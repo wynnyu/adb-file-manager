@@ -7,11 +7,20 @@ import { DeviceSelect } from "./DeviceSelect.tsx";
 const pixel: Device = { serial: "R5CT", transport: "adb", mode: "system", model: "Pixel 9", name: "Pixel 9" };
 const tablet: Device = { serial: "TAB01", transport: "adb", mode: "unauthorized", model: "Tab", name: "Galaxy Tab" };
 
-function show(devices: Device[], serial: string | null, fastbootMissing = false) {
+function show(devices: Device[], serial: string | null, { fastbootMissing = false, reconnecting = false } = {}) {
   const onChange = vi.fn();
-  render(<DeviceSelect devices={devices} fastbootMissing={fastbootMissing} serial={serial} onChange={onChange} />, {
-    wrapper: providers(),
-  });
+  const device = devices.find((d) => d.serial === serial) ?? null;
+  render(
+    <DeviceSelect
+      devices={devices}
+      device={device}
+      reconnecting={reconnecting}
+      fastbootMissing={fastbootMissing}
+      serial={serial}
+      onChange={onChange}
+    />,
+    { wrapper: providers() },
+  );
   const toggle = () => fireEvent.click(screen.getAllByRole("button")[0]);
   return { onChange, toggle };
 }
@@ -34,6 +43,17 @@ describe("DeviceSelect", () => {
   ] as const)("模式 %s 显示对应文案", (mode, key) => {
     show([{ ...pixel, mode }], "R5CT");
     expect(screen.getByText(tz(key as Parameters<typeof tz>[0]))).toBeTruthy();
+  });
+
+  it("等待重新连接时显示原设备名和等待文案", () => {
+    // 宽限期内设备不在列表里，device 是它最近一次出现时的条目
+    const onChange = vi.fn();
+    render(<DeviceSelect devices={[]} device={pixel} reconnecting serial="R5CT" onChange={onChange} />, {
+      wrapper: providers(),
+    });
+    expect(screen.getByText("Pixel 9")).toBeTruthy();
+    expect(screen.getByText(tz("device.reconnecting"))).toBeTruthy();
+    expect(screen.queryByText(tz("device.mode.system"))).toBeNull();
   });
 
   it("没有选中设备时提示等待连接", () => {
@@ -67,7 +87,7 @@ describe("DeviceSelect", () => {
     [true, 1],
     [false, 0],
   ])("fastboot 缺失为 %s 时提示出现 %i 次", (missing, count) => {
-    const { toggle } = show([pixel], "R5CT", missing);
+    const { toggle } = show([pixel], "R5CT", { fastbootMissing: missing });
     toggle();
     expect(screen.queryAllByText(tz("device.fastbootMissing"))).toHaveLength(count);
   });

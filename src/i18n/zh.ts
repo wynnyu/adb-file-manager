@@ -100,6 +100,7 @@ export const zh = {
   "device.mode.unauthorized": "待授权",
   "device.mode.offline": "离线",
   "device.fastbootMissing": "未找到 fastboot，可通过环境变量 FASTBOOT_PATH 指定路径",
+  "device.reconnecting": "等待重新连接",
   "device.none": "未连接设备",
   "device.waiting": "等待 USB 连接……",
   "device.noneDetected": "未检测到设备",

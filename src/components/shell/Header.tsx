@@ -12,8 +12,19 @@ import { ThemePicker } from "./ThemePicker.tsx";
 /** 顶栏：应用名和 ROOT 标记、存储用量，右侧是 root 开关、设备、语言和主题；设备和 root 状态取自外壳 */
 export function Header() {
   const t = useT();
-  const { online, rootMode, askEnableRoot, disableRoot, storage, devices, fastbootMissing, serial, setSerial } =
-    useShell();
+  const {
+    online,
+    rootMode,
+    askEnableRoot,
+    disableRoot,
+    storage,
+    devices,
+    device,
+    reconnecting,
+    fastbootMissing,
+    serial,
+    setSerial,
+  } = useShell();
   const onToggleRoot = rootMode ? disableRoot : askEnableRoot;
   return (
     <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
@@ -59,7 +70,14 @@ export function Header() {
             {rootMode ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
           </motion.button>
         )}
-        <DeviceSelect devices={devices} fastbootMissing={fastbootMissing} serial={serial} onChange={setSerial} />
+        <DeviceSelect
+          devices={devices}
+          device={device}
+          reconnecting={reconnecting}
+          fastbootMissing={fastbootMissing}
+          serial={serial}
+          onChange={setSerial}
+        />
         <LanguagePicker />
         <ThemePicker />
       </div>

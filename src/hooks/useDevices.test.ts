@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../lib/index.ts";
 import type { Device, DeviceList, DeviceMode } from "../types.ts";
-import { useDevices, useStorage } from "./useDevices.ts";
+import { pickSerial, REBOOT_GRACE, useDevices, useStorage } from "./useDevices.ts";
 
 const device = (serial: string, mode: DeviceMode = "system", transport: Device["transport"] = "adb"): Device => ({
   serial,
@@ -37,7 +37,7 @@ describe("useDevices", () => {
     expect(result.current.serial).toBe("A");
   });
 
-  it("每 2 秒轮询；当前设备还在就保持，断开后切到另一台", async () => {
+  it("每 2 秒轮询；当前设备还在就保持", async () => {
     const list = vi.spyOn(api, "devices").mockResolvedValue(listOf(device("A"), device("B")));
     const { result } = renderHook(() => useDevices());
     await tick();
@@ -46,10 +46,60 @@ describe("useDevices", () => {
     await tick(2000);
     expect(list).toHaveBeenCalledTimes(2);
     expect(result.current.serial).toBe("B");
+  });
+
+  it("当前设备消失后宽限期内保持选择，超时后切换", async () => {
+    const list = vi.spyOn(api, "devices").mockResolvedValue(listOf(device("A"), device("B")));
+    const { result } = renderHook(() => useDevices());
+    await tick();
+    act(() => result.current.setSerial("B"));
+    await tick(2000);
 
     list.mockResolvedValue(listOf(device("A")));
     await tick(2000);
+    expect(result.current.serial).toBe("B");
+    expect(result.current.reconnecting).toBe(true);
+    expect(result.current.device?.serial).toBe("B");
+
+    await tick(REBOOT_GRACE - 2000);
+    expect(result.current.serial).toBe("B");
+    await tick(2000);
     expect(result.current.serial).toBe("A");
+    expect(result.current.reconnecting).toBe(false);
+    expect(result.current.device?.serial).toBe("A");
+  });
+
+  it("消失后以 fastboot 模式重新出现时保持选中", async () => {
+    const list = vi.spyOn(api, "devices").mockResolvedValue(listOf(device("A")));
+    const { result } = renderHook(() => useDevices());
+    await tick();
+
+    list.mockResolvedValue(listOf());
+    await tick(2000);
+    expect(result.current.reconnecting).toBe(true);
+
+    list.mockResolvedValue(listOf(device("A", "bootloader", "fastboot")));
+    await tick(2000);
+    expect(result.current.serial).toBe("A");
+    expect(result.current.reconnecting).toBe(false);
+    expect(result.current.device).toMatchObject({ serial: "A", transport: "fastboot", mode: "bootloader" });
+  });
+
+  it("手动切换后不受之前的宽限影响", async () => {
+    const list = vi.spyOn(api, "devices").mockResolvedValue(listOf(device("A"), device("B")));
+    const { result } = renderHook(() => useDevices());
+    await tick();
+    act(() => result.current.setSerial("B"));
+    await tick(2000);
+    list.mockResolvedValue(listOf(device("A")));
+    await tick(2000);
+    expect(result.current.reconnecting).toBe(true);
+
+    act(() => result.current.setSerial("A"));
+    expect(result.current.reconnecting).toBe(false);
+    await tick(2000);
+    expect(result.current.serial).toBe("A");
+    expect(result.current.device?.serial).toBe("A");
   });
 
   it("设备全部断开时保留原来的 serial", async () => {
@@ -96,6 +146,25 @@ describe("useDevices", () => {
     unmount();
     await tick(10_000);
     expect(list).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("pickSerial", () => {
+  const A = device("A");
+  const B = device("B");
+  const sleeping = device("C", "offline");
+
+  it.each([
+    ["没有选择且没有设备", null, [], null, 0, null, null],
+    ["没有选择时优先系统模式", null, [sleeping, B], null, 0, "B", null],
+    ["没有选择且没有系统模式时选第一台", null, [sleeping, device("D", "unauthorized")], null, 0, "C", null],
+    ["当前设备在列表里则清除消失时刻", "A", [A, B], 500, 1000, "A", null],
+    ["刚消失时开始计时并保持", "A", [B], null, 1000, "A", 1000],
+    ["宽限期内保持", "A", [B], 1000, 1000 + REBOOT_GRACE - 1, "A", 1000],
+    ["宽限期满后切到系统模式的设备", "A", [sleeping, B], 1000, 1000 + REBOOT_GRACE, "B", null],
+    ["宽限期满后没有任何设备时继续保留", "A", [], 1000, 1000 + REBOOT_GRACE * 2, "A", 1000],
+  ] as const)("%s", (_name, cur, list, goneSince, now, serial, expected) => {
+    expect(pickSerial(cur, [...list], goneSince, now)).toEqual({ serial, goneSince: expected });
   });
 });
 
