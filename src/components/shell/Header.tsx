@@ -1,4 +1,4 @@
-import { FolderUp, Shield, ShieldAlert } from "lucide-react";
+import { Shield, ShieldAlert, Smartphone } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useShell } from "../../hooks/index.ts";
 import { useT } from "../../i18n/index.tsx";
@@ -18,7 +18,7 @@ export function Header() {
     <header className="mb-2 flex items-center justify-between gap-3 sm:mb-4">
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-circle bg-accent text-on-accent shadow-lg shadow-accent/20">
-          <FolderUp className="size-6" strokeWidth={2.4} />
+          <Smartphone className="size-6" strokeWidth={2.4} />
         </span>
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">

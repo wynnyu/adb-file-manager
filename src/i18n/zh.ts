@@ -1,6 +1,6 @@
 /** 中文是类型来源：新增文案先加在这里，en.ts 会被类型检查要求补齐 */
 export const zh = {
-  "app.name": "ADB 文件管理器",
+  "app.name": "玩机工具箱",
   "app.rootTitle": "ROOT - {name}",
 
   "nav.label": "模块",

@@ -1,8 +1,8 @@
-# ADB File Manager
+# 玩机工具箱 Modbench
 
 [English](README.en.md) | 中文
 
-基于浏览器的 Android 设备文件管理工具。
+基于浏览器的 Android 设备工具箱。目前提供文件管理，后续将扩展应用、prop、settings 和 fastboot 等模块。
 
 所有操作均通过 adb（`adb push` / `adb pull` / `adb shell`）完成，不依赖 MTP。因此即使设备的 USB 模式设为“仅充电”也可正常使用，并可避免 MTP 连接中断、大文件传输停滞、隐藏目录不可见等问题。对于已 root 的设备，可开启 root 模式访问 `/data` 等系统目录。
 
@@ -206,15 +206,22 @@ server/
 shared/
   types.d.ts    前后端共用的接口数据类型
 src/
-  App.tsx       主界面，组装各 hook 和组件
-  hooks/        状态和交互逻辑：设备、目录、选择、文件操作、快捷键等
-  lib/          前端工具模块：接口请求、目录查询缓存、书签、排序、格式化、偏好设置、主题切换等
-  components/   界面组件，ui.tsx 为共用的基础组件
-    views/      图标、列表、分栏、画廊四种视图
-    header/     顶栏及设备、语言、主题选择
-    toolbar/    工具栏、路径、选择栏、状态栏
-    bookmarks/  快捷入口和书签编辑
-    overlays/   对话框、右键菜单、通知、拖放提示、传输队列等浮层
+  App.tsx       外壳：组装设备、root、提示、对话框、传输队列和当前模块
+  modules/      功能模块，index.ts 为模块注册表
+    files/      文件管理模块，内部按 hooks、components、lib 划分
+      hooks/        状态和交互逻辑：目录、选择、文件操作、快捷键等
+      lib/          模块工具：目录查询缓存、书签、排序等
+      components/   界面组件
+        views/      图标、列表、分栏、画廊四种视图
+        toolbar/    工具栏、路径、选择栏、状态栏
+        bookmarks/  快捷入口和书签编辑
+        viewer/     查看器
+        overlays/   右键菜单项、属性页、拖放提示
+  hooks/        共用的状态和交互逻辑：设备、root、提示、传输队列、外壳状态
+  lib/          共用的前端工具模块：接口请求、格式化、偏好设置、主题切换等
+  components/   共用的界面组件，ui.tsx 为基础组件
+    shell/      顶栏、设备、语言、主题选择、模块导航、页面骨架
+    overlays/   对话框、右键菜单、通知、传输队列
   i18n/         前端中英文文案（zh.ts 是类型来源，en.ts 须与之保持一致）
   test/         前端测试的环境配置和共用工具
   *.test.ts(x)  hooks 和组件的单元测试，与被测模块放在同一目录（vitest + jsdom）

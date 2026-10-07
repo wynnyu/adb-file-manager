@@ -1,8 +1,8 @@
-# ADB File Manager
+# Modbench
 
 English | [中文](README.md)
 
-A browser-based file manager for Android devices.
+A browser-based toolbox for Android devices. It currently provides a file manager, with apps, props, settings and fastboot modules planned.
 
 All operations are performed through adb (`adb push` / `adb pull` / `adb shell`) instead of MTP. As a result, it works even when the device's USB mode is set to "charging only", and avoids common MTP issues such as dropped connections, stalled large transfers and invisible hidden directories. On rooted devices, root mode provides access to system directories such as `/data`.
 
@@ -206,15 +206,22 @@ server/
 shared/
   types.d.ts    API data types shared by the backend and frontend
 src/
-  App.tsx       main screen; composes the hooks and components
-  hooks/        state and interaction logic: devices, directories, selection, file operations, shortcuts
-  lib/          frontend helpers: API requests, the directory query cache, bookmarks, sorting, formatting, preferences, theme switching
-  components/   UI components; ui.tsx holds the shared building blocks
-    views/      the icon, list, column and gallery views
-    header/     the header with the device, language and theme pickers
-    toolbar/    toolbar, breadcrumbs, selection bar, status bar
-    bookmarks/  quick links and the bookmark editor
-    overlays/   dialogs, context menus, toasts, drop hint, transfer queue
+  App.tsx       shell: composes devices, root, toasts, dialogs, the transfer queue and the current module
+  modules/      feature modules; index.ts is the module registry
+    files/      the file manager module, split into hooks, components and lib
+      hooks/        state and interaction logic: directories, selection, file operations, shortcuts
+      lib/          module helpers: the directory query cache, bookmarks, sorting
+      components/   UI components
+        views/      the icon, list, column and gallery views
+        toolbar/    toolbar, breadcrumbs, selection bar, status bar
+        bookmarks/  quick links and the bookmark editor
+        viewer/     the viewer
+        overlays/   context menu items, the properties sheet, drop hint
+  hooks/        shared state and interaction logic: devices, root, toasts, the transfer queue, shell state
+  lib/          shared frontend helpers: API requests, formatting, preferences, theme switching
+  components/   shared UI components; ui.tsx holds the building blocks
+    shell/      header, device, language and theme pickers, module navigation, page layout
+    overlays/   dialogs, context menus, toasts, transfer queue
   i18n/         frontend strings (zh.ts is the source of the types; en.ts must match it)
   test/         setup and shared helpers for frontend tests
   *.test.ts(x)  unit tests for hooks and components, next to the modules under test (vitest + jsdom)

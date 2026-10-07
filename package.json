@@ -1,8 +1,8 @@
 {
-  "name": "adb-file-manager",
+  "name": "modbench",
   "version": "0.2.0",
   "private": true,
-  "description": "Web-based Android file manager over adb. Works even when USB is set to \"charging only\", no MTP needed",
+  "description": "Web-based Android toolbox over adb, currently a file manager. Works even when USB is set to \"charging only\", no MTP needed",
   "keywords": [
     "adb",
     "android",
