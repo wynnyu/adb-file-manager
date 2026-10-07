@@ -1,15 +1,16 @@
+import { Upload } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { NoDevice } from "../../components/NoDevice.tsx";
-import { ContextMenu, type MenuState } from "../../components/overlays/index.ts";
+import { ContextMenu, DropOverlay, type MenuState } from "../../components/overlays/index.ts";
 import { ShellLayout } from "../../components/shell/index.ts";
 import { spring } from "../../components/ui.tsx";
-import { useShell } from "../../hooks/index.ts";
-import { useT } from "../../i18n/index.tsx";
+import { useFileDrop, useShell } from "../../hooks/index.ts";
+import { useI18n, useT } from "../../i18n/index.tsx";
 import { parentPath, usePref } from "../../lib/index.ts";
 import type { FileEntry } from "../../types.ts";
 import { QuickLinks } from "./components/bookmarks/index.ts";
-import { backgroundMenu, bookmarkMenu, DropOverlay, itemMenu, Properties } from "./components/overlays/index.ts";
+import { backgroundMenu, bookmarkMenu, itemMenu, Properties } from "./components/overlays/index.ts";
 import { SelectionBar, StatusBar, Toolbar } from "./components/toolbar/index.ts";
 import { UploadInputs } from "./components/UploadInputs.tsx";
 import { Viewer } from "./components/viewer/index.ts";
@@ -18,7 +19,6 @@ import {
   useBookmarks,
   useClipboard,
   useDirectory,
-  useDropUpload,
   useFileOps,
   useListings,
   useMediaPlayer,
@@ -30,11 +30,12 @@ import {
   useUploadPicker,
   useViewer,
 } from "./hooks/index.ts";
-import type { Bookmark, Sort, SortKey } from "./lib/index.ts";
+import { type Bookmark, collectDropped, type Sort, type SortKey } from "./lib/index.ts";
 import type { ViewMode } from "./types.ts";
 
 export function FilesPage() {
   const t = useT();
+  const { rich } = useI18n();
   const [view, setView] = usePref<ViewMode>("afm.view", "list");
   const [sort, setSort] = usePref<Sort>("afm.sort", { key: "name", asc: true });
   const [showHidden, setShowHidden] = usePref("afm.hidden", false);
@@ -123,7 +124,8 @@ export function FilesPage() {
 
   const picker = useUploadPicker(upload);
   const onDropError = useCallback((err: Error) => flash(t("drop.readFailed", { error: err.message })), [flash, t]);
-  const drop = useDropUpload(online, upload, onDropError);
+  const onDrop = useCallback(async (dt: DataTransfer) => upload(await collectDropped(dt)), [upload]);
+  const drop = useFileDrop(online, onDrop, onDropError);
 
   // ---------- 快捷键和右键菜单 ----------
   const actions = {
@@ -191,7 +193,11 @@ export function FilesPage() {
   return (
     <ShellLayout
       dropProps={drop.dragProps}
-      panelOverlay={<DropOverlay show={drop.dragging} path={path} />}
+      panelOverlay={
+        <DropOverlay show={drop.dragging} icon={Upload}>
+          {rich("toolbar.dropHere", { path: (s) => <span className="font-mono text-accent">{s}</span> }, { path })}
+        </DropOverlay>
+      }
       overlays={
         <>
           <SelectionBar

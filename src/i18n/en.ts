@@ -176,6 +176,7 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "task.preparing": "Calculating size…",
   "task.uploading": "Uploading to computer",
   "task.pushing": "adb push to device",
+  "task.installing": "Installing",
   "task.pulling": "adb pull from device",
   "task.copying": "Copying…",
   "task.moving": "Moving…",

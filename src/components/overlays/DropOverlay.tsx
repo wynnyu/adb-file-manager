@@ -1,11 +1,10 @@
-import { Upload } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { spring } from "../../../../components/ui.tsx";
-import { useI18n } from "../../../../i18n/index.tsx";
+import type { ReactNode } from "react";
+import { spring } from "../ui.tsx";
 
-/** 拖着文件经过窗口时盖在主面板上的提示，标明会上传到哪个目录 */
-export function DropOverlay({ show, path }: { show: boolean; path: string }) {
-  const { rich } = useI18n();
+/** 拖着文件经过窗口时盖在主面板上的提示；图标和文案由调用方给出 */
+export function DropOverlay({ show, icon: Icon, children }: { show: boolean; icon: LucideIcon; children: ReactNode }) {
   return (
     <AnimatePresence>
       {show && (
@@ -18,11 +17,9 @@ export function DropOverlay({ show, path }: { show: boolean; path: string }) {
         >
           <div className="flex flex-col items-center gap-3">
             <span className="grid size-20 place-items-center rounded-circle bg-accent text-on-accent shadow-xl shadow-accent/30">
-              <Upload className="size-9" />
+              <Icon className="size-9" />
             </span>
-            <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">
-              {rich("toolbar.dropHere", { path: (s) => <span className="font-mono text-accent">{s}</span> }, { path })}
-            </p>
+            <p className="rounded-full bg-crust/80 px-5 py-2 font-bold">{children}</p>
           </div>
         </motion.div>
       )}

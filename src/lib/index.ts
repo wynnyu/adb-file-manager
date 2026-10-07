@@ -3,4 +3,5 @@ export * from "./favicon.ts";
 export * from "./format.ts";
 export * from "./prefs.ts";
 export * from "./queries.ts";
+export * from "./tasks.ts";
 export * from "./theme.ts";

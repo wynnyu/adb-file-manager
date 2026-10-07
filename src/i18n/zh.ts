@@ -167,6 +167,7 @@ export const zh = {
   "task.preparing": "正在统计大小……",
   "task.uploading": "上传到电脑",
   "task.pushing": "adb push 到设备",
+  "task.installing": "正在安装",
   "task.pulling": "从设备 adb pull",
   "task.copying": "正在拷贝……",
   "task.moving": "正在移动……",

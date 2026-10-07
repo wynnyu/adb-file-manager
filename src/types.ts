@@ -37,6 +37,7 @@ export type TaskStatus =
   | "preparing"
   | "uploading"
   | "pushing"
+  | "installing"
   | "pulling"
   | "copying"
   | "moving"
@@ -48,7 +49,7 @@ export type TaskStatus =
 
 export interface Task {
   id: string;
-  kind: "upload" | "download" | "copy" | "move" | "extract" | "compress";
+  kind: "upload" | "download" | "copy" | "move" | "extract" | "compress" | "install";
   label: string;
   status: TaskStatus;
   /** 0 到 1，未知时缺省；任何进行中的状态都可以带进度 */

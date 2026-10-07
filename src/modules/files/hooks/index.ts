@@ -1,7 +1,6 @@
 export * from "./useBookmarks.ts";
 export * from "./useClipboard.ts";
 export * from "./useDirectory.ts";
-export * from "./useDropUpload.ts";
 export * from "./useFileOps.ts";
 export * from "./useMediaPlayer.ts";
 export * from "./useProperties.ts";

@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   Package,
   PackageOpen,
+  PackagePlus,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -25,6 +26,7 @@ const kindIcon: Record<Task["kind"], LucideIcon> = {
   move: FolderInput,
   extract: PackageOpen,
   compress: Package,
+  install: PackagePlus,
 };
 /** 写全类名，Tailwind 才扫得到 */
 const kindTint: Record<Task["kind"], { badge: string; bar: string }> = {
@@ -34,12 +36,14 @@ const kindTint: Record<Task["kind"], { badge: string; bar: string }> = {
   move: { badge: "bg-teal/20 text-teal", bar: "bg-teal" },
   extract: { badge: "bg-yellow/20 text-yellow", bar: "bg-yellow" },
   compress: { badge: "bg-peach/20 text-peach", bar: "bg-peach" },
+  install: { badge: "bg-green/20 text-green", bar: "bg-green" },
 };
 
 const statusText: Record<Task["status"], MessageKey> = {
   preparing: "task.preparing",
   uploading: "task.uploading",
   pushing: "task.pushing",
+  installing: "task.installing",
   pulling: "task.pulling",
   copying: "task.copying",
   moving: "task.moving",

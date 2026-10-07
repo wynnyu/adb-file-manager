@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { DragEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useDropUpload } from "./useDropUpload.ts";
+import { useFileDrop } from "./useFileDrop.ts";
 
 const txt = new File(["x"], "a.txt");
 
@@ -12,13 +12,13 @@ const dragEvent = (dataTransfer: Partial<DataTransfer>) =>
     dataTransfer: { types: ["Files"], items: [], files: [], ...dataTransfer },
   }) as unknown as DragEvent & { preventDefault: ReturnType<typeof vi.fn> };
 
-describe("useDropUpload", () => {
+describe("useFileDrop", () => {
   function setup(enabled = true) {
-    const upload = vi.fn(async () => {});
+    const onDrop = vi.fn(async (_dt: DataTransfer) => {});
     const onError = vi.fn();
-    const hook = renderHook(() => useDropUpload(enabled, upload, onError));
+    const hook = renderHook(() => useFileDrop(enabled, onDrop, onError));
     const props = () => hook.result.current.dragProps as Required<typeof hook.result.current.dragProps>;
-    return { ...hook, upload, onError, props };
+    return { ...hook, onDrop, onError, props };
   }
 
   it("禁用时不接收拖放", () => {
@@ -52,24 +52,19 @@ describe("useDropUpload", () => {
     expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
-  it("放下后上传拖进来的文件", async () => {
-    const { result, props, upload } = setup();
+  it("放下后把拖进来的内容交给回调", async () => {
+    const { result, props, onDrop } = setup();
+    const files = [txt] as unknown as FileList;
     act(() => props().onDragEnter(dragEvent({})));
-    await act(() => props().onDrop(dragEvent({ files: [txt] as unknown as FileList })));
+    await act(() => props().onDrop(dragEvent({ files })));
     expect(result.current.dragging).toBe(false);
-    expect(upload).toHaveBeenCalledWith([{ file: txt, path: "a.txt" }]);
+    expect(onDrop).toHaveBeenCalledWith(expect.objectContaining({ files }));
   });
 
-  it("读取拖入的内容失败时报告错误", async () => {
-    const { props, onError, upload } = setup();
-    const broken = {
-      kind: "file",
-      webkitGetAsEntry: () => {
-        throw new Error("无法读取");
-      },
-    };
-    await act(() => props().onDrop(dragEvent({ items: [broken] as unknown as DataTransferItemList })));
+  it("处理拖入的内容失败时报告错误", async () => {
+    const { props, onError, onDrop } = setup();
+    onDrop.mockRejectedValueOnce(new Error("无法读取"));
+    await act(() => props().onDrop(dragEvent({})));
     await waitFor(() => expect(onError).toHaveBeenCalledWith(new Error("无法读取")));
-    expect(upload).not.toHaveBeenCalled();
   });
 });

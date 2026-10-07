@@ -64,7 +64,7 @@ export interface ErrorResponse {
 export type JobState = "running" | "done" | "error" | "canceled";
 
 /** 任务当前所处的阶段，前端据此显示状态文字 */
-export type JobPhase = "preparing" | "pulling" | "compressing" | "pushing";
+export type JobPhase = "preparing" | "pulling" | "compressing" | "pushing" | "installing";
 
 /** 启动任务的接口的响应 */
 export interface JobRef {
