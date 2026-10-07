@@ -56,7 +56,7 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 | --- | --- |
 | 400 | 参数缺失或不合法；目标已存在；路径受保护；把目录复制或移动到自身内部；未收到上传的文件 |
 | 403 | 非本机访问；设备上没有读取权限；无法获取 root |
-| 404 | 目录或文件不存在；下载 token 已过期 |
+| 404 | 目录或文件不存在；下载 token 已过期；任务不存在或已过期 |
 | 415 | 预览不支持该文件类型 |
 | 416 | 预览请求的范围超出文件大小 |
 | 500 | adb 执行失败，例如未找到 adb、设备断开或未授权 |
@@ -133,12 +133,37 @@ interface ErrorResponse {
   code?: ErrorCode;
 }
 
+/** 后台任务的状态：canceled 为用户取消 */
+type JobState = "running" | "done" | "error" | "canceled";
+
+/** 任务当前所处的阶段，前端据此显示状态文字 */
+type JobPhase = "preparing" | "pulling" | "compressing" | "pushing";
+
+/** 启动任务的接口的响应 */
+interface JobRef {
+  id: string;
+}
+
+/** GET /api/jobs/:id/events 的 state 事件：任务快照，不含日志；R 为 result 的类型 */
+interface JobSnapshot<R = unknown> {
+  id: string;
+  state: JobState;
+  phase?: JobPhase;
+  /** 0 到 1，未知时缺省 */
+  progress?: number;
+  /** 当前阶段是否允许取消 */
+  cancelable: boolean;
+  result?: R;
+  error?: string;
+  code?: ErrorCode;
+}
+
 /** POST /api/files/upload 的响应；count 为收到的文件数 */
 interface UploadResult extends OkResult {
   count: number;
 }
 
-/** POST /api/files/pull 的响应：一次性下载 token 和下载后的文件名 */
+/** POST /api/files/pull 启动的任务的结果：一次性下载 token 和下载后的文件名 */
 interface PullResult {
   token: string;
   name: string;
@@ -180,7 +205,7 @@ interface CompressRequest {
   format: ArchiveFormat;
 }
 
-/** POST /api/files/compress 的响应：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
+/** POST /api/files/compress 启动的任务的结果：生成的压缩包；skipped 为 zip 未能收入的符号链接和特殊文件数，为 0 时缺省 */
 interface CompressResult {
   path: string;
   skipped?: number;
@@ -283,14 +308,16 @@ interface ChownRequest {
 | GET | `/api/files/text` | 以文本读取文件开头 | `api.text(target, path)` |
 | GET | `/api/files/archive` | 列出压缩包内的条目 | `api.archive(target, path)` |
 | POST | `/api/files/extract` | 在设备上解压压缩包 | `api.extract(target, path)` |
-| POST | `/api/files/compress` | 把文件和文件夹压缩为 zip 或 tar 系压缩包 | `api.compress(target, paths, format)` |
+| POST | `/api/files/compress` | 启动压缩任务，把文件和文件夹压缩为 zip 或 tar 系压缩包 | `api.compress(target, paths, format)` |
 | GET | `/api/files/stat` | 读取属性 | `api.stat(target, path)` |
 | GET | `/api/files/usage` | 递归统计文件夹 | `api.usage(target, path, signal)` |
 | POST | `/api/files/chmod` | 修改权限 | `api.chmod(target, paths, mode, recursive)` |
 | POST | `/api/files/chown` | 修改所有者和用户组 | `api.chown(target, paths, owner, group, recursive)` |
 | POST | `/api/files/upload` | 上传 | `api.upload(target, dest, files, onProgress)` |
-| POST | `/api/files/pull` | 准备下载 | `api.download(target, paths)` 第一步 |
-| GET | `/api/files/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 第二步 |
+| POST | `/api/files/pull` | 启动下载任务 | `api.pull(target, paths)`，`api.download` 第一步 |
+| GET | `/api/files/fetch/:token` | 取回下载内容 | `api.download(target, paths)` 最后一步 |
+| GET | `/api/jobs/:id/events` | 订阅任务的进度、日志和结果（SSE） | `api.watchJob(id, onUpdate)` |
+| POST | `/api/jobs/:id/cancel` | 取消任务 | `api.cancelJob(id)` |
 
 ## 设备
 
@@ -594,7 +621,15 @@ fastboot 的可执行文件路径可通过环境变量 `FASTBOOT_PATH` 指定，
 
 把一个或多个文件、文件夹压缩为压缩包，不覆盖已有内容。
 
-请求体：`{ serial, paths, format, root? }`，请求类型 `CompressRequest`。`paths` 为绝对路径列表，`format` 为 `zip`、`tar`、`tgz`、`tbz` 之一（界面目前只提供 `zip` 和 `tgz`）。响应：`CompressResult`
+请求体：`{ serial, paths, format, root? }`，请求类型 `CompressRequest`。`paths` 为绝对路径列表，`format` 为 `zip`、`tar`、`tgz`、`tbz` 之一（界面目前只提供 `zip` 和 `tgz`）。
+
+校验（路径、格式、各项是否存在）在请求内完成，出错时直接返回 JSON 错误；通过后启动任务并返回 `JobRef`，压缩在后台进行，进度和结果经 [任务](#任务) 的 `/api/jobs/:id/events` 取得：
+
+```json
+{ "id": "6b0c6f0e-6a7e-4f55-9a4f-0d6b3f6a2c10" }
+```
+
+任务的结果为 `CompressResult`：
 
 ```json
 { "path": "/sdcard/Download/photos.zip", "skipped": 2 }
@@ -612,11 +647,23 @@ fastboot 的可执行文件路径可通过环境变量 `FASTBOOT_PATH` 指定，
 | 格式 | 生成位置 | 做法 |
 | --- | --- | --- |
 | `tar`、`tgz`、`tbz` | 设备端 | `tar -cf`、`tar -czf`、`tar -cjf` 先写到所在目录下的暂存文件 `.adbfm-pack-<随机>`，成功后改为最终名字，失败时删除暂存文件，不留下半个压缩包。toybox 的 tar 只认最后一个 `-C`，所以所有名称以同一个基准目录为准，并以 `--` 与选项隔开。root 模式下压缩包会交给所在目录的所有者，避免生成 root 属主的文件 |
-| `zip` | 电脑端 | 设备上没有 `zip` 命令。先估算空间（需要源大小的两倍，不足时返回 `507`），再 `adb pull` 到电脑临时目录，用 `archiver` 打包，最后 `adb push` 回设备，临时目录无论成败都会删除（`zip.ts` 的 `compressZip`）。已压缩的格式（图片、视频、音频、压缩包等）以存储方式写入，其余用 deflate |
+| `zip` | 电脑端 | 设备上没有 `zip` 命令。先估算空间（需要源大小的两倍，不足时任务以 `507` 失败），再 `adb pull` 到电脑临时目录，用 `archiver` 打包，最后 `adb push` 回设备，临时目录无论成败都会删除（`zip.ts` 的 `compressZip`）。已压缩的格式（图片、视频、音频、压缩包等）以存储方式写入，其余用 deflate |
+
+任务的阶段和进度：
+
+| 格式 | 阶段 | 进度 | 可取消 |
+| --- | --- | --- | --- |
+| `zip` | `preparing`：`du` 统计总大小、`find` 统计会被跳过的条目 | 无 | 是 |
+| | `pulling`：`adb pull` 到电脑 | 按临时目录的增长估算，上限 0.99 | 是 |
+| | `compressing`：打包 | `archiver` 已处理的输入字节占比 | 是 |
+| | `pushing`：`adb push` 回设备 | 无 | 否，避免设备上留下不完整的压缩包 |
+| `tar`、`tgz`、`tbz` | `compressing`：在设备上执行 | 无 | 否 |
+
+取消后临时目录被删除，设备上不留下压缩包。
 
 `adb pull` 会跳过符号链接、套接字等既不是文件也不是目录的条目，所以 zip 里没有它们，数量记在响应的 `skipped` 中，前端据此提示。tar 系格式保留符号链接，不会有 `skipped`。
 
-错误：路径不存在时 `404`；`format` 不受支持时 `415`；压缩根目录时 `400`；无读取权限或所在目录不可写时 `403`；zip 所需的电脑临时空间不足时 `507`；其他命令执行失败时 `400`。任一源出错则整体失败，设备上不留下压缩包。
+错误：路径不存在时 `404`；`format` 不受支持时 `415`；压缩根目录时 `400`，这些在启动任务前返回。无读取权限或所在目录不可写时（`403`）、zip 所需的电脑临时空间不足时（`507`）、其他命令执行失败时（`400`），任务以 `error` 状态结束，错误信息在快照的 `error` 中。任一源出错则整体失败，设备上不留下压缩包。
 
 ## 属性
 
@@ -726,17 +773,28 @@ fastboot 的可执行文件路径可通过环境变量 `FASTBOOT_PATH` 指定，
 
 ### POST /api/files/pull
 
-下载的第一步：登记一次性 token。只选了一个文件时，先确认文件存在且可读（不存在为 `404`，无读取权限为 `403`），不落盘；目录和多选则 `adb pull` 到电脑临时目录。
+下载的第一步：启动下载任务，任务的结果是一次性 token。
 
 ```json
 { "serial": "R5CT1234", "root": false, "paths": ["/sdcard/DCIM/Camera"] }
 ```
 
-响应：
+请求内先确认路径存在；只选了一个文件时再确认文件可读（不存在为 `404`，无读取权限为 `403`），这些错误直接以 JSON 返回。通过后启动任务并返回 `JobRef`：
+
+```json
+{ "id": "6b0c6f0e-6a7e-4f55-9a4f-0d6b3f6a2c10" }
+```
+
+任务的结果为 `PullResult`：
 
 ```json
 { "token": "3f0c1f9e-6c1b-4f43-9c55-2f3b8f0f0a11", "name": "Camera.zip" }
 ```
+
+| 选择 | 任务过程 |
+| --- | --- |
+| 单个文件 | 不落盘，任务立即完成，没有阶段和进度 |
+| 目录或多选 | `preparing`：`du` 统计总大小；`pulling`：逐个 `adb pull` 到电脑临时目录，进度按临时目录的增长估算（上限 0.99）。两个阶段都可取消，失败或取消时删除临时目录 |
 
 `name` 是下载后的文件名：
 
@@ -746,7 +804,7 @@ fastboot 的可执行文件路径可通过环境变量 `FASTBOOT_PATH` 指定，
 | 单个目录 | `目录名.zip`，根目录为 `root.zip` |
 | 多项 | `第一项所在目录名.zip`，取不到时为 `files.zip` |
 
-token 30 分钟内有效，过期后临时文件（若有）被删除。
+token 在任务完成后 30 分钟内有效，过期后临时文件（若有）被删除。
 
 ### GET /api/files/fetch/:token
 
@@ -756,6 +814,71 @@ token 30 分钟内有效，过期后临时文件（若有）被删除。
 - 目录或多项打包为 zip 流式返回（压缩级别 1），不带 `Content-Length`
 
 每个 token 只能使用一次：响应结束（包括客户端中途断开）后任务即被删除，打包用的临时目录一并清除。token 不存在或已过期时返回 `404`。
+
+## 任务
+
+耗时的操作以后台任务运行：启动任务的接口（目前为 `/api/files/pull` 和 `/api/files/compress`）校验参数后立即返回 `JobRef`，任务在服务端后台执行，进度、日志和结果通过 SSE 推送，也可以取消。任务由 `server/jobs.ts` 管理，保存在内存中，服务重启后丢失。
+
+### GET /api/jobs/:id/events
+
+响应为 `Content-Type: text/event-stream`，`Cache-Control: no-cache, no-transform`。连接建立后依次发送：
+
+1. 一个 `state` 事件，数据为当前的 `JobSnapshot`
+2. 已有的日志，每行一个 `log` 事件，数据为 JSON 字符串（最多保留最近 500 行）
+3. 之后的增量：`state` 事件在阶段切换和结束时立即发送，进度更新约每 250 毫秒最多发送一次；`log` 事件在每次追加日志时发送
+
+任务结束（状态不是 `running`）时发送最后一个 `state` 事件并关闭连接。每 15 秒发送一行 `: ping` 注释保活。
+
+```
+event: state
+data: {"id":"6b0c6f0e","state":"running","phase":"pulling","progress":0.42,"cancelable":true}
+
+event: log
+data: "pulled 12 files"
+
+event: state
+data: {"id":"6b0c6f0e","state":"done","cancelable":false,"result":{"token":"3f0c1f9e","name":"Camera.zip"}}
+```
+
+快照字段见 `JobSnapshot`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `state` | `running`、`done`、`error`、`canceled` |
+| `phase` | 当前阶段：`preparing`（统计大小）、`pulling`、`compressing`、`pushing`；尚未进入任何阶段时缺省 |
+| `progress` | 当前阶段的进度，0 到 1；切换阶段时清除，未知时缺省 |
+| `cancelable` | 当前阶段是否允许取消，结束后为 `false` |
+| `result` | `done` 时为任务的结果，类型随接口而定 |
+| `error`、`code` | `error` 时的错误信息和 `ErrorCode`。root 请求失败后复查发现 root 已失效时，`code` 为 `root_lost`，与普通接口一致 |
+
+任务结束后在内存中保留 60 秒，供晚到的订阅者读取（包括断线重连），之后删除。任务不存在或已过期时返回 `404`，格式同其他接口。错误信息的语言取自启动任务的请求。
+
+经 Vite 开发服务器代理时事件也是实时到达的，不会被缓冲。
+
+### POST /api/jobs/:id/cancel
+
+取消任务：任务在运行且 `cancelable` 为 `true` 时中止，底层的 `adb` 调用随之终止，任务以 `canceled` 状态结束。其他情况下不做任何事。响应 `OkResult`。任务不存在或已过期时返回 `404`。
+
+### 在服务端使用
+
+```ts
+const ref = startJob<MyResult>(req, async (job) => {
+  job.phase("preparing");
+  const total = await cmds.diskUsage(ctx, paths, job.signal);
+  job.phase("pulling");
+  // job.progress(0.5)、job.log("...") 随时调用
+  await adb.pull(ctx, remote, local, job.signal);
+  job.phase("pushing", { cancelable: false });
+  return { ... };
+});
+res.json(ref satisfies JobRef);
+```
+
+- `startJob` 要在路由的处理函数里调用，语言上下文和 root 复查所需的请求参数都来自这个请求
+- `signal` 传给 `adb.pull`、`adb.push`、`cmds.diskUsage` 等支持取消的调用；`signal` 已触发时，无论任务函数抛出什么，任务都记为 `canceled`
+- `phase(name, { cancelable })` 切换阶段，`cancelable` 缺省为 `true`；不能安全中断的阶段（例如推送）传 `false`
+- 任务函数返回的值成为 `result`；抛出的异常经 `rootGuard` 复查后成为 `error`
+- 需要清理的资源（临时目录等）在任务函数的 `finally` 或 `catch` 里处理，取消同样会走到这里
 
 ## 前端封装（src/lib/api.ts）
 
@@ -783,8 +906,11 @@ interface Target {
 | `text(target, path)` | `Promise<TextPreview>` | 通常经 `modules/files/lib/queries.ts` 的 `textQuery` 调用，查询键为 `["text", serial, root, path]`，关闭查看器后不保留缓存 |
 | `archive(target, path)` | `Promise<ArchiveListing>` | 通常经 `modules/files/lib/queries.ts` 的 `archiveQuery` 调用，查询键为 `["archive", serial, root, path]`，关闭查看器后不保留缓存 |
 | `extract(target, path)` | `Promise<ExtractResult>` | 耗时随压缩包大小而定，没有进度 |
-| `compress(target, paths, format)` | `Promise<CompressResult>` | zip 需经电脑中转，耗时随大小而定，没有进度 |
-| `download(target, paths)` | `Promise<void>` | 调用 `/api/files/pull` 后创建临时 `<a download>` 指向 `/api/files/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成 |
+| `compress(target, paths, format)` | `Promise<JobRef>` | 启动压缩任务，结果（`CompressResult`）用 `watchJob` 取得 |
+| `pull(target, paths)` | `Promise<JobRef>` | 启动下载任务，结果（`PullResult`）用 `watchJob` 取得 |
+| `watchJob<R>(id, onUpdate)` | `Promise<R>` | 用 `EventSource` 订阅 `/api/jobs/:id/events`，每个 `state` 事件回调一次快照。`done` 时返回 `result`；`error` 时抛出 `Error`（`root_lost` 同时调用 `onRootLost` 的回调）；`canceled` 时抛出 `JobCanceled`；连接断开且 `readyState` 为 `CLOSED` 时抛出网络错误，正在重连时继续等待，服务端会在重连后重发当前快照 |
+| `cancelJob(id)` | `Promise<OkResult>` | |
+| `download(target, paths, hooks?)` | `Promise<void>` | 依次调用 `pull`、`watchJob`，拿到 token 后创建临时 `<a download>` 指向 `/api/files/fetch/:token` 并点击，由浏览器完成下载；Promise 在下载开始时即完成。`hooks.onJob` 在任务启动后回调任务 id，`hooks.onUpdate` 在任务状态变化时回调快照 |
 | `upload(target, dest, files, onProgress)` | `Promise<void>` | 使用 XMLHttpRequest 以获得上传进度。`onProgress` 的取值为 0 到 1，只反映浏览器到电脑这一段；之后的 `adb push` 没有进度，完成后 Promise 才完成 |
 
 行为说明：
@@ -794,6 +920,7 @@ interface Target {
 - 响应状态码不是 2xx 时抛出 `Error`，`message` 为响应中的 `error`；响应不是 JSON 时为 `HTTP 状态码`
 - 响应的 `code` 为 `root_lost` 时，先调用 `onRootLost(fn)` 注册的回调，再抛出错误。`useRootMode` 注册该回调，用于退出 root 模式
 - `upload` 遇到网络错误时以“网络错误”（按界面语言）拒绝
+- `EventSource` 无法自定义请求头，`watchJob` 不带 `X-Lang`；任务里的错误信息语言取自启动任务的请求
 
 ### 调用方
 
@@ -802,7 +929,7 @@ interface Target {
 | `devices`、`storage` | `hooks/useDevices.ts` |
 | `rootCheck`、`onRootLost` | `hooks/useRootMode.ts` |
 | `ls` | `modules/files/lib/queries.ts`，由 `modules/files/hooks/useDirectory.ts`（`useDirectory`、`useListings`）和 `modules/files/hooks/useTree.ts` 使用 |
-| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download` | `modules/files/hooks/useFileOps.ts` |
+| `mkdir`、`rename`、`remove`、`copy`、`move`、`extract`、`compress`、`upload`、`download`、`watchJob`、`cancelJob` | `modules/files/hooks/useFileOps.ts` |
 | `previewUrl` | `modules/files/components/views/ColumnView.tsx`、`modules/files/components/views/GalleryView.tsx`、`modules/files/components/viewer/Viewer.tsx` |
 | `text` | `modules/files/lib/queries.ts`，由 `modules/files/components/viewer/TextViewer.tsx` 使用 |
 | `archive` | `modules/files/lib/queries.ts`，由 `modules/files/components/viewer/ArchiveView.tsx` 使用 |

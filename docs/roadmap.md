@@ -65,9 +65,9 @@
 
 ### S5 任务（job）与进度推送
 
-- [ ] 后端通用任务管理：id、状态、进度、输出日志、取消（`AbortSignal` 传到 `execFile` / `spawn`）、完成结果；`/api/jobs/:id/events` 以 SSE 推送，不新增依赖
-- [ ] 前端 `TaskQueue` 与 `useTasks` 改为通用任务队列，`Transfer.kind` 扩展
-- [ ] 用现有的 pull 和压缩验证：显示进度（先 `du` 取总量，再按临时目录增长估算）并支持取消
+- [x] 后端通用任务管理：id、状态、进度、输出日志、取消（`AbortSignal` 传到 `execFile` / `spawn`）、完成结果；`/api/jobs/:id/events` 以 SSE 推送，不新增依赖
+- [x] 前端 `TaskQueue` 与 `useTasks` 改为通用任务队列（`Transfer` 统一改名为 `Task`，`TaskStatus` 增加 `preparing`、`canceled`，`Task.cancel` 控制取消按钮）
+- [x] 用现有的 pull 和压缩验证：显示进度（先 `du` 取总量，再按临时目录增长估算）并支持取消
 
 关键文件：`server/transfer.ts`、`server/zip.ts`、`src/hooks/useTasks.ts`、`src/components/overlays/TaskQueue.tsx`、`shared/types.d.ts`
 
@@ -113,7 +113,7 @@
 - `run()` 和 `runBuffer()` 的默认超时是 `QUICK_TIMEOUT`（30 秒），超时返回 `504` 和 `adbTimeout` 文案。新增的长命令（传输、递归操作、解压、打包、大目录统计）必须显式传 `timeout: 0`；`checked()` 默认不限时，短命令需要时传第三个参数。S2 拆分 `adb.ts` 时保留这一约定
 - 设备端暂存目录命名为 `/data/local/tmp/adbfm-<BOOT>-<时间>-<随机>`，`BOOT` 是每个进程启动时生成的随机串。`stageCleanupCmd(BOOT)` 只删除其他进程留下的目录，因此任何时候执行都安全。`cleanStagesOnce` 按设备和 root 方式各执行一次：设备首次出现时以普通用户清理，su 检测成功后再以 su 清理（pull 的暂存目录归 root），避免每次启动都弹出 root 授权
 - 解压、打包放在目标目录里的 `.adbfm-extract-*`、`.adbfm-pack-*` 暂存目录位置不固定，不在启动清理范围内
-- 单个文件下载不再经过电脑临时目录，`PullJob` 分为 `stream` 和 `zip` 两种；下载的接口形态不变
+- 单个文件下载不再经过电脑临时目录，下载 token 对应的 `PullEntry`（S5 前叫 `PullJob`）分为 `stream` 和 `zip` 两种；下载的接口形态不变
 - `vitest.config.ts` 两个 project 都改用 `pool: "vmThreads"`：`pnpm test` 三次 Duration 为 10.85、10.96、10.86 秒，改后为 6.85、7.60、7.12 秒，全部 704 个测试通过，已保留
 
 ### S2
@@ -143,3 +143,14 @@
 - 新模块在 `MODULES` 中声明 `modes`（可用的设备模式），当前设备处于其他模式时 `NoDevice` 显示“设备当前处于 {模式}”和所需模式。fastboot 模块（S10、S11）声明 `["bootloader", "fastbootd"]`，需要时可加入 system 以显示重启入口
 - 当前设备消失后保留选择 `REBOOT_GRACE`（90 秒），期间 `Shell.device` 是它最近一次出现时的条目，`reconnecting` 为 `true`，`online` 和 `adbReady` 为 `false`。序列号在 adb 和 fastboot 下通常相同，进入 bootloader 后设备以 fastboot 条目重新出现并保持选中
 - recovery 模式下的文件管理未开启：TWRP 等 recovery 可后续把 `recovery` 加入文件模块的 `modes`（需确认 adb shell 与 `/sdcard` 在 recovery 下可用）
+
+### S5
+
+- 任务接口在 `server/jobs.ts`：`startJob<R>(req, run)` 要在路由处理函数里调用，立即返回 `JobRef`（`{ id }`），`run(job)` 在后台执行，返回值成为 `result`。`JobHandle` 有 `signal`、`phase(name, { cancelable? })`、`progress(0 到 1)`、`log(line)`。S7 的装 APK、S11 的刷入照此接入，路由响应写 `res.json(ref satisfies JobRef)`
+- `cancelable` 的用法：阶段默认可取消；不能安全中断的阶段（推送回设备、刷写分区）传 `cancelable: false`，卡片上的取消按钮随之消失，`POST /api/jobs/:id/cancel` 在这种阶段不生效。`signal` 触发后，无论 `run` 抛出什么都记为 `canceled`；需要清理的资源放在 `run` 的 `finally` 或 `catch` 里
+- SSE 事件名：`state`（`JobSnapshot` 快照，阶段切换和结束时立即发，进度约 250 毫秒一次）和 `log`（JSON 字符串，一行一个）；连接时先回放当前快照和已有日志（最多 500 行），任务结束发最后一个 `state` 后关闭。每 15 秒一行 `: ping` 注释保活
+- 任务结束后在内存中保留 60 秒，之后返回 `404`；前端 `api.watchJob` 在 `EventSource` 无法重连时按网络错误处理
+- 阶段对应的任务卡片文案：`JobPhase` 的 `preparing`、`pulling`、`compressing`、`pushing` 分别对应 `task.preparing`、`task.pulling`、`task.compressing`、`task.pushing`（`TaskStatus` 里同名的状态）。新增阶段时同步扩展 `shared/types.d.ts` 的 `JobPhase`、`useFileOps.ts` 的 `PHASE_STATUS`、`TaskQueue.tsx` 的 `statusText` 和 i18n
+- 错误信息的语言取自启动任务的请求（`AsyncLocalStorage` 随异步延续传递）；`rootGuard` 已导出，任务里的 root 请求失败同样会以 `root_lost` 报出，需要请求带 `root` 和 `serial` 参数
+- 取消信号已传到 `adb.push` / `adb.pull`（第四个参数）、`adb.checked`（第四个参数）、`cmds.diskUsage`、`cmds.countSkipped` 和 `buildZip`；su 模式的暂存目录清理不带 `signal`，取消后也会执行
+- 进度估算：`tmp.ts` 的 `watchGrowth(dir, total, onProgress)` 每 500 毫秒量一次临时目录大小，上限 0.99；总量来自 `cmds.diskUsage`（`du -sk`，按块计，略大于实际字节数）

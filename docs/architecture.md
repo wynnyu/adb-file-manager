@@ -75,10 +75,12 @@ flowchart TB
   app --> preview["preview.ts<br/>媒体、文本预览路由"]
   app --> attrs["attrs.ts<br/>属性、递归统计、权限路由"]
   app --> archive["archive.ts<br/>压缩包预览、解压、压缩路由"]
+  app --> jobs["jobs.ts<br/>后台任务、SSE 进度、取消"]
   archive --> zip["zip.ts<br/>电脑端生成 zip"]
-  zip & transfer --> tmp["tmp.ts<br/>临时目录"]
+  archive & transfer --> jobs
+  zip & transfer --> tmp["tmp.ts<br/>临时目录、进度估算"]
   app --> errh["错误处理<br/>AdbError 转为 { error, code }"]
-  files & transfer & preview & attrs & archive & devices --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
+  files & transfer & preview & attrs & archive & devices & jobs --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files & attrs --> guard["guard.ts<br/>受保护路径、源与目标关系"]
   files & transfer & preview & attrs & archive & zip & guard --> fscmds["fs-cmds.ts<br/>设备端文件命令"]
   devices --> fastboot["fastboot.ts<br/>fastboot 设备检测"]
@@ -90,16 +92,17 @@ flowchart TB
 | 模块 | 职责 |
 | --- | --- |
 | `index.ts` | 读取 `PORT`，先清理电脑临时目录，再在 `127.0.0.1` 上启动服务 |
-| `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
+| `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`、任务路由挂在 `/api/jobs`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
 | `devices.ts` | `deviceRoutes()`：`GET /api/devices`（`listDevices()` 合并 adb 和 fastboot）、`/api/devices/reconnect`、`/api/devices/restart-server`、`/api/devices/root-check`、`/api/devices/storage`；`storage` 读取存储空间 |
 | `files.ts` | `/api/files/ls`、`/api/files/mkdir`、`/api/files/rename`、`/api/files/delete`、`/api/files/copy`、`/api/files/move` |
 | `preview.ts` | `/api/files/preview`（媒体文件，支持 Range）、`/api/files/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `attrs.ts` | `/api/files/stat`（属性、符号链接目标、所在分区）、`/api/files/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/files/chmod`、`/api/files/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
-| `archive.ts` | `/api/files/archive`（压缩包内的条目，最多 20000 个）、`/api/files/extract`（在设备上解压）、`/api/files/compress`（压缩为 zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
-| `zip.ts` | zip 的电脑端生成：`compressZip` 依次预估空间、`adb pull`、打包、`adb push`，`buildZip` 用 `archiver` 写出 zip，已压缩的格式直接存储 |
-| `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例） |
-| `transfer.ts` | `/api/files/upload`、`/api/files/pull`、`/api/files/fetch/:token`；管理下载任务（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
-| `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
+| `archive.ts` | `/api/files/archive`（压缩包内的条目，最多 20000 个）、`/api/files/extract`（在设备上解压）、`/api/files/compress`（启动压缩任务，zip 或 tar 系格式）；`archiveFormat`、`parseZipList`、`parseTarList`、`assertSafeEntries`、`topLevelSingle`、`extractName`、`packBase`、`packName` 为可单独测试的纯函数，其中 `assertSafeEntries` 拒绝绝对路径、`..` 和符号链接之下的条目，`packBase` 去掉重复和互相包含的所选项并确定压缩包的位置 |
+| `zip.ts` | zip 的电脑端生成：`compressZip` 接收 `JobHandle`，依次预估空间、`adb pull`、打包、`adb push` 并切换任务阶段（推送阶段不可取消），`buildZip` 用 `archiver` 写出 zip（支持 `signal` 取消和进度回调），已压缩的格式直接存储 |
+| `jobs.ts` | 通用后台任务：`startJob(req, run)` 生成 id 后立即返回，`run` 在后台执行并通过 `JobHandle`（`signal`、`phase`、`progress`、`log`）报告阶段、进度和日志；`jobRoutes()` 提供 `/api/jobs/:id/events`（SSE）和 `/api/jobs/:id/cancel`。任务保存在内存中，结束后保留 60 秒；异常经 `request.ts` 的 `rootGuard` 复查，`signal` 已触发时记为取消；进度推送限流到约 250 毫秒一次 |
+| `tmp.ts` | 电脑临时目录 `os.tmpdir()/adb-file-manager` 及其中任务目录的创建，供 `transfer.ts` 和 `zip.ts` 使用；`cleanTmp` 在启动时清空残留（默认同一时间只运行一个服务实例）；`dirBytes`、`watchGrowth` 按目录增长估算 `adb pull` 的进度 |
+| `transfer.ts` | `/api/files/upload`、`/api/files/pull`（启动下载任务）、`/api/files/fetch/:token`；管理下载 token（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
+| `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost`（`rootGuard` 同时供 `jobs.ts` 使用） |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
 | `fastboot.ts` | fastboot 的底层调用（`execFile` 传参数数组，路径取自 `FASTBOOT_PATH`）和设备检测：`devices()` 解析 `fastboot devices -l`，设备首次出现时查询一次 `getvar is-userspace` 和 `product` 并按 serial 缓存，消失时清除；fastboot 不存在时返回 `missing`；`parseFastbootDevices`、`parseGetvar` 为可单独测试的纯函数 |
 | `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；以及设备列表（`parseAdbDevices`、`adbMode` 为纯函数，`cachedName` 供 fastboot 复用名称缓存）、root 检测、push、pull、设备端暂存目录清理。除 `adb.ts` 和 `fastboot.ts` 外，其他模块不直接调用 `child_process` |
@@ -467,7 +470,33 @@ sequenceDiagram
 
 ### 下载
 
-下载分两步：先由后端登记任务并返回一次性 token，再由浏览器通过 `<a download>` 访问 `/api/files/fetch/:token` 取回。单个文件在第一步只确认存在且可读，取回时用 `adb exec-out cat` 流式返回，不经过电脑临时目录，浏览器立即开始下载；目录或多项在第一步 `adb pull` 到临时目录，取回时打包为 zip，响应结束后临时目录即被删除。未取回的任务 30 分钟后清理。
+下载分两步：先启动下载任务，任务的结果是一次性 token，再由浏览器通过 `<a download>` 访问 `/api/files/fetch/:token` 取回。
+
+```mermaid
+sequenceDiagram
+  participant F as useFileOps
+  participant A as lib/api.ts
+  participant S as /api/files/pull
+  participant J as /api/jobs
+  participant P as 设备
+  F->>F: startTask（pulling）
+  F->>A: api.download(target, paths, hooks)
+  A->>S: POST { serial, paths, root? }
+  S->>P: 确认路径存在（单个文件再确认可读）
+  S-->>A: { id }
+  A-->>F: onJob(id)，patchTask 记下取消回调
+  A->>J: EventSource /api/jobs/:id/events
+  S->>P: du 统计大小（preparing）
+  S->>P: adb pull 到临时目录（pulling），按目录增长估算进度
+  J-->>A: state 事件（阶段、进度）
+  A-->>F: onUpdate，patchTask 写入状态和进度
+  S->>S: 登记 token
+  J-->>A: state 事件（done，result 为 token 和文件名）
+  A->>A: 临时 a 标签指向 /api/files/fetch/token 并点击
+  F->>F: patchTask（done）
+```
+
+单个文件在任务里只登记 token，不经过电脑临时目录，任务立即完成；取回时用 `adb exec-out cat` 流式返回，浏览器立即开始下载。目录或多项在任务中 `adb pull` 到临时目录，取回时打包为 zip，响应结束后临时目录即被删除。用户取消时，`cancelJob` 触发任务的 `signal`，`adb pull` 被终止，临时目录随即删除，任务卡片显示“已取消”。未取回的 token 30 分钟后清理。
 
 ### 解压
 
@@ -506,21 +535,24 @@ sequenceDiagram
   A->>S: POST { serial, paths, format, root? }
   S->>S: packBase：去重、取公共父目录、得到相对名称
   S->>P: 确认各项存在
+  S-->>A: { id }
+  A-->>F: patchTask 记下取消回调
+  F->>A: api.watchJob(id, onUpdate)，订阅 /api/jobs/:id/events
   alt tar、tgz、tbz
-    S->>P: tar 写入 .adbfm-pack-*，成功后改为不重名的最终名字，失败时删除
+    S->>P: 阶段 compressing（不可取消）：tar 写入 .adbfm-pack-*，成功后改为不重名的最终名字，失败时删除
   else zip
-    S->>P: du 估算大小，find 统计会被跳过的条目
-    S->>T: adb pull 各项，按相对路径落盘
-    S->>T: archiver 打包为 zip
-    S->>P: 算出不重名的名字，adb push 到公共父目录
-    S->>T: 删除临时目录（失败时也删除）
+    S->>P: 阶段 preparing：du 估算大小，find 统计会被跳过的条目
+    S->>T: 阶段 pulling：adb pull 各项，按相对路径落盘，按目录增长估算进度
+    S->>T: 阶段 compressing：archiver 打包为 zip，按已处理字节推送进度
+    S->>P: 阶段 pushing（不可取消）：算出不重名的名字，adb push 到公共父目录
+    S->>T: 删除临时目录（失败或取消时也删除）
   end
-  S-->>A: { path, skipped? }
+  S-->>A: state 事件（done，result 为 { path, skipped? }）
   A-->>F: resolve
   F->>F: patchTask（done，有 skipped 时带说明），刷新存储空间和当前目录
 ```
 
-压缩失败时任务显示错误，并刷新当前目录。zip 有被跳过的条目时，任务卡片显示说明且不会自动消失。
+压缩失败或被取消时，任务卡片分别显示错误和“已取消”，并刷新当前目录。zip 有被跳过的条目时，任务卡片显示说明且不会自动消失。
 
 ### root 模式
 

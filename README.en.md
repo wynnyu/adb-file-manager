@@ -86,7 +86,7 @@ Run `adb version` to verify that adb is available. With the device connected, ru
 
 - Upload via the button or by dragging files and folders into the window, with directory structure preserved
 - Downloads start from the context menu, the selection bar or the download button in the viewer. Single files are downloaded as is; folders and multiple selections are downloaded as a zip archive
-- A task queue displays the progress and result of each task
+- A task queue displays the progress and result of each task. Downloading folders and compressing to zip show the current stage (calculating size, pulling, compressing, pushing) and a percentage, and can be stopped with **Cancel** (not during the final push back to the device)
 
 **Organizing**
 
@@ -198,6 +198,7 @@ server/
   files.ts      file operation endpoints: list, create, rename, delete, copy, move, preview
   attrs.ts      attribute endpoints: stat, recursive folder usage, chmod and chown
   transfer.ts   upload and download endpoints, staged through a temporary directory on the computer
+  jobs.ts       background jobs: progress events (SSE) and cancellation
   guard.ts      security checks: local-only access, protected paths
   request.ts    request parameter parsing and root status cache
   index.ts      entry point
