@@ -3,6 +3,9 @@ export const zh = {
   "app.name": "ADB 文件管理器",
   "app.rootTitle": "ROOT - {name}",
 
+  "nav.label": "模块",
+  "nav.files": "文件",
+
   "common.cancel": "取消",
   "common.processing": "处理中……",
   "common.confirm": "确定",

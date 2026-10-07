@@ -5,6 +5,9 @@ export const en: Record<MessageKey, string> & Partial<Record<`${MessageKey}_one`
   "app.name": "ADB File Manager",
   "app.rootTitle": "ROOT - {name}",
 
+  "nav.label": "Modules",
+  "nav.files": "Files",
+
   "common.cancel": "Cancel",
   "common.processing": "Processing…",
   "common.confirm": "OK",

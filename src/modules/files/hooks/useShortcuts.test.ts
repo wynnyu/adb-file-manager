@@ -55,6 +55,13 @@ describe("useShortcuts", () => {
     expect(ctx.clear).toHaveBeenCalled();
   });
 
+  it("卸载后不再响应按键", () => {
+    const { ctx, unmount } = setup();
+    unmount();
+    press({ key: "Escape" });
+    expect(ctx.clear).not.toHaveBeenCalled();
+  });
+
   it("对话框或菜单打开时不响应", () => {
     const { ctx } = setup({ blocked: true });
     press({ key: "Escape" });

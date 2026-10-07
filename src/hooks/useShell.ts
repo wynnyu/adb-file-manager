@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { DialogState } from "../components/overlays/index.ts";
+import type { ModuleNavState } from "../components/shell/index.ts";
 import type { Target } from "../lib/index.ts";
 import type { Device, StorageInfo } from "../types.ts";
 import { useDevices, useStorage } from "./useDevices.ts";
@@ -32,7 +33,12 @@ export interface Shell {
   startTransfer: Transfers["startTransfer"];
   patchTransfer: Transfers["patchTransfer"];
   dismissTransfer: Transfers["dismissTransfer"];
+  /** 模块导航；由 App 根据模块注册表提供，useShellState 不包含 */
+  nav: ModuleNavState;
 }
+
+/** useShellState 管理的部分，App 再补上 nav 组成完整的 Shell */
+export type ShellState = Omit<Shell, "nav">;
 
 export const ShellContext = createContext<Shell | null>(null);
 
@@ -44,7 +50,7 @@ export function useShell(): Shell {
 }
 
 /** 外壳自己的状态，由 App 调用一次并放进 ShellContext */
-export function useShellState(): Shell {
+export function useShellState(): ShellState {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const closeDialog = useCallback((d?: DialogState) => setDialog((cur) => (d && cur !== d ? cur : null)), []);
   const { toast, flash } = useToast();
