@@ -194,6 +194,21 @@ Catppuccin 原版 Latte 的部分颜色在浅色背景上对比度不足（例�
 
 分栏视图中，从根目录到当前目录路径上的文件夹为 `surface1` 底，当前选中项为主色实底。
 
+### 设备模式
+
+顶栏的设备选择器和下拉列表用状态点和文案表示 `DeviceMode`，颜色只传达状态，文案同时显示：
+
+| 模式 | 状态点 |
+| --- | --- |
+| `system` | `green`，连上时 ping 一次 |
+| `unauthorized` | `yellow` |
+| `offline` | `red` |
+| `recovery`、`sideload` | `peach` |
+| `bootloader`、`fastbootd` | `blue` |
+| 等待重新连接（`reconnecting`） | `overlay0`，沿用原设备名 |
+
+下拉列表每项在序列号旁用 `|` 分隔显示模式文案；找不到 fastboot 时，列表底部显示一行 `muted` 提示。当前模块不支持设备的模式时，页面用 `NoDevice` 显示“设备当前处于 {模式}”和所需的模式，不显示连接引导。
+
 ### root 模式
 
 root 模式需要在多个位置同时可见，避免用户忘记当前处于高权限状态：

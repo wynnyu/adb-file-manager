@@ -66,14 +66,29 @@ root 方式在首次 root 请求时检测并按设备缓存：adbd 本身以 roo
 定义在 `shared/types.d.ts`，前后端共用。
 
 ```ts
+/** 设备经由哪个工具连接 */
+type Transport = "adb" | "fastboot";
+
+/** 规范化的设备模式 */
+type DeviceMode = "system" | "recovery" | "sideload" | "bootloader" | "fastbootd" | "unauthorized" | "offline";
+
 interface Device {
   serial: string;
-  /** adb devices 报告的状态，常见的有 device、unauthorized、offline，也可能是 bootloader、recovery 等 */
-  state: string;
-  /** adb devices -l 中的 model，下划线换成空格 */
+  transport: Transport;
+  mode: DeviceMode;
+  /** adb 设备为 adb devices -l 中的 model（下划线换成空格），fastboot 设备为 getvar product */
   model: string;
-  /** 设备的市场名称，读取不到时依次退回到品牌加型号、model、serial */
+  /** 设备的市场名称，读取不到时依次退回到品牌加型号、model、serial；fastboot 设备优先使用 adb 时缓存的名称，其次 product、serial */
   name: string;
+}
+
+/** GET /api/devices 的响应 */
+interface DeviceList {
+  devices: Device[];
+  /** adb 调用失败时的错误信息；此时 fastboot 设备仍会列出 */
+  adbError?: string;
+  /** 找不到 fastboot 可执行文件 */
+  fastbootMissing?: boolean;
 }
 
 interface FileEntry {
@@ -253,7 +268,7 @@ interface ChownRequest {
 
 | 方法 | 路径 | 说明 | 前端封装 |
 | --- | --- | --- | --- |
-| GET | `/api/devices` | 列出设备 | `api.devices()` |
+| GET | `/api/devices` | 列出 adb 和 fastboot 设备 | `api.devices()` |
 | POST | `/api/devices/reconnect` | 重新请求授权 | `api.reconnectDevices()` |
 | POST | `/api/devices/restart-server` | 重启 adb 服务 | `api.restartAdb()` |
 | POST | `/api/devices/root-check` | 检测 root 方式 | `api.rootCheck(serial)` |
@@ -281,14 +296,23 @@ interface ChownRequest {
 
 ### GET /api/devices
 
-列出 adb 识别到的全部设备，包括未授权和离线的设备。执行 `adb devices -l`，超时 10 秒。设备名称通过 `getprop` 读取并按序列号缓存。
+列出 adb 和 fastboot 识别到的全部设备，包括未授权和离线的设备。执行 `adb devices -l`（超时 10 秒）和 `fastboot devices -l`（超时 5 秒），两者并行，按 serial 去重，同一 serial 两边都有时保留 adb 的条目。adb 设备名称通过 `getprop` 读取并按序列号缓存。
+
+adb 的状态映射为 `mode`：`device` 为 `system`，`recovery`、`sideload`、`bootloader`、`unauthorized` 同名，其余（`offline`、`authorizing`、`connecting`、`no permissions`、`host` 等）一律为 `offline`。fastboot 设备在首次出现时执行一次 `getvar is-userspace` 和 `getvar product`：`is-userspace` 为 `yes` 时 `mode` 为 `fastbootd`，否则为 `bootloader`；fastboot 报告的其他状态为 `offline`。查询结果按 serial 缓存，设备从列表消失时清除，轮询期间不再向 fastboot 设备发送命令。
+
+fastboot 的可执行文件路径可通过环境变量 `FASTBOOT_PATH` 指定，默认从 `PATH` 查找。
+
+本接口总是返回 `200`。adb 失败时 `adbError` 带上错误信息，fastboot 设备照常列出；找不到 fastboot 时 `fastbootMissing` 为 `true`，adb 设备不受影响。fastboot 的其他错误按没有设备处理。
 
 某台设备连续处于 `unauthorized` 超过 8 秒时，会自动执行一次 `adb reconnect offline` 让设备重新弹出授权提示；状态变化或设备消失后记录清除，重新插拔后可再次自动重试。
 
-响应：`Device[]`
+响应：`DeviceList`
 
 ```json
-[{ "serial": "R5CT1234", "state": "device", "model": "Pixel 9", "name": "Pixel 9" }]
+{
+  "devices": [{ "serial": "R5CT1234", "transport": "adb", "mode": "system", "model": "Pixel 9", "name": "Pixel 9" }],
+  "fastbootMissing": true
+}
 ```
 
 ### POST /api/devices/reconnect
@@ -745,7 +769,7 @@ interface Target {
 
 | 方法 | 返回值 | 说明 |
 | --- | --- | --- |
-| `devices()` | `Promise<Device[]>` | |
+| `devices()` | `Promise<DeviceList>` | |
 | `reconnectDevices()`、`restartAdb()` | `Promise<OkResult>` | 设备待授权时的补救操作，由 `hooks/useReauthorize.ts` 调用 |
 | `rootCheck(serial)` | `Promise<{ method: RootMethod }>` | |
 | `storage(serial)` | `Promise<StorageInfo>` | |

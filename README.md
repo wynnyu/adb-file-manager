@@ -14,6 +14,7 @@
 - adb（Android SDK Platform-Tools），需位于 `PATH` 中，或通过 `ADB_PATH` 指定路径
 
   安装方法见下文[安装 Node.js 和 adb](#安装-nodejs-和-adb)
+- fastboot（可选，同属 Platform-Tools），用于检测处于 bootloader 或 fastbootd 的设备，需位于 `PATH` 中，或通过 `FASTBOOT_PATH` 指定路径
 - 设备已开启 USB 调试：在“设置”的“关于手机”中连续点击“版本号”7 次以启用开发者选项，然后在“开发者选项”中开启“USB 调试”
 
 克隆仓库并运行以下命令：
@@ -152,6 +153,7 @@ sudo dnf install android-tools
 | --- | --- | --- |
 | `PORT` | `3001` | 监听端口 |
 | `ADB_PATH` | `adb` | adb 可执行文件的路径 |
+| `FASTBOOT_PATH` | `fastboot` | fastboot 可执行文件的路径，用于检测处于 bootloader 或 fastbootd 的设备 |
 | `ADBFM_SU` | `su -c` | root 模式下的提权命令前缀。如设备上 su 的参数格式不同，可修改此项，例如 `ADBFM_SU="su 0 sh -c"` |
 
 ```bash

@@ -56,10 +56,10 @@
 
 ### S4 设备模型与 fastboot 检测
 
-- [ ] `Device` 增加 `transport: "adb" | "fastboot"` 和规范化的 `mode`（system、recovery、sideload、bootloader、fastbootd、unauthorized、offline）
-- [ ] 新增 `server/fastboot.ts`：`FASTBOOT_PATH` 环境变量，`execFile` 传参数数组；`fastboot devices -l` 合并进 `/api/devices`；fastboot 不存在时返回空列表并标记工具缺失，不影响 adb
-- [ ] `useDevices`：当前设备暂时消失（重启、切模式）时保留选择一段时间，不立即切到其他设备
-- [ ] 各模块声明所需模式，`online` 判断从 `state === "device"` 改为按模式判断；`NoDevice` 显示设备当前模式
+- [x] `Device` 增加 `transport: "adb" | "fastboot"` 和规范化的 `mode`（system、recovery、sideload、bootloader、fastbootd、unauthorized、offline）
+- [x] 新增 `server/fastboot.ts`：`FASTBOOT_PATH` 环境变量，`execFile` 传参数数组；`fastboot devices -l` 合并进 `/api/devices`；fastboot 不存在时返回空列表并标记工具缺失，不影响 adb
+- [x] `useDevices`：当前设备暂时消失（重启、切模式）时保留选择一段时间，不立即切到其他设备
+- [x] 各模块声明所需模式，`online` 判断从 `state === "device"` 改为按模式判断；`NoDevice` 显示设备当前模式
 
 关键文件：`shared/types.d.ts`、`server/adb.ts`、`server/devices.ts`（S2 后）、`src/hooks/useDevices.ts`、`src/hooks/useShell.ts`、`src/components/NoDevice.tsx`、`src/components/shell/DeviceSelect.tsx`
 
@@ -132,5 +132,14 @@
 - `ShellLayout` 的 `overlays` 属性放页面自己的浮层，与页面共用整窗拖放区域；`TransferQueue`、`Toast`、`Dialog` 在 `App` 中、页面之后渲染，所以传输卡片和提示显示在页面的属性页、右键菜单之上
 - `components/overlays/Dialog.tsx` 的 `bookmark` 类型仍导入文件模块的 `BookmarkForm` 和 `BookmarkFields`，是共用代码导入模块的唯一例外。后续模块需要自定义表单时，把对话框的 `kind` 泛化为可由模块提供内容的形式
 - 保留的内部标识：`afm.` 偏好前缀、电脑临时目录 `adb-file-manager`、设备端 `adbfm-` 前缀、GitHub 仓库地址。改动它们会丢失已有偏好或留下残留，仓库改名由用户自行决定
-- S4 改 `online` 的判断：在 `useShellState`（`hooks/useShell.ts`）中，目前是 `devices.find(...)?.state === "device"`；模块声明所需模式后，`online` 要改为按当前模块判断，`App` 渲染 `TransferQueue` 的 `Tip` 也用到它
 - S5 的传输队列已在外壳中：`useTransfers` 的状态在 `useShellState` 里，模块用 `startTransfer`、`patchTransfer` 登记任务，`TransferQueue` 在 `App` 中渲染，不属于任何模块
+
+### S4
+
+- `adb devices` 的状态映射为 `DeviceMode`：`device` 为 system，`recovery`、`sideload`、`bootloader`、`unauthorized` 同名，其余（`offline`、`authorizing`、`connecting`、`no permissions`、`host` 等）一律为 offline。fastboot 设备按 `getvar is-userspace` 区分 fastbootd 和 bootloader
+- `GET /api/devices` 总是返回 `200` 和 `DeviceList`（`devices`、可选的 `adbError`、`fastbootMissing`）：adb 失败时 fastboot 设备照常列出，fastboot 不存在时 adb 设备不受影响。前端只有请求本身失败（后端未启动）时才取异常消息作为 `adbError`
+- fastboot 的 `getvar` 只在设备首次出现时查询一次（结果按 serial 缓存，设备从列表消失时清除）。S11 刷入期间不要额外轮询 `getvar`，也不要在设备列表轮询里加入新的 fastboot 命令，并发命令可能干扰刷入
+- `Shell.adbReady`（adb 连接、system 模式、不在重新连接中）与按模块计算的 `Shell.online`（设备模式在当前模块的 `modes` 内）是两个概念：存储用量、root 模式、顶栏的 ROOT 标记和 root 开关用 `adbReady`；页面是否可用、`Tip` 是否显示用 `online`。`online` 和 `modes` 由 `App` 补充，`useShellState` 不返回
+- 新模块在 `MODULES` 中声明 `modes`（可用的设备模式），当前设备处于其他模式时 `NoDevice` 显示“设备当前处于 {模式}”和所需模式。fastboot 模块（S10、S11）声明 `["bootloader", "fastbootd"]`，需要时可加入 system 以显示重启入口
+- 当前设备消失后保留选择 `REBOOT_GRACE`（90 秒），期间 `Shell.device` 是它最近一次出现时的条目，`reconnecting` 为 `true`，`online` 和 `adbReady` 为 `false`。序列号在 adb 和 fastboot 下通常相同，进入 bootloader 后设备以 fastboot 条目重新出现并保持选中
+- recovery 模式下的文件管理未开启：TWRP 等 recovery 可后续把 `recovery` 加入文件模块的 `modes`（需确认 adb shell 与 `/sdcard` 在 recovery 下可用）

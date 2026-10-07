@@ -17,7 +17,9 @@ flowchart LR
     Express["Express 后端<br/>server/"]
     Tmp[("临时目录<br/>os.tmpdir()/adb-file-manager")]
     ADB["adb 客户端<br/>ADB_PATH"]
+    FB["fastboot 客户端<br/>FASTBOOT_PATH"]
     Express -- "execFile / spawn" --> ADB
+    Express -- "execFile" --> FB
     Express <-->|上传、zip 中转| Tmp
     ADB <-->|push / pull| Tmp
   end
@@ -32,6 +34,7 @@ flowchart LR
 
   UI -- "HTTP JSON /api/*<br/>multipart 上传" --> Express
   ADB -- "USB" --> Adbd
+  FB -. "USB<br/>bootloader、fastbootd" .-> Device
 ```
 
 要点：
@@ -78,6 +81,8 @@ flowchart TB
   files & transfer & preview & attrs & archive & devices --> request["request.ts<br/>wrap、ctxOf、rootGuard、rootCache"]
   files & attrs --> guard["guard.ts<br/>受保护路径、源与目标关系"]
   files & transfer & preview & attrs & archive & zip & guard --> fscmds["fs-cmds.ts<br/>设备端文件命令"]
+  devices --> fastboot["fastboot.ts<br/>fastboot 设备检测"]
+  fastboot --> adb
   fscmds & devices & request & guard & files & transfer & preview & attrs & archive & zip --> adb["adb.ts<br/>底层调用"]
   adb --> i18n["i18n.ts<br/>错误信息文案"]
 ```
@@ -86,7 +91,7 @@ flowchart TB
 | --- | --- |
 | `index.ts` | 读取 `PORT`，先清理电脑临时目录，再在 `127.0.0.1` 上启动服务 |
 | `app.ts` | 注册中间件，把设备路由挂在 `/api/devices`、文件相关的五组路由挂在 `/api/files`，并托管静态文件、统一处理错误；各 Router 内写相对路径，新模块照此挂载 |
-| `devices.ts` | `deviceRoutes()`：`GET /api/devices`、`/api/devices/reconnect`、`/api/devices/restart-server`、`/api/devices/root-check`、`/api/devices/storage`；`storage` 读取存储空间 |
+| `devices.ts` | `deviceRoutes()`：`GET /api/devices`（`listDevices()` 合并 adb 和 fastboot）、`/api/devices/reconnect`、`/api/devices/restart-server`、`/api/devices/root-check`、`/api/devices/storage`；`storage` 读取存储空间 |
 | `files.ts` | `/api/files/ls`、`/api/files/mkdir`、`/api/files/rename`、`/api/files/delete`、`/api/files/copy`、`/api/files/move` |
 | `preview.ts` | `/api/files/preview`（媒体文件，支持 Range）、`/api/files/text`（文件开头 1 MB 的 UTF-8 文本）；`parseRange`、`decodeText` 为可单独测试的纯函数 |
 | `attrs.ts` | `/api/files/stat`（属性、符号链接目标、所在分区）、`/api/files/usage`（文件夹递归统计，可取消，超时 120 秒）、`/api/files/chmod`、`/api/files/chown`；`parseStat`、`parsePartition`、`parseUsage` 为可单独测试的纯函数，`stat -c` 的格式依次降级以兼容老设备 |
@@ -96,7 +101,8 @@ flowchart TB
 | `transfer.ts` | `/api/files/upload`、`/api/files/pull`、`/api/files/fetch/:token`；管理下载任务（单个文件流式返回，其余 pull 后打包 zip）和临时目录 |
 | `request.ts` | 解析 `serial`、`root`、`paths` 参数；缓存每台设备的 root 方式；root 请求失败时复查并转换为 `root_lost` |
 | `guard.ts` | 仅限本机访问；禁止删除、移动，以及修改权限或所有者的目标为根目录、一级目录、存储根目录等路径；禁止把目录复制或移动到自身内部 |
-| `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；以及设备列表、root 检测、push、pull、设备端暂存目录清理。其他模块不直接调用 `child_process` |
+| `fastboot.ts` | fastboot 的底层调用（`execFile` 传参数数组，路径取自 `FASTBOOT_PATH`）和设备检测：`devices()` 解析 `fastboot devices -l`，设备首次出现时查询一次 `getvar is-userspace` 和 `product` 并按 serial 缓存，消失时清除；fastboot 不存在时返回 `missing`；`parseFastbootDevices`、`parseGetvar` 为可单独测试的纯函数 |
+| `adb.ts` | 底层调用：`run`、`shell`、`checked`（含 `OK_MARK`、`EXISTS_MARK`）、exec-out 封装（`execOutStream`、`execOutBuffer`）、`q` 转义、`Ctx`、`AdbError`；以及设备列表（`parseAdbDevices`、`adbMode` 为纯函数，`cachedName` 供 fastboot 复用名称缓存）、root 检测、push、pull、设备端暂存目录清理。除 `adb.ts` 和 `fastboot.ts` 外，其他模块不直接调用 `child_process` |
 | `fs-cmds.ts` | 设备端文件命令，基于 `adb.ts` 拼接：列目录、改名、删除、chmod、chown、复制（重名编号与压缩共用 `uniqueTarget`，压缩包的复合扩展名不拆开）、压缩包的列出、解压和压缩（`listArchive`、`extract`、`pack`）、按字节读取文件（`cat`、`head`、`fileSize`）；`parseLs`、`extractCmd`、`catCmd`、`packCmd`、`parseDu` 为可单独测试的纯函数 |
 | `i18n.ts` | 按请求头 `X-Lang`（缺省时看 `Accept-Language`）选择错误信息语言，基于 `AsyncLocalStorage` 在请求范围内生效 |
 
@@ -183,8 +189,11 @@ src/
 
 | 字段 | 含义 |
 | --- | --- |
-| `devices`、`adbError`、`serial`、`setSerial` | 设备列表、adb 错误、当前设备 |
-| `online` | 当前设备的状态为 `device`（已连接且已授权） |
+| `devices`、`adbError`、`fastbootMissing`、`serial`、`setSerial` | 设备列表、adb 错误、fastboot 是否缺失、当前序列号 |
+| `device`、`reconnecting` | 当前设备；它消失后在 `REBOOT_GRACE`（90 秒）内保留选择，`device` 为最近一次出现时的条目，`reconnecting` 为 `true` |
+| `adbReady` | 当前设备能执行 adb shell：`transport` 为 `adb`、`mode` 为 `system` 且不在重新连接中。存储用量、root 模式、顶栏的 ROOT 标记和 root 开关依赖它，与当前模块无关 |
+| `online` | 当前设备可供当前模块使用：有设备、不在重新连接中，且 `mode` 在当前模块的 `modes` 内。由 `App` 按当前模块计算，`useShellState` 不包含 |
+| `modes` | 当前模块可用的设备模式（`ModuleDef.modes`），由 `App` 提供，`useShellState` 不包含 |
 | `storage`、`refreshStorage` | 当前设备的存储空间 |
 | `rootMode`、`askEnableRoot`、`disableRoot` | root 模式开关及其对话框 |
 | `target` | 当前设备加 root 方式（`{ serial, root }`），没有设备时为 `null` |
@@ -195,7 +204,7 @@ src/
 
 `useShell()` 在没有 Provider 时抛出错误。外壳回调保持稳定，整个值用 `useMemo`。
 
-新增模块的步骤：在 `modules/<名称>/` 下建立页面，页面用 `ShellLayout` 作为骨架，从 `useShell()` 取设备和传输队列；在 `modules/index.ts` 的 `MODULES` 中加一项（`ModuleId` 联合类型、图标、`nav.*` 文案键、`Page`，需要时加 `Tip`）。`ModuleNav` 仅在模块多于一个时显示，当前模块记录在 `afm.module`，存储的 id 无效时回退到第一个模块。切换模块时页面卸载，模块在 `window` 上注册的监听（例如 `useShortcuts`）随之移除。
+新增模块的步骤：在 `modules/<名称>/` 下建立页面，页面用 `ShellLayout` 作为骨架，从 `useShell()` 取设备和传输队列；在 `modules/index.ts` 的 `MODULES` 中加一项（`ModuleId` 联合类型、图标、`nav.*` 文案键、`modes`、`Page`，需要时加 `Tip`）。`modes` 声明模块可用的设备模式，当前设备处于其他模式时页面显示 `NoDevice` 的模式提示。`ModuleNav` 仅在模块多于一个时显示，当前模块记录在 `afm.module`，存储的 id 无效时回退到第一个模块。切换模块时页面卸载，模块在 `window` 上注册的监听（例如 `useShortcuts`）随之移除。
 
 `ShellLayout` 提供 `min-h-dvh` 容器、`max-w-6xl` 列、顶栏、模块导航和主面板，页面通过 `dropProps`（整窗拖放）、`children`（面板内容）、`panelOverlay`（面板内的绝对定位提示）和 `overlays`（页面自己的浮层）填充。浮层放在面板外面，不能放进带 transform 的元素，否则 `fixed` 定位会失效。
 
@@ -204,7 +213,7 @@ src/
 | hook | 位置 | 管理的状态 | 持久化（localStorage） |
 | --- | --- | --- | --- |
 | `useShell` / `useShellState` | `hooks/` | 组合下列外壳 hook 和对话框状态，提供 `ShellContext` | 无 |
-| `useDevices` | `hooks/` | 设备列表、当前设备、adb 错误；每 2 秒轮询 | 无 |
+| `useDevices` | `hooks/` | 设备列表、当前设备、重新连接状态、adb 错误、fastboot 是否缺失；每 2 秒轮询 | 无 |
 | `useReauthorize` | `hooks/` | 待授权时“重新请求授权”“重启 adb 服务”的进行状态和错误 | 无 |
 | `useStorage` | `hooks/` | 当前设备的存储空间 | 无 |
 | `useRootMode` | `hooks/` | root 模式开关、已验证的设备，以及 root 模式下的标签页标题和图标 | `afm.rootRemember` |
